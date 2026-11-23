@@ -1,0 +1,51 @@
+:root[data-theme="silicon-darkroom"] {
+  --vd-bg-canvas:        #0B0E14;
+  --vd-bg-workbench:     #10141C;
+  --vd-bg-panel:         #151A24;
+  --vd-bg-elevated:      #1C2331;
+  --vd-border-subtle:    #232B3B;
+  --vd-border-active:    #3B82F6;
+  --vd-font-ui:          "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --vd-font-mono:        "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+  --vd-text-primary:     #E6EDF7;
+  --vd-text-secondary:   #94A3B8;
+  --vd-text-muted:       #64748B;
+  --vd-pass:             #10B981;
+  --vd-warn:             #F59E0B;
+  --vd-fail:             #EF4444;
+  --vd-agent-pulse:      #8B5CF6;
+  --vd-human-lock:       #FBBF24;
+  --vd-dlp-airgap:       #06B6D4;
+  --vd-layer-f-cu:       #E04F5F;
+  --vd-layer-b-cu:       #3B82F6;
+  --vd-layer-silk:       #F8FAFC;
+  --vd-layer-courtyard:  #A855F7;
+}
+
+* { box-sizing: border-box; }
+html, body, #root {
+  margin: 0; padding: 0; width: 100%; height: 100%;
+  background: var(--vd-bg-workbench);
+  color: var(--vd-text-primary);
+  font-family: var(--vd-font-ui);
+  overflow: hidden;
+}
+
+.vd-metric {
+  font-family: var(--vd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.vd-btn {
+  background: var(--vd-bg-elevated);
+  color: var(--vd-text-primary);
+  border: 1px solid var(--vd-border-subtle);
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.vd-btn:hover { border-color: var(--vd-border-active); }
+.vd-btn-primary { background: #1D4ED8; border-color: #3B82F6; }
+.vd-btn-warn { background: #451A03; border-color: var(--vd-human-lock); color: var(--vd-human-lock); }
+.vd-btn-agent { background: #2E1065; border-color: var(--vd-agent-pulse); color: #DDD6FE; }

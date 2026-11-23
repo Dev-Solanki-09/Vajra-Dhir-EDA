@@ -30,6 +30,7 @@ members = [
     "packages/solver-recovery",
     "packages/control-loop",
     "packages/compliance-hbom",
+    "packages/vd-daemon",
 ]
 
 [workspace.package]
@@ -56,3 +57,5 @@ thiserror = "2.0"
 rstar = "0.12"
 i_overlay = "1.5"
 cavalier_contours = "0.4"
+axum = "0.8"
+tower-http = { version = "0.6", features = ["cors"] }

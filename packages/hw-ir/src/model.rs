@@ -15,6 +15,28 @@ pub enum Provenance {
     Compiler,
 }
 
+impl Provenance {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Human => "human",
+            Self::Agent => "agent",
+            Self::Cubo => "cubo",
+            Self::Import => "import",
+            Self::Compiler => "compiler",
+        }
+    }
+
+    pub fn from_db(s: &str) -> Self {
+        match s {
+            "human" => Self::Human,
+            "agent" => Self::Agent,
+            "cubo" => Self::Cubo,
+            "import" => Self::Import,
+            _ => Self::Compiler,
+        }
+    }
+}
+
 impl std::fmt::Display for Provenance {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

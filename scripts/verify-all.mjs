@@ -455,12 +455,27 @@ step('[AUDIT/SEC] Isolated Dual-Context Adversarial Auditor & Gate 8 Human Block
   execSync('python scripts/test-dual-context-auditor.py', { stdio: 'pipe' });
 });
 
+// 58. Loopback HTTP Daemon & Stitched Brain API
+step('[DAEMON/API] Loopback HTTP Daemon & Stitched Brain API (11 REST + 4 Stitched Endpoints)', () => {
+  execSync('python scripts/test-daemon-api.py', { stdio: 'pipe' });
+});
+
+// 59. Silicon Darkroom CAD GUI & 7-Workspace Shell
+step('[GUI/SHELL] Silicon Darkroom CAD GUI (7 Workspaces, Canvas Math, AI Worker Dock)', () => {
+  execSync('python scripts/test-prototype-gui.py', { stdio: 'pipe' });
+});
+
+// 60. Unified Command Bus & Same-Hands Law
+step('[CMD/BUS] Unified Command Bus & Same-Hands Law (requiresAi: false)', () => {
+  execSync('python scripts/test-command-bus.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 57 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 60 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }
