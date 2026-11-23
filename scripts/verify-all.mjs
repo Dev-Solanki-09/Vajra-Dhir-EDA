@@ -445,12 +445,22 @@ step('[SCHEMA/SPEC] 30 Canonical Tables & 22 Fail-Closed Lock Triggers (includin
   execSync('python scripts/test-sqlite-30tables-locks.py', { stdio: 'pipe' });
 });
 
+// 56. ACP Broker & Atomic Dual Checkpoints
+step('[ACP/CHK] Agent Client Protocol Broker & Dual Checkpoint Rollback', () => {
+  execSync('python scripts/test-acp-and-checkpoints.py', { stdio: 'pipe' });
+});
+
+// 57. Isolated Dual-Context Adversarial Auditor
+step('[AUDIT/SEC] Isolated Dual-Context Adversarial Auditor & Gate 8 Human Block', () => {
+  execSync('python scripts/test-dual-context-auditor.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 55 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 57 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }
