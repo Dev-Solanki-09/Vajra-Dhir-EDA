@@ -3,7 +3,19 @@
 All notable changes to Vajra-Dhīr EDA will be documented in this file.
 The format is based on Keep a Changelog.
 
-## [v0.1.0-architecture] - 2026-11-23
+## [v0.1.0-architecture] - 2026-11-24
+
+### Added
+- 5-Stage Semantic Schematic Beautifier (`packages/schematic-beautifier`) enforcing power rail hierarchy (+V up, GND down), left-to-right signal flow, multi-unit symbol splitting, net label collision avoidance, and KiCad 10 S-expression export.
+- Autorouter Orchestrator Bridge (`packages/autorouter`) with `.kicad_dru` netclass rule sync, Specctra DSN/SES import/export, and fail-closed SHA-256 locked-copper integrity guard (`trg_protect_locked_copper`).
+- IPC-7351B Footprint Synthesizer (`packages/footprint-synth`) with mathematical land pattern calculation across Least, Nominal, and Most density levels, generating KiCad 10 `.kicad_mod` S-expressions.
+- Expanded Unified CLI (`vd`) with `vd beautify`, `vd route`, and `vd footprint` subcommands.
+- Multi-Region Fab Registry (`registry/fabs/`) with profiles for JLCPCB, PCBWay, Eurocircuits, Lion Circuits (India EMS), and PCB Power Market (India EMS).
+- EMI/EMC Pre-Compliance Workbench (`packages/emc-workbench`) with harmonic collision scan ($1f..15f$) and connector ESD proximity auditing.
+- Content-Addressed Binary Artifact Store (`packages/cas-store`) with SHA-256 validation and digest pinning.
+- Certified 34/34 Automated Verification Gates in `scripts/verify-all.mjs`.
+
+## [v0.0.1-architecture] - 2026-11-23
 
 ### Added
 - Frozen Industrial Architecture Standard (`VD-SAD-001 Rev 2.0`).

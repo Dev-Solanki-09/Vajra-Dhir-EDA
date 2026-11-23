@@ -1,0 +1,14 @@
+[package]
+name = "vd-schematic-beautifier"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "5-stage semantic schematic beautifier with power rail hierarchy, L-to-R signal flow, and KiCad 10 S-expression export"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]

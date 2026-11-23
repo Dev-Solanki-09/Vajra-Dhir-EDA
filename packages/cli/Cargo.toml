@@ -24,6 +24,9 @@ vd-panelizer = { path = "../panelizer" }
 vd-worker-sdk = { path = "../worker-sdk" }
 vd-emc-workbench = { path = "../emc-workbench" }
 vd-cas-store = { path = "../cas-store" }
+vd-schematic-beautifier = { path = "../schematic-beautifier" }
+vd-autorouter = { path = "../autorouter" }
+vd-footprint-synth = { path = "../footprint-synth" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

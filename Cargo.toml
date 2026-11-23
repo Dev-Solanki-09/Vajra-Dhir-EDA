@@ -24,6 +24,9 @@ members = [
     "packages/worker-sdk",
     "packages/emc-workbench",
     "packages/cas-store",
+    "packages/schematic-beautifier",
+    "packages/autorouter",
+    "packages/footprint-synth",
 ]
 
 [workspace.package]

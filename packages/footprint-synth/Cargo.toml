@@ -1,0 +1,14 @@
+[package]
+name = "vd-footprint-synth"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "IPC-7351B parametric land pattern synthesizer and KiCad 10 .kicad_mod S-expression generator"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]

@@ -12,6 +12,9 @@ use vd_emc_workbench::{EsdPlacementAuditor, HarmonicMatrix};
 use vd_sim_compat::{DialectTranspiler, EncryptedModelDetector};
 use vd_wire_harness::{AwgGauge, HarnessConnector, HarnessWire, Iec60757Color, WireHarnessCompiler};
 use vd_worker_sdk::{WorkerDispatcher, WorkerInputs, WorkerJob, WorkerPack};
+use vd_schematic_beautifier::{BeautifierConfig, Orientation, PinType, SchematicBeautifier, SchematicPin, SchematicSheet, SchematicSymbol};
+use vd_autorouter::{AutorouterOrchestrator, CopperEntity, LockedCopperSnapshot, NetClassRule};
+use vd_footprint_synth::{DensityLevel, FootprintSynthesizer};
 
 fn print_usage() {
     println!(r#"Vajra-Dhīr EDA Unified CLI (`vd`) — Rev 2.0 Industrial Baseline
@@ -36,6 +39,9 @@ SUBCOMMANDS:
     emc scan <freq_mhz>   Harmonic collision scan against protected RF bands (Wi-Fi, GPS)
     emc esd               Audit connector-to-TVS distance in nanometers (<= 5.0 mm)
     cas put <file>        Store artifact in content-addressed store (cas://sha256/...)
+    beautify              Run 5-stage semantic schematic beautifier and KiCad 10 export
+    route                 Autorouter orchestrator bridge, .kicad_dru & copper lock guard
+    footprint             IPC-7351B parametric land pattern & KiCad 10 .kicad_mod synth
     doctor                Environment diagnostics, GPU driver blocklist & health preflight
     version               Print version and active ring architecture
 "#);
@@ -275,6 +281,83 @@ fn main() {
                 eprintln!("Usage: vd cas put <file>");
                 process::exit(1);
             }
+        }
+
+        "beautify" => {
+            println!("[*] vd beautify: 5-Stage Semantic Schematic Beautifier");
+            let beautifier = SchematicBeautifier::new(BeautifierConfig::default());
+            let sheet = SchematicSheet {
+                title: "Demo Sheet".into(),
+                symbols: vec![
+                    SchematicSymbol {
+                        id: "u1".into(),
+                        refdes: "U1".into(),
+                        value: "LM7805".into(),
+                        footprint: "TO-220".into(),
+                        unit: 1,
+                        x: 50_000_000,
+                        y: 50_000_000,
+                        pins: vec![
+                            SchematicPin { number: "1".into(), name: "VIN".into(), pin_type: PinType::PowerIn, rel_x: -2_540_000, rel_y: 0, orientation: Orientation::Left },
+                            SchematicPin { number: "2".into(), name: "GND".into(), pin_type: PinType::PowerIn, rel_x: 0, rel_y: 2_540_000, orientation: Orientation::Left },
+                            SchematicPin { number: "3".into(), name: "VOUT".into(), pin_type: PinType::PowerOut, rel_x: 2_540_000, rel_y: 0, orientation: Orientation::Right },
+                        ],
+                        is_power_unit: false,
+                    }
+                ],
+                wires: vec![],
+                labels: vec![],
+                junctions: vec![],
+            };
+            let beautified = beautifier.beautify(sheet).expect("Beautification failed");
+            let sexpr = beautifier.export_kicad10_sexpr(&beautified);
+            println!("[PASS] 5-Stage Beautification complete. Exporting KiCad 10 S-expression:\n{}", &sexpr[..sexpr.len().min(300)]);
+        }
+
+        "route" => {
+            println!("[*] vd route: Autorouter Orchestrator Bridge & Copper Lock Guard");
+            let net_classes = vec![
+                NetClassRule {
+                    name: "Default".into(),
+                    clearance_nm: 200_000,
+                    track_width_nm: 250_000,
+                    via_dia_nm: 600_000,
+                    via_drill_nm: 300_000,
+                    diff_pair_width_nm: None,
+                    diff_pair_gap_nm: None,
+                }
+            ];
+            let dru = AutorouterOrchestrator::generate_kicad_dru(&net_classes);
+            println!("[+] Generated KiCad 10 .kicad_dru ({} bytes)", dru.len());
+            let sample_copper = vec![
+                CopperEntity {
+                    id: "locked_pwr_bus".into(),
+                    net_name: "12V".into(),
+                    layer: "F.Cu".into(),
+                    start_nm: (10_000_000, 10_000_000),
+                    end_nm: (30_000_000, 10_000_000),
+                    width_nm: 1_000_000,
+                    is_via: false,
+                    via_drill_nm: 0,
+                    locked: true,
+                }
+            ];
+            let snapshot = LockedCopperSnapshot::create(&sample_copper);
+            snapshot.verify_integrity(&sample_copper).expect("Locked copper integrity failure");
+            println!("[PASS] Locked copper SHA-256 integrity verified (fail-closed guard active).");
+        }
+
+        "footprint" => {
+            println!("[*] vd footprint: IPC-7351B Land Pattern & KiCad 10 .kicad_mod Synthesizer");
+            let fp = FootprintSynthesizer::synthesize_chip(
+                "R_0603_1608Metric",
+                1_600_000,
+                800_000,
+                300_000,
+                DensityLevel::Nominal,
+            ).expect("Footprint synthesis failed");
+            let mod_sexpr = FootprintSynthesizer::export_kicad10_mod(&fp);
+            println!("[PASS] Synthesized {} ({} pads). KiCad 10 S-expression:\n{}", fp.name, fp.pads.len(), &mod_sexpr[..mod_sexpr.len().min(300)]);
         }
 
         "doctor" => {

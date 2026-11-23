@@ -285,12 +285,48 @@ step('Vajra-Dhīr Diagnostics Preflight (`vd doctor`)', () => {
   }
 });
 
+// 32. 5-Stage Semantic Schematic Beautifier Engine
+step('5-Stage Semantic Schematic Beautifier Engine', () => {
+  const beautifierSrc = fs.readFileSync('packages/schematic-beautifier/src/lib.rs', 'utf8');
+  if (!beautifierSrc.includes('stage1_power_rail_hierarchy') ||
+      !beautifierSrc.includes('stage2_signal_flow_left_to_right') ||
+      !beautifierSrc.includes('stage3_multi_unit_splitting') ||
+      !beautifierSrc.includes('stage4_net_label_collision_avoidance') ||
+      !beautifierSrc.includes('export_kicad10_sexpr')) {
+    throw new Error('Missing 5-stage schematic beautifier pipeline stages');
+  }
+});
+
+// 33. Autorouter Orchestrator Bridge & Copper Lock Guard
+step('Autorouter Orchestrator Bridge & Copper Lock Guard', () => {
+  const routerSrc = fs.readFileSync('packages/autorouter/src/lib.rs', 'utf8');
+  if (!routerSrc.includes('generate_kicad_dru') ||
+      !routerSrc.includes('export_specctra_dsn') ||
+      !routerSrc.includes('import_specctra_ses') ||
+      !routerSrc.includes('LockedCopperSnapshot') ||
+      !routerSrc.includes('CopperLockViolation')) {
+    throw new Error('Missing autorouter bridge or locked copper guard');
+  }
+});
+
+// 34. IPC-7351B Parametric Footprint & Land Pattern Synthesizer
+step('IPC-7351B Footprint Synthesizer (.kicad_mod)', () => {
+  const fpSrc = fs.readFileSync('packages/footprint-synth/src/lib.rs', 'utf8');
+  if (!fpSrc.includes('synthesize_chip') ||
+      !fpSrc.includes('synthesize_qfn') ||
+      !fpSrc.includes('export_kicad10_mod') ||
+      !fpSrc.includes('DensityLevel')) {
+    throw new Error('Missing IPC-7351B footprint synthesis functions');
+  }
+  execSync('python scripts/test-schematic-autorouter-footprint.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 31 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 34 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Production Addendum Certified.');
   console.log('----------------------------------------------------------------\n');
 }

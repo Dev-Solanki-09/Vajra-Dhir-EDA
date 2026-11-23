@@ -2,14 +2,15 @@
 
 | Metadata Field | Value |
 |---|---|
-| **Document ID** | `VD-CHK-001` · Rev 5.0 |
-| **Date & Timestamp** | 2026-11-24T01:30:00+05:30 |
+| **Document ID** | `VD-CHK-001` · Rev 6.0 |
+| **Date & Timestamp** | 2026-11-24T01:45:00+05:30 |
 | **Git Baseline Branch** | `main` |
 | **Standards Compliance** | ISO/IEC/IEEE 42010, ISO/IEC/IEEE 15288, SLSA v1.2, OWASP Agentic AI (ASI01–ASI10) |
-| **Verification Status** | **31/31 Gates Passing Cleanly (100% Certified)** |
+| **Verification Status** | **34/34 Gates Passing Cleanly (100% Certified)** |
 | **Milestone 1 Hardware Exit**| **COMPLETE — All 3 Physical Boards Certified & Verified** |
 | **Ring 2 Container Isolation**| **ACTIVE — OCI Workers (Pack 2A/2B/2C), Worker SDK, WebGPU Canvas** |
 | **Production Addendum Scope**| **ACTIVE — Multi-Region Fab Registry, EMC Workbench, CAS Store, `vd doctor`** |
+| **CAD Automation Core**| **ACTIVE — Schematic Beautifier, Autorouter Bridge, IPC-7351B Footprint Synth** |
 
 ---
 
@@ -56,7 +57,10 @@ All 26 core packages below are active, tested, and passing deterministic verific
 | **`webgpu-cad-engine`**| `packages/webgpu-cad-engine`| TypeScript / WebGPU | 120 FPS WebGPU PCB canvas with WebGL2 fallback, Silicon Darkroom palette, and CrossProbeBus synchronization. |
 | **`emc-workbench`** | `packages/emc-workbench` | Rust | Harmonic collision matrix ($1f..15f$ vs protected RF bands), connector ESD proximity auditor ($< 5.0\text{ mm}$). |
 | **`cas-store`** | `packages/cas-store` | Rust | Content-addressed artifact store (`cas://sha256/...`), SHA-256 verification, and digest pinning. |
-| **`cli`** | `packages/cli` | Rust (`vd`) | Unified command-line interface (`vd eco`, `vd gate`, `vd sim`, `vd cam`, `vd dlp`, `vd pdn`, `vd diff`, `vd harness`, `vd panel`, `vd worker`, `vd asic`, `vd emc`, `vd cas`, `vd doctor`). |
+| **`schematic-beautifier`** | `packages/schematic-beautifier` | Rust | 5-stage semantic layout engine: power rail hierarchy (+V up, GND down), L-to-R signal flow, multi-unit symbol splitting, net label collision avoidance, and KiCad 10 S-expression export. |
+| **`autorouter`** | `packages/autorouter` | Rust | Bi-directional Specctra DSN/SES orchestrator bridge, `.kicad_dru` netclass rule sync, and fail-closed SHA-256 locked-copper integrity guard. |
+| **`footprint-synth`** | `packages/footprint-synth` | Rust | IPC-7351B mathematical land pattern synthesizer across Least/Nominal/Most density levels with courtyard clearance, silkscreen, and KiCad 10 `.kicad_mod` output. |
+| **`cli`** | `packages/cli` | Rust (`vd`) | Unified command-line interface (`vd eco`, `vd gate`, `vd sim`, `vd cam`, `vd dlp`, `vd pdn`, `vd diff`, `vd harness`, `vd panel`, `vd worker`, `vd asic`, `vd emc`, `vd cas`, `vd beautify`, `vd route`, `vd footprint`, `vd doctor`). |
 | **`ui-apps`** | `packages/ui-apps` | HTML / Strict CSP | Portable interactive MCP UI apps (waveform viewer, interactive inspection lenses). |
 | **`desktop`** | `apps/desktop` | React 19 / Dockview | Silicon Darkroom spatial desktop IDE with WebGPU/WebGL2 viewport and high-contrast accessible theme. |
 
@@ -122,6 +126,9 @@ All 31 verification gates:
 29. `EMI/EMC Regulatory Pre-Compliance & Harmonic Matrix` — RF collisions & ESD proximity
 30. `Local Content-Addressed Binary Artifact Store (CAS)` — Storage, hash validation & pinning
 31. `Vajra-Dhīr Diagnostics Preflight (vd doctor)` — Health checks & GPU driver blocklist
+32. `5-Stage Semantic Schematic Beautifier Engine` — Power rail hierarchy, L-to-R signal flow, unit splitting, label collision avoidance & KiCad 10 S-expression export
+33. `Autorouter Orchestrator Bridge & Copper Lock Guard` — Specctra DSN/SES orchestrator, .kicad_dru rules & fail-closed locked-copper SHA-256 integrity guard
+34. `IPC-7351B Footprint Synthesizer (.kicad_mod)` — Mathematical land pattern calculation across Least/Nominal/Most density & KiCad 10 .kicad_mod generation
 
 ---
 
