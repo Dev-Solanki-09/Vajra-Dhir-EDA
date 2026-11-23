@@ -1,0 +1,30 @@
+[fab]
+id = "pcb_power_market"
+name = "PCB Power Market"
+headquarters = "Gandhinagar, Gujarat, India"
+region = "India Domestic EMS"
+primary_currency = "INR"
+supported_currencies = ["INR", "USD"]
+
+[capabilities]
+min_layers = 1
+max_layers = 12
+min_trace_width_nm = 125000      # 0.125 mm (5 mil)
+min_trace_spacing_nm = 125000    # 0.125 mm (5 mil)
+min_drill_diameter_nm = 250000   # 0.250 mm (10 mil)
+min_annular_ring_nm = 150000     # 0.150 mm (6 mil)
+max_board_width_mm = 400.0
+max_board_height_mm = 350.0
+
+[finishes]
+supported = ["HASL_LEADED", "HASL_LEAD_FREE", "ENIG"]
+default_finish = "HASL_LEAD_FREE"
+
+[pricing]
+base_prototype_inr = 2200.00
+layer_multiplier_4l = 2.60
+layer_multiplier_6l = 4.20
+enig_surcharge_inr = 1400.00
+gst_rate_pct = 18.0
+domestic_shipping_days = 2
+smt_assembly_available = true

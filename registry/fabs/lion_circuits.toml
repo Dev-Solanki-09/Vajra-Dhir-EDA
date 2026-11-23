@@ -1,0 +1,29 @@
+[fab]
+id = "lion_circuits"
+name = "Lion Circuits"
+headquarters = "Bengaluru, Karnataka, India"
+region = "India Domestic EMS"
+primary_currency = "INR"
+supported_currencies = ["INR", "USD"]
+
+[capabilities]
+min_layers = 1
+max_layers = 8
+min_trace_width_nm = 100000      # 0.100 mm (4 mil)
+min_trace_spacing_nm = 100000    # 0.100 mm (4 mil)
+min_drill_diameter_nm = 200000   # 0.200 mm (8 mil)
+min_annular_ring_nm = 150000     # 0.150 mm (6 mil)
+max_board_width_mm = 300.0
+max_board_height_mm = 300.0
+
+[finishes]
+supported = ["HASL_LEAD_FREE", "ENIG"]
+default_finish = "HASL_LEAD_FREE"
+
+[pricing]
+base_prototype_inr = 1800.00     # ~21 USD for 5 pcs prototype
+layer_multiplier_4l = 2.80
+layer_multiplier_6l = 4.50
+enig_surcharge_inr = 1200.00
+gst_rate_pct = 18.0
+domestic_shipping_days = 2

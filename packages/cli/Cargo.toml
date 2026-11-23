@@ -22,6 +22,8 @@ vd-pcb-diff = { path = "../pcb-diff" }
 vd-wire-harness = { path = "../wire-harness" }
 vd-panelizer = { path = "../panelizer" }
 vd-worker-sdk = { path = "../worker-sdk" }
+vd-emc-workbench = { path = "../emc-workbench" }
+vd-cas-store = { path = "../cas-store" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

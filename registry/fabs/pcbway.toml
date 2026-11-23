@@ -1,0 +1,27 @@
+[fab]
+id = "pcbway"
+name = "PCBWay"
+headquarters = "Hangzhou, China"
+primary_currency = "USD"
+supported_currencies = ["USD", "EUR"]
+
+[capabilities]
+min_layers = 1
+max_layers = 64
+min_trace_width_nm = 75000       # 0.075 mm
+min_trace_spacing_nm = 75000     # 0.075 mm
+min_drill_diameter_nm = 150000   # 0.150 mm
+min_annular_ring_nm = 100000     # 0.100 mm
+max_board_width_mm = 600.0
+max_board_height_mm = 500.0
+
+[finishes]
+supported = ["HASL_LEADED", "HASL_LEAD_FREE", "ENIG", "HARD_GOLD", "IMMERSION_SILVER"]
+default_finish = "HASL_LEAD_FREE"
+
+[pricing]
+base_prototype_usd = 5.00
+layer_multiplier_4l = 3.20
+layer_multiplier_6l = 5.80
+enig_surcharge_usd = 22.00
+impedance_control_surcharge_usd = 20.00

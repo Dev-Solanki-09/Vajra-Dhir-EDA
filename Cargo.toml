@@ -22,6 +22,8 @@ members = [
     "packages/wire-harness",
     "packages/panelizer",
     "packages/worker-sdk",
+    "packages/emc-workbench",
+    "packages/cas-store",
 ]
 
 [workspace.package]

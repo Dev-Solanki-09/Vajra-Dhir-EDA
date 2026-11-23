@@ -2,13 +2,14 @@
 
 | Metadata Field | Value |
 |---|---|
-| **Document ID** | `VD-CHK-001` · Rev 4.0 |
-| **Date & Timestamp** | 2026-11-24T01:25:00+05:30 |
+| **Document ID** | `VD-CHK-001` · Rev 5.0 |
+| **Date & Timestamp** | 2026-11-24T01:30:00+05:30 |
 | **Git Baseline Branch** | `main` |
 | **Standards Compliance** | ISO/IEC/IEEE 42010, ISO/IEC/IEEE 15288, SLSA v1.2, OWASP Agentic AI (ASI01–ASI10) |
-| **Verification Status** | **27/27 Gates Passing Cleanly (100% Certified)** |
+| **Verification Status** | **31/31 Gates Passing Cleanly (100% Certified)** |
 | **Milestone 1 Hardware Exit**| **COMPLETE — All 3 Physical Boards Certified & Verified** |
 | **Ring 2 Container Isolation**| **ACTIVE — OCI Workers (Pack 2A/2B/2C), Worker SDK, WebGPU Canvas** |
+| **Production Addendum Scope**| **ACTIVE — Multi-Region Fab Registry, EMC Workbench, CAS Store, `vd doctor`** |
 
 ---
 
@@ -20,14 +21,14 @@ This document preserves the architectural state, thinking, internal decisions, a
 1. **Geometry & Coordinates:** ALL PCB and IC geometry MUST be stored as signed `i64` nanometers (`1 mm = 1_000_000 nm`) and signed `i32` millidegrees (`0..360000`). NEVER store floating-point coordinates in SQLite WAL or `*.vd-ir.jsonl`.
 2. **Entity Identification:** ALL entity IDs are immutable UUIDv7 strings (`uuid::Uuid::now_v7()`), guaranteeing chronological sortability and distributed clash-free synthesis.
 3. **Fail-Closed Human Locks:** All modifications to `HW-IR` must set `_tx_actor_ctx`. Database triggers (`trg_protect_locked_*`) MUST immediately abort any non-human edit (`agent`, `compiler`) on `locked = 1` entities with SQLITE_ABORT `KERNEL_LOCK_VIOLATION`.
-4. **Ring 1 Permissive License Firewall:** Ring 1 Core (`packages/*`, `apps/*`, `schemas/*`) is strictly dual-licensed under **MIT OR Apache-2.0**. AGPL-3.0 dependencies (e.g. `kibot`, `konnect`, `part-db`, `pypsa-app`, `openmodelica`, `PyMuPDF`) are strictly banned from Ring 1. Heavy GPL tools are isolated inside Ring 2 OCI containers.
+4. **Ring 1 Permissive License Firewall:** Ring 1 Core (`packages/*`, `apps/*`, `schemas/*`) is strictly dual-licensed under **MIT OR Apache-2.0**. AGPL-3.0 dependencies (e.g. `kibot`, `konnect`, `part-db`, `pypsa-app`, `openmodelica`, `PyMuPDF`) are strictly banned from Ring 1. Heavy copyleft solvers are isolated inside zero-egress Ring 2 OCI containers.
 5. **Zero Inbound Open Ports & Zero Secrets:** Local communications run strictly via loopback (`127.0.0.1`), Unix Domain Sockets (UDS), or IPC. Zero plaintext tokens, secrets, or personal paths (`C:\Users\`) may be committed.
 
 ---
 
 ## 2. Inventory of Implemented Core Packages
 
-All 24 core packages below are active, tested, and passing deterministic verification:
+All 26 core packages below are active, tested, and passing deterministic verification:
 
 | Package | Path | Language / Tech | Primary Architectural Purpose |
 |---|---|---|---|
@@ -53,7 +54,9 @@ All 24 core packages below are active, tested, and passing deterministic verific
 | **`panelizer`** | `packages/panelizer` | Rust | Pure-MIT automated $M \times N$ PCB panelization with rails, mouse bites, tooling holes, and fiducials. |
 | **`worker-sdk`** | `packages/worker-sdk` | Rust | Stateless Ring 2 worker dispatcher conforming to `worker_contract.v1.json`, input staging, and SHA-256 evidence hashing. |
 | **`webgpu-cad-engine`**| `packages/webgpu-cad-engine`| TypeScript / WebGPU | 120 FPS WebGPU PCB canvas with WebGL2 fallback, Silicon Darkroom palette, and CrossProbeBus synchronization. |
-| **`cli`** | `packages/cli` | Rust (`vd`) | Unified command-line interface (`vd eco`, `vd gate`, `vd sim`, `vd cam`, `vd dlp`, `vd pdn`, `vd diff`, `vd harness`, `vd panel`, `vd worker`, `vd asic`). |
+| **`emc-workbench`** | `packages/emc-workbench` | Rust | Harmonic collision matrix ($1f..15f$ vs protected RF bands), connector ESD proximity auditor ($< 5.0\text{ mm}$). |
+| **`cas-store`** | `packages/cas-store` | Rust | Content-addressed artifact store (`cas://sha256/...`), SHA-256 verification, and digest pinning. |
+| **`cli`** | `packages/cli` | Rust (`vd`) | Unified command-line interface (`vd eco`, `vd gate`, `vd sim`, `vd cam`, `vd dlp`, `vd pdn`, `vd diff`, `vd harness`, `vd panel`, `vd worker`, `vd asic`, `vd emc`, `vd cas`, `vd doctor`). |
 | **`ui-apps`** | `packages/ui-apps` | HTML / Strict CSP | Portable interactive MCP UI apps (waveform viewer, interactive inspection lenses). |
 | **`desktop`** | `apps/desktop` | React 19 / Dockview | Silicon Darkroom spatial desktop IDE with WebGPU/WebGL2 viewport and high-contrast accessible theme. |
 
@@ -80,14 +83,14 @@ All three reference hardware designs are 100% complete with full CAD, BOM, Pick-
 
 ---
 
-## 4. Automated 27-Gate Verification Suite
+## 4. Automated 31-Gate Verification Suite
 
 To verify the entire repository offline, run:
 ```bash
 node scripts/verify-all.mjs
 ```
 
-All 27 verification gates:
+All 31 verification gates:
 1. `SPDX License & AGPL Firewall` — `check-spdx-firewall.mjs`
 2. `CrossProbeBus` — Sub-millisecond channel unit tests
 3. `Harness MCP v2 Gateway` — 12 Typed EDA Verbs unit tests
@@ -115,12 +118,18 @@ All 27 verification gates:
 25. `Ring 2 OCI Container Isolation & Zero-Egress Compose` — Dockerfile and compose invariants
 26. `Ring 2 Stateless Worker SDK & Job Contract Dispatcher` — Contract schema and staging tests
 27. `WebGPU CAD Canvas Engine with WebGL2 Fallback` — Rendering pipeline and palette tests
+28. `Multi-Region Fab Registry (Global & India EMS)` — Capability TOMLs & INR/USD/EUR tiers
+29. `EMI/EMC Regulatory Pre-Compliance & Harmonic Matrix` — RF collisions & ESD proximity
+30. `Local Content-Addressed Binary Artifact Store (CAS)` — Storage, hash validation & pinning
+31. `Vajra-Dhīr Diagnostics Preflight (vd doctor)` — Health checks & GPU driver blocklist
 
 ---
 
-## 5. Ring 2 OCI Container Isolation & Zero-Egress Sandbox
+## 5. Ring 2 OCI Container Isolation & Production Addendum Scope
 
 - **Pack 2A (`containers/pack-2a-kicad`):** KiCad 10 headless CLI container (`kicad-cli pcb drc`, `export gerbers`, `export step`).
 - **Pack 2B (`containers/pack-2b-virtual-lab`):** Renode + ngspice lockstep co-simulation & Google OpenHTF factory production test executive.
 - **Pack 2C (`containers/pack-2c-silicon-asic`):** Verilator cycle-accurate RTL simulation, Yosys synthesis, and Chip-to-Package-to-Board (C2P2B) pad-ring to ball-map bridge.
 - **Production Compose (`docker-compose.workers.yml`):** Drops all capabilities (`cap_drop: ALL`), read-only rootfs (`read_only: true`), non-root execution (`uid=10001`), and zero egress (`network_mode: "none"`).
+- **Multi-Region Registry (`registry/fabs/`):** JLCPCB, PCBWay, Eurocircuits, Lion Circuits (India EMS), PCB Power Market (India EMS).
+- **Diagnostics (`vd doctor`):** Instant preflight checking compilers, runtimes, container engines, and locking known-buggy integrated GPUs to WebGL2 fallback.

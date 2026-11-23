@@ -1,0 +1,27 @@
+[fab]
+id = "eurocircuits"
+name = "Eurocircuits"
+headquarters = "Mechelen, Belgium"
+primary_currency = "EUR"
+supported_currencies = ["EUR", "USD"]
+
+[capabilities]
+min_layers = 1
+max_layers = 16
+min_trace_width_nm = 90000       # 0.090 mm
+min_trace_spacing_nm = 90000     # 0.090 mm
+min_drill_diameter_nm = 150000   # 0.150 mm
+min_annular_ring_nm = 125000     # 0.125 mm
+max_board_width_mm = 425.0
+max_board_height_mm = 525.0
+
+[finishes]
+supported = ["ENIG", "IMMERSION_SILVER", "HAL_LEAD_FREE"]
+default_finish = "ENIG"
+
+[pricing]
+base_prototype_eur = 35.00
+layer_multiplier_4l = 2.40
+layer_multiplier_6l = 4.20
+enig_surcharge_eur = 0.00        # Standard included
+impedance_control_surcharge_eur = 25.00
