@@ -17,6 +17,10 @@ members = [
     "packages/sim-compat",
     "packages/cam-pnp",
     "packages/cli",
+    "packages/pdn-solver",
+    "packages/pcb-diff",
+    "packages/wire-harness",
+    "packages/panelizer",
 ]
 
 [workspace.package]

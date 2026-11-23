@@ -122,11 +122,15 @@ vajra-dhir-eda/
 │   ├── eco-engine/                         # Geographical RefDes Re-Annotation & Staging Tray ECO
 │   ├── sim-compat/                         # Vendor SPICE Compat, AST Transpiler & Encrypted Model Shield
 │   ├── cam-pnp/                            # IPC-7525B Stencil Aperture DFM & Pick-and-Place Feeder Opt
+│   ├── pdn-solver/                         # 2.5D DC Power Integrity, IR-Drop & IPC-2152 Thermal PDN Solver
+│   ├── pcb-diff/                           # Pure-MIT Visual Layer-by-Layer PCB Diff & ECO Visualizer
+│   ├── wire-harness/                       # Pure-MIT Declarative Cable & Wire Harness Compiler
+│   ├── panelizer/                          # Pure-MIT Automated PCB Panelization & Perforation Generator
 │   ├── cli/                                # Unified `vd` Developer Command Line Tool
 │   └── ui-apps/                            # Portable MCP UI (Waveform & Interactive Lenses)
 ├── apps/
 │   └── desktop/                            # Silicon Darkroom Desktop UI (React 19, Dockview, WebGPU)
-├── scripts/                                # 18-Gate Comprehensive Verification & Audit Harnesses
+├── scripts/                                # 22-Gate Comprehensive Verification & Audit Harnesses
 └── .github/workflows/                      # Automated DDL, Schema, DCO & License Firewall CI
 ```
 

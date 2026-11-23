@@ -4,7 +4,11 @@ use vd_cam_pnp::{PnpGenerator, StencilApertureSpec, StencilDfmEngine};
 use vd_eco_engine::GeographicalReannotator;
 use vd_hw_dlp::{DlpFirewall, SecurityClassification};
 use vd_nine_gates::{GateStage, NineGatePipeline};
+use vd_panelizer::{PanelConfiguration, PanelizerEngine, SeparationMethod};
+use vd_pcb_diff::PcbDiffEngine;
+use vd_pdn_solver::{CopperLayerProperties, Ipc2152ThermalEngine, PdnIrDropSolver, TraceLayerLocation, TraceSegment};
 use vd_sim_compat::{DialectTranspiler, EncryptedModelDetector};
+use vd_wire_harness::{AwgGauge, HarnessConnector, HarnessWire, Iec60757Color, WireHarnessCompiler};
 
 fn print_usage() {
     println!(r#"Vajra-Dhīr EDA Unified CLI (`vd`) — Rev 2.0 Industrial Baseline
@@ -19,6 +23,10 @@ SUBCOMMANDS:
     sim scan <file>       Scan SPICE deck for proprietary encryption markers ($CDNENCSTART)
     cam stencil           Verify solder paste aperture against IPC-7525B rules
     dlp scan <prompt>     Audit input text for secrets, API tokens, and NDA airgap rules
+    pdn solve             2.5D DC IR-Drop & IPC-2152 thermal solver for power delivery rails
+    diff pcb              Visual layer-by-layer PCB diff generator (green added / red removed)
+    harness compile       Declarative wire harness cut-list, voltage drop & BOM compiler
+    panel generate        Automated M x N PCB panelization with rails, mouse bites & fiducials
     version               Print version and active ring architecture
 "#);
 }
@@ -111,6 +119,57 @@ fn main() {
             let (sanitized, leaks) = DlpFirewall::sanitize_prompt(input);
             println!("[*] Sanitized Prompt: {}", sanitized);
             println!("[*] Secrets redacted: {}", leaks.len());
+        }
+
+        "pdn" => {
+            println!("[*] vd pdn: 2.5D DC Power Integrity & IPC-2152 Solver");
+            let props = CopperLayerProperties::default();
+            let trace = TraceSegment {
+                net_name: "+3V3".into(),
+                length_nm: 40_000_000,
+                width_nm: 1_200_000,
+                current_a: 2.0,
+            };
+            let drop_res = PdnIrDropSolver::solve_rail_segment(&props, 3.3, 3.0, &trace, None);
+            println!("[+] Net: {}, Total IR Drop: {:.2} mV ({:.2}%)", drop_res.net_name, drop_res.total_voltage_drop_mv, drop_res.max_voltage_drop_pct);
+
+            let thermal = Ipc2152ThermalEngine::calculate_temp_rise(1_200_000, 35_000, 2.0, 25.0, TraceLayerLocation::ExternalTopOrBottom, 130.0);
+            println!("[+] IPC-2152 Delta T: +{:.1}°C (Final: {:.1}°C, Safe: {})", thermal.delta_temp_c, thermal.final_trace_temp_c, thermal.is_safe);
+        }
+
+        "diff" => {
+            println!("[*] vd diff: Visual Layer-by-Layer PCB Diff");
+            let diff = PcbDiffEngine::compute_diff("RevA", &[], "RevB", &[]);
+            println!("[+] Diff Generated: {} changes recorded. SVG length: {} chars.", diff.component_changes.len(), diff.svg_diff_markup.len());
+        }
+
+        "harness" => {
+            println!("[*] vd harness: Wire Harness Cut-List & BOM Compiler");
+            let conn = vec![HarnessConnector { designator: "J1".into(), mpn: "JST-PH-2P".into(), pin_count: 2 }];
+            let wires = vec![HarnessWire {
+                signal_name: "PWR".into(),
+                from_connector: "J1".into(),
+                from_pin: 1,
+                to_connector: "J2".into(),
+                to_pin: 1,
+                gauge: AwgGauge::Awg24,
+                color: Iec60757Color::Red,
+                length_mm: 150.0,
+                rated_current_a: 1.0,
+                is_twisted_pair: false,
+                pair_partner_signal: None,
+            }];
+            let rep = WireHarnessCompiler::compile("POWER_HARNESS", &conn, &wires);
+            println!("[+] Compiled {} wires, Net copper mass: {:.2} g", rep.total_wires_count, rep.total_copper_mass_g);
+        }
+
+        "panel" => {
+            println!("[*] vd panel: Automated PCB Panelization Generator");
+            let cfg = PanelConfiguration::default();
+            let rep = PanelizerEngine::generate_panel(&cfg);
+            println!("[+] Panel Dimensions: {:.1} mm x {:.1} mm (Boards: {}, Utilization: {:.1}%)",
+                rep.total_width_nm as f64 * 1e-6, rep.total_height_nm as f64 * 1e-6, rep.total_boards_count, rep.board_area_utilization_pct);
+            println!("[+] Tooling Holes: {}, Fiducials: {}, Perforations: {}", rep.tooling_holes.len(), rep.fiducials.len(), rep.perforation_holes.len());
         }
 
         other => {

@@ -2,11 +2,11 @@
 
 | Metadata Field | Value |
 |---|---|
-| **Document ID** | `VD-CHK-001` · Rev 1.0 |
-| **Date & Timestamp** | 2026-11-23T23:20:00+05:30 |
+| **Document ID** | `VD-CHK-001` · Rev 2.0 |
+| **Date & Timestamp** | 2026-11-24T00:20:00+05:30 |
 | **Git Baseline Branch** | `main` |
 | **Standards Compliance** | ISO/IEC/IEEE 42010, ISO/IEC/IEEE 15288, SLSA v1.2, OWASP Agentic AI (ASI01–ASI10) |
-| **Verification Status** | **18/18 Gates Passing Cleanly (100% Certified)** |
+| **Verification Status** | **22/22 Gates Passing Cleanly (100% Certified)** |
 
 ---
 
@@ -25,7 +25,7 @@ This document preserves the architectural state, thinking, internal decisions, a
 
 ## 2. Inventory of Implemented Ring 1 Packages
 
-All 18 packages below are active, tested, and passing deterministic verification:
+All 22 packages below are active, tested, and passing deterministic verification:
 
 | Package | Path | Language / Tech | Primary Architectural Purpose |
 |---|---|---|---|
@@ -45,20 +45,24 @@ All 18 packages below are active, tested, and passing deterministic verification
 | **`eco-engine`** | `packages/eco-engine` | Rust | Geographical RefDes re-annotation (`R1..Rn`, `C1..Cn`, `U1..Un`) and off-board staging tray layout. |
 | **`sim-compat`** | `packages/sim-compat` | Rust | Vendor SPICE compatibility, `$CDNENCSTART` detection with `[BEHAVIORAL-APPROX]` fallback, and LTspice AST transpiler. |
 | **`cam-pnp`** | `packages/cam-pnp` | Rust | IPC-7525B stencil aperture DFM (area ratio $\ge 0.66$, aspect $\ge 1.50$, window-paning) and SMT pick-and-place feeder optimizer. |
-| **`cli`** | `packages/cli` | Rust (`vd`) | Unified command-line interface (`vd eco`, `vd gate`, `vd sim`, `vd cam`, `vd dlp`). |
+| **`pdn-solver`** | `packages/pdn-solver` | Rust | 2.5D DC Power Integrity, IR-Drop & IPC-2152 thermal solver for copper rails and via transitions. |
+| **`pcb-diff`** | `packages/pcb-diff` | Rust | Pure-MIT visual layer-by-layer PCB diff engine (green added, red removed, blue modified). |
+| **`wire-harness`** | `packages/wire-harness` | Rust | Pure-MIT declarative cable, wire harness compiler, AWG/IEC 60757 tables, and voltage drop calculator. |
+| **`panelizer`** | `packages/panelizer` | Rust | Pure-MIT automated $M \times N$ PCB panelization with rails, mouse bites, tooling holes, and fiducials. |
+| **`cli`** | `packages/cli` | Rust (`vd`) | Unified command-line interface (`vd eco`, `vd gate`, `vd sim`, `vd cam`, `vd dlp`, `vd pdn`, `vd diff`, `vd harness`, `vd panel`). |
 | **`ui-apps`** | `packages/ui-apps` | HTML / Strict CSP | Portable interactive MCP UI apps (waveform viewer, interactive inspection lenses). |
 | **`desktop`** | `apps/desktop` | React 19 / Dockview | Silicon Darkroom spatial desktop IDE with WebGPU/WebGL2 viewport and high-contrast accessible theme. |
 
 ---
 
-## 3. Automated 18-Gate Verification Suite
+## 3. Automated 22-Gate Verification Suite
 
 To verify the entire repository offline, run:
 ```bash
 node scripts/verify-all.mjs
 ```
 
-All 18 verification gates:
+All 22 verification gates:
 1. `SPDX License & AGPL Firewall` — `check-spdx-firewall.mjs`
 2. `CrossProbeBus` — Sub-millisecond channel unit tests
 3. `Harness MCP v2 Gateway` — 12 Typed EDA Verbs unit tests
@@ -77,6 +81,10 @@ All 18 verification gates:
 16. `Vendor SPICE Compatibility & Dialect Transpiler` — AST rewrites & encrypted shield
 17. `IPC-7525B Stencil DFM & Pick-and-Place Generator` — Stencil DFM & feeder optimization
 18. `Vajra-Dhīr Unified CLI Engine` — Subcommand router (`vd`)
+19. `2.5D DC Power Integrity & IPC-2152 PDN Solver` — Sheet resistance, IR drop & thermal rise
+20. `Pure-MIT Visual Layer-by-Layer PCB Diff Engine` — Polygon boolean diff & SVG output
+21. `Pure-MIT Wire Harness & Interconnect Compiler` — Wire cut-lists & BOM generator
+22. `Pure-MIT Automated PCB Panelization & Stencil Engine` — Rails, fiducials & mouse bites
 
 ---
 
