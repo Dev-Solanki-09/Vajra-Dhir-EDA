@@ -405,12 +405,17 @@ step('[UI/UX] VS Code Extension Pack & Zero-Egress CSP (connect-src none)', () =
   execSync('python scripts/test-vscode-extension.py', { stdio: 'pipe' });
 });
 
+// 48. Gate 8 Manufacturing Release Bundle & Human Signoff Cryptographic Token
+step('[CAM/RELEASE] Gate 8 Release Bundle & Cryptographic Human Signoff', () => {
+  execSync('python scripts/test-gate8-release.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 47 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 48 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }
