@@ -1,0 +1,24 @@
+Designator,Value,Package,MPN,Manufacturer,LCSC_Part,Description,Feeder_Type
+J1,TerminalBlock-2P,TerminalBlock_2P_P5.08mm,DG128-5.08-02P-14,Degson,C475440,2-Pin 5.08mm Screw Terminal 12V 10A,Bulk / Box
+J2,TerminalBlock-4P,TerminalBlock_4P_P5.08mm,DG128-5.08-04P-14,Degson,C475442,4-Pin 5.08mm Screw Terminal Dual Motor Out,Bulk / Box
+J3,TerminalBlock-3P,TerminalBlock_3P_P3.81mm,15EDGK-3.81-03P-14,Degson,C8415,3-Pin 3.81mm Pluggable Terminal CAN Bus,Bulk / Box
+J4,SWD-10P,PinHeader_2x05_P1.27mm,20021111-00010T4LF,Amphenol,C2924147,10-Pin 1.27mm Micro-Match SWD Header,Tape 16mm
+U1,STM32G431CBT6,LQFP-48,STM32G431CBT6,STMicroelectronics,C529329,Arm Cortex-M4 170MHz 128KB Flash 32KB SRAM CAN-FD,Tray
+U2,TCAN334GDR,SOIC-8,TCAN334GDR,Texas Instruments,C115365,3.3V CAN-FD Transceiver up to 5 Mbps,Tape 12mm
+U3,DRV8833PWP,HTSSOP-16,DRV8833PWPR,Texas Instruments,C29131,Dual H-Bridge Motor Driver 2A with Current Limit,Tape 16mm
+U4,TPS54302,SOT-23-6,TPS54302DDCR,Texas Instruments,C141258,4.5V-28V 3A Synchronous Step-Down Converter,Tape 8mm
+D1,SMBJ15CA,DO-214AA,SMBJ15CA,Littelfuse,C8676,15V 600W Bidirectional TVS Diode DO-214AA,Tape 12mm
+D2,PESD2CAN,SOT-23,PESD2CAN.215,Nexperia,C14440,Dual CAN-bus ESD Protection Diode Array,Tape 8mm
+C_VM,100uF 35V,CP_Radial_D8.0mm_P3.50mm,UVY1V101MED,Nichicon,C334960,100uF 35V Low-ESR Radial Aluminum Electrolytic,Bulk / Bag
+R_SENSE1,0.05R 1%,1206,CS06FTETR050,Viking Tech,C70217,Current Sense Resistor 0.05R 1% 1/2W 1206,Tape 8mm
+R_SENSE2,0.05R 1%,1206,CS06FTETR050,Viking Tech,C70217,Current Sense Resistor 0.05R 1% 1/2W 1206,Tape 8mm
+R1,60.4R 1%,0805,RC0805FR-0760R4L,YAGEO,C17654,Thick Film Resistor 60.4R 1% (CAN Split R1),Tape 8mm
+R2,60.4R 1%,0805,RC0805FR-0760R4L,YAGEO,C17654,Thick Film Resistor 60.4R 1% (CAN Split R2),Tape 8mm
+C1,4.7nF 50V,0603,CC0603KRX7R9BB472,YAGEO,C1592,Ceramic Capacitor 4.7nF 50V X7R (CAN Common-Mode),Tape 8mm
+L1,4.7uH 4.2A,IND-4030,SWPA4030S4R7MT,Shenzhen Sunlord,C156717,Shielded SMD Power Inductor 4.7uH 4.2A,Tape 12mm
+C2,10uF 50V,1206,CL31B106KBHNNNE,Samsung Electro-Mechanics,C13585,Ceramic Capacitor 10uF 50V X7R (Buck Input),Tape 8mm
+C3,22uF 16V,1206,CL31B226KOCLNNC,Samsung Electro-Mechanics,C12891,Ceramic Capacitor 22uF 16V X7R (Buck Output),Tape 8mm
+C4,100nF 50V,0603,CC0603KRX7R9BB104,YAGEO,C14663,Ceramic Capacitor 100nF 50V X7R,Tape 8mm
+C5,100nF 50V,0603,CC0603KRX7R9BB104,YAGEO,C14663,Ceramic Capacitor 100nF 50V X7R,Tape 8mm
+D3,LED-GREEN,0603,19-217/GHC-YR1S2/3T,Everlight,C72043,SMD LED 0603 Green (CAN Activity),Tape 8mm
+D4,LED-RED,0603,19-217/BHC-AP1Q2/3T,Everlight,C72041,SMD LED 0603 Red (Motor Fault),Tape 8mm

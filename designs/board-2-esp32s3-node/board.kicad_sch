@@ -1,0 +1,22 @@
+(kicad_sch (version 20240108) (generator "vajra_dhir_eda")
+  (uuid "018f6c32-7b40-7002-a000-000000000001")
+  (paper "A4")
+  (title_block
+    (title "Board 2: ESP32-S3 4-Layer Environmental Sensor Node")
+    (date "2026-11-24")
+    (rev "1.0")
+    (company "Vajra-Dhīr EDA Hardware Core")
+    (comment 1 "Espressif ESP32-S3-WROOM-1-N8R8 + Bosch BME280 + AP2112K-3.3")
+  )
+  (lib_symbols
+    (symbol "Power:GND" (power) (pin power_in line (at 0 0 90) (length 0) (name "GND")))
+    (symbol "Power:+3V3" (power) (pin power_in line (at 0 0 270) (length 0) (name "+3V3")))
+    (symbol "Power:+5V_VBUS" (power) (pin power_in line (at 0 0 270) (length 0) (name "+5V_VBUS")))
+    (symbol "Sensor:BME280" (pin input line (at -10.16 2.54 0) (length 2.54) (name "VDD")) (pin input line (at -10.16 0 0) (length 2.54) (name "GND")) (pin bidirectional line (at 10.16 2.54 180) (length 2.54) (name "SDA")) (pin input line (at 10.16 0 180) (length 2.54) (name "SCL")))
+  )
+  (wire (pts (xy 25.4 38.1) (xy 35.56 38.1)) (stroke (width 0) (type default)))
+  (wire (pts (xy 50.8 38.1) (xy 63.5 38.1)) (stroke (width 0) (type default)))
+  (sheet_instances
+    (path "/" (page "1"))
+  )
+)

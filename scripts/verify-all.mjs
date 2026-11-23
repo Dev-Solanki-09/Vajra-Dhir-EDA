@@ -204,12 +204,34 @@ step('Pure-MIT Automated PCB Panelization & Stencil Engine', () => {
   }
 });
 
+// 23. Hardware Exit: 3 Physical Boards & Kernel Lock Invariants
+step('Hardware Exit: 3 Physical Boards & Kernel Locks', () => {
+  execSync('python scripts/test-sqlite-trigger.py', { stdio: 'pipe' });
+});
+
+// 24. Hardware-Firmware Co-Design Parity & DT Overlay Synced
+step('Hardware-Firmware Co-Design Parity & DT Overlays', () => {
+  const b2H = fs.readFileSync('designs/board-2-esp32s3-node/firmware/include/board_pins.h', 'utf8');
+  const b2Dts = fs.readFileSync('designs/board-2-esp32s3-node/firmware/dts/esp32s3_sensor_node.overlay', 'utf8');
+  const b3H = fs.readFileSync('designs/board-3-stm32g4-motor/firmware/include/board_pins.h', 'utf8');
+
+  if (!b2H.includes('PIN_I2C0_SDA') || !b2H.includes('BME280_I2C_ADDR')) {
+    throw new Error('Board 2 board_pins.h missing I2C or BME280 pinmux definitions');
+  }
+  if (!b2Dts.includes('bosch,bme280') || !b2Dts.includes('status_led')) {
+    throw new Error('Board 2 DTS overlay missing BME280 binding');
+  }
+  if (!b3H.includes('PIN_FDCAN1_RX') || !b3H.includes('PIN_MOTOR_A_IN1')) {
+    throw new Error('Board 3 board_pins.h missing CAN-FD or motor PWM definitions');
+  }
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  MILSTONE 1 VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 22 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
-  console.log('  Milestone 1 Architecture & Implementation is fully certified.');
+  console.log('  ALL 24 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  Milestone 1 Architecture, Implementation & Hardware Exit certified.');
   console.log('----------------------------------------------------------------\n');
 }

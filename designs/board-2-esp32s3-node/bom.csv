@@ -1,0 +1,25 @@
+Designator,Value,Package,MPN,Manufacturer,LCSC_Part,Description,Feeder_Type
+J1,USB-C-16P,TYPE-C-16P,TYPE-C-16P-001,Korean Hroparts Elec,C709356,USB Type-C Receptacle 16P SMT,Tape 12mm
+U1,ESP32-S3-WROOM-1-N8R8,MODULE-ESP32-S3,ESP32-S3-WROOM-1-N8R8,Espressif Systems,C2934560,SMD Module 240MHz 8MB Flash 8MB PSRAM,Tray
+U2,BME280,LGA-8,BME280,Bosch Sensortec,C92489,Temperature Humidity Pressure Sensor LGA-8,Tape 12mm
+U3,AP2112K-3.3,SOT-23-5,AP2112K-3.3TRG1,Diodes Inc,C439922,600mA Ultra-Low Noise Low-Dropout Linear Regulator,Tape 8mm
+D1,B5819W,SOD-123,B5819W,Slkor,C8598,Schottky Barrier Diode 1A 40V SOD-123,Tape 8mm
+D2,USBLC6-2SC6,SOT-23-6,USBLC6-2SC6,STMicroelectronics,C7519,Very Low Capacitance ESD Protection Array,Tape 8mm
+C1,22uF 16V,1206,CL31B226KOCLNNC,Samsung Electro-Mechanics,C12891,Ceramic Capacitor 22uF 16V X7R,Tape 8mm
+C2,100nF 50V,0603,CC0603KRX7R9BB104,YAGEO,C14663,Ceramic Capacitor 100nF 50V X7R,Tape 8mm
+C3,100nF 50V,0603,CC0603KRX7R9BB104,YAGEO,C14663,Ceramic Capacitor 100nF 50V X7R,Tape 8mm
+C4,100nF 50V,0603,CC0603KRX7R9BB104,YAGEO,C14663,Ceramic Capacitor 100nF 50V X7R,Tape 8mm
+C5,1uF 16V,0603,CC0603KRX7R7BB105,YAGEO,C15849,Ceramic Capacitor 1uF 16V X7R (CHIP_PU Delay),Tape 8mm
+C6,100nF 50V,0603,CC0603KRX7R9BB104,YAGEO,C14663,Ceramic Capacitor 100nF 50V X7R (BME280 Bypass),Tape 8mm
+C7,1uF 50V,0603,CC0603KRX7R9BB105,YAGEO,C15849,Ceramic Capacitor 1uF 50V X7R (LDO Input Bypass),Tape 8mm
+C8,2.2uF 16V,0805,CL21B225KOFNNNE,Samsung Electro-Mechanics,C23630,Ceramic Capacitor 2.2uF 16V X7R (LDO Output),Tape 8mm
+R1,10k 1%,0603,RC0603FR-0710KL,YAGEO,C25804,Thick Film Resistor 10k 1% (CHIP_PU Pull-up),Tape 8mm
+R2,10k 1%,0603,RC0603FR-0710KL,YAGEO,C25804,Thick Film Resistor 10k 1% (BOOT GPIO0 Pull-up),Tape 8mm
+R3,3.3k 1%,0603,RC0603FR-073K3L,YAGEO,C22974,Thick Film Resistor 3.3k 1% (I2C0 SDA Pull-up),Tape 8mm
+R4,3.3k 1%,0603,RC0603FR-073K3L,YAGEO,C22974,Thick Film Resistor 3.3k 1% (I2C0 SCL Pull-up),Tape 8mm
+R5,5.1k 1%,0603,RC0603FR-075K1L,YAGEO,C23186,Thick Film Resistor 5.1k 1% (USB CC1 Pull-down),Tape 8mm
+R6,5.1k 1%,0603,RC0603FR-075K1L,YAGEO,C23186,Thick Film Resistor 5.1k 1% (USB CC2 Pull-down),Tape 8mm
+R7,1k 1%,0603,RC0603FR-071KL,YAGEO,C21190,Thick Film Resistor 1k 1% (Status LED Limiting),Tape 8mm
+D3,LED-GREEN,0603,19-217/GHC-YR1S2/3T,Everlight,C72043,SMD LED 0603 Green 2.1V 20mA,Tape 8mm
+SW1,SW_BOOT,SW-SMD-3x4,SKRKAEE010,ALPS,C318884,Push Button Tactile Switch 3x4mm SMD,Tape 12mm
+SW2,SW_RESET,SW-SMD-3x4,SKRKAEE010,ALPS,C318884,Push Button Tactile Switch 3x4mm SMD,Tape 12mm
