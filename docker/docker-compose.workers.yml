@@ -1,13 +1,15 @@
 # ==============================================================================
 # Vajra-Dhīr EDA — Ring 2 Production OCI Workers (Zero-Egress gVisor)
+# Standards: ISO/IEC/IEEE 42010, CIS Docker Benchmark, gVisor runsc Sandbox
 # ==============================================================================
 services:
-  worker-kicad:
+  pack-2a-pcb-physics:
     build:
-      context: ./containers/pack-2a-kicad
+      context: ../containers/pack-2a-kicad
       dockerfile: Dockerfile
-    image: vajradhir/pack-2a-kicad:latest
-    container_name: vd_worker_kicad
+    image: vajradhir/pack-2a-pcb-physics:latest
+    container_name: vd_pack_2a_pcb_physics
+    runtime: runsc
     network_mode: "none"
     read_only: true
     user: "10001:10001"
@@ -25,12 +27,13 @@ services:
           cpus: "4.0"
           memory: 8192M
 
-  worker-virtual-lab:
+  pack-2b-virtual-hil:
     build:
-      context: ./containers/pack-2b-virtual-lab
+      context: ../containers/pack-2b-virtual-lab
       dockerfile: Dockerfile
-    image: vajradhir/pack-2b-virtual-lab:latest
-    container_name: vd_worker_virtual_lab
+    image: vajradhir/pack-2b-virtual-hil:latest
+    container_name: vd_pack_2b_virtual_hil
+    runtime: runsc
     network_mode: "none"
     read_only: true
     user: "10001:10001"
@@ -48,12 +51,13 @@ services:
           cpus: "4.0"
           memory: 8192M
 
-  worker-silicon-asic:
+  pack-2c-silicon-ic:
     build:
-      context: ./containers/pack-2c-silicon-asic
+      context: ../containers/pack-2c-silicon-asic
       dockerfile: Dockerfile
-    image: vajradhir/pack-2c-silicon-asic:latest
-    container_name: vd_worker_silicon_asic
+    image: vajradhir/pack-2c-silicon-ic:latest
+    container_name: vd_pack_2c_silicon_ic
+    runtime: runsc
     network_mode: "none"
     read_only: true
     user: "10001:10001"
@@ -73,4 +77,4 @@ services:
 
 volumes:
   vd_cas_work:
-    name: vd_cas_work
+    name: vajradhir_cas_cache

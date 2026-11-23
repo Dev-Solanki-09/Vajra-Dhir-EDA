@@ -17,11 +17,12 @@ test('Worker SDK Rust Implementation Exists and Validates Invariants', () => {
 });
 
 test('Docker Compose Worker Definitions Exist with Zero Egress', () => {
-  const compose = fs.readFileSync('docker-compose.workers.yml', 'utf8');
+  const composePath = fs.existsSync('docker/docker-compose.workers.yml') ? 'docker/docker-compose.workers.yml' : 'docker-compose.workers.yml';
+  const compose = fs.readFileSync(composePath, 'utf8');
   assert.ok(compose.includes('network_mode: "none"'));
   assert.ok(compose.includes('read_only: true'));
   assert.ok(compose.includes('cap_drop:'));
-  assert.ok(compose.includes('worker-kicad:'));
-  assert.ok(compose.includes('worker-virtual-lab:'));
-  assert.ok(compose.includes('worker-silicon-asic:'));
+  assert.ok(compose.includes('pack-2a-pcb-physics:') || compose.includes('worker-kicad:'));
+  assert.ok(compose.includes('pack-2b-virtual-hil:') || compose.includes('worker-virtual-lab:'));
+  assert.ok(compose.includes('pack-2c-silicon-ic:') || compose.includes('worker-silicon-asic:'));
 });

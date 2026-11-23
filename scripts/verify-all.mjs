@@ -228,7 +228,8 @@ step('Hardware-Firmware Co-Design Parity & DT Overlays', () => {
 
 // 25. Ring 2 OCI Container Isolation & Zero-Egress Compose
 step('Ring 2 OCI Container Isolation & Zero-Egress Compose', () => {
-  const compose = fs.readFileSync('docker-compose.workers.yml', 'utf8');
+  const composePath = fs.existsSync('docker/docker-compose.workers.yml') ? 'docker/docker-compose.workers.yml' : 'docker-compose.workers.yml';
+  const compose = fs.readFileSync(composePath, 'utf8');
   if (!compose.includes('network_mode: "none"') || !compose.includes('read_only: true') || !compose.includes('user: "10001:10001"')) {
     throw new Error('docker-compose.workers.yml fails Ring 2 security invariants');
   }
@@ -354,12 +355,27 @@ step('V-Model Traceability & CycloneDX 1.6 HBOM Generator', () => {
   execSync('python scripts/test-recovery-control-hbom.py', { stdio: 'pipe' });
 });
 
+// 38. Toolchain Baseline Audit (python, node, uv)
+step('[AUDIT] Toolchain Baseline Audit (python, node, uv)', () => {
+  execSync('python scripts/audit-toolchains.py', { stdio: 'pipe' });
+});
+
+// 39. Ring 1 Quarantine & gVisor Container Rules
+step('[AUDIT] Ring 1 Quarantine & gVisor Container Rules', () => {
+  execSync('python scripts/test-quarantine.py', { stdio: 'pipe' });
+});
+
+// 40. Claims Register Honesty Audit
+step('[AUDIT] Claims Register Honesty & Anti-Vaporware Audit', () => {
+  execSync('python scripts/audit-claims-honesty.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 37 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
-  console.log('  Full Industrial Baseline, Reference Hardware & Production Addendum Certified.');
+  console.log('  ALL 40 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }

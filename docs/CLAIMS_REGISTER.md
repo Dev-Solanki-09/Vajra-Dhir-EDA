@@ -1,6 +1,7 @@
 # CLAIMS REGISTER — Vajra-Dhīr EDA
 
 > **Purpose:** Clouds-Against-Humanity habit recording verified dates, evidence, and validation methods for all external software, model, and tool capability claims.
+> **Milestone 1 Hardware Status:** Software Reference Blueprints (0/3 Physically Fabricated). All 3 boards are fully designed and verified through software DRC, Open-CUBO simulations, and 9-Gate formal pipelines; physical bench fabrication and scope verification are pending factory run.
 
 | Claim ID | Tool / Subsystem | Claim Description | Verification Method & Evidence | Verified Date |
 |---|---|---|---|---|
