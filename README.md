@@ -103,18 +103,31 @@ Before expanding into Ring 2 containers or `Code-OSS` packaging, **Milestone 1 (
 
 ```text
 vajra-dhir-eda/
-├── docs/
-│   ├── VD-SAD-001-ARCHITECTURE.md          # Frozen Industrial Architecture Standard & ADRs
-│   ├── ADDENDUM_01_PRODUCTION_ESSENTIALS.md # ECO, SPICE compat, EOL OpenHTF, CAS, Governance
-│   ├── AGENT_KNOWLEDGE_UPDATE_2026_11.md   # Nov 2026 toolchain & CVE security floors
-│   ├── THREAT_MODEL.md                     # STRIDE + OWASP Agentic AI (ASI01–ASI10)
-│   ├── CLAIMS_REGISTER.md                  # Dated verification register for external APIs
-│   └── TECHSTACK.md                        # Master 146-repository inventory & ring isolation
-├── packages/hw-ir/schema/                  # Canonical SQLite WAL DDL + human-lock triggers
+├── docs/                                   # Frozen Industrial Baseline (VD-SAD-001, Threat Model, Techstack)
 ├── schemas/                                # MCP v2 12-verb, WorkerContract & Plugin JSON Schemas
-├── .agents/skills/                         # AAIF SKILL.md engineering & launch skills
-├── scripts/hooks/vd-guard.sh               # Deterministic pre-commit security & license guard
-└── .github/workflows/ci-spec-integrity.yml # Automated DDL, Schema, DCO & License Firewall CI
+├── packages/
+│   ├── hw-ir/                              # Canonical SQLite WAL Kernel, UUIDv7, i64 nm, Lock Triggers
+│   ├── hw-merge/                           # 3-Way Semantic Merge Driver for *.vd-ir.jsonl
+│   ├── hw-dlp/                             # DLP Firewall, Secret Sanitizer, NDA Airgap Broker
+│   ├── wasm-sandbox/                       # Wasmtime 50 Component Model Sandbox (Code Mode)
+│   ├── cad-geom/                           # High-precision R-Tree spatial index & differential pairs
+│   ├── placement-router/                   # Multi-threaded Rayon Simulated Annealing Placer
+│   ├── cad-transcoder/                     # KiCad 10 3-Channel IPC Bridge & 5s Echo Suppression
+│   ├── crossprobe-bus/                     # Sub-millisecond CrossProbeBus (IPC & UI)
+│   ├── mcp-gateway/                        # Harness MCP v2 Gateway (12 Typed EDA Verbs)
+│   ├── component-kg/                       # MLCC DC-Bias Derating, Inductor Saturation & Datasheet KG
+│   ├── open-cubo/                          # Parametric Block Synthesizer (Buck, LDO, USB-PD, ESD)
+│   ├── symbolic-verifier/                  # 10 EE Footguns & Symbolic Pinmux Constraint Solver
+│   ├── nine-gates/                         # Fail-Closed 9-Gate Hardware Signoff State Machine
+│   ├── eco-engine/                         # Geographical RefDes Re-Annotation & Staging Tray ECO
+│   ├── sim-compat/                         # Vendor SPICE Compat, AST Transpiler & Encrypted Model Shield
+│   ├── cam-pnp/                            # IPC-7525B Stencil Aperture DFM & Pick-and-Place Feeder Opt
+│   ├── cli/                                # Unified `vd` Developer Command Line Tool
+│   └── ui-apps/                            # Portable MCP UI (Waveform & Interactive Lenses)
+├── apps/
+│   └── desktop/                            # Silicon Darkroom Desktop UI (React 19, Dockview, WebGPU)
+├── scripts/                                # 18-Gate Comprehensive Verification & Audit Harnesses
+└── .github/workflows/                      # Automated DDL, Schema, DCO & License Firewall CI
 ```
 
 ---
