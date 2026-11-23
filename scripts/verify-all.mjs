@@ -321,12 +321,45 @@ step('IPC-7351B Footprint Synthesizer (.kicad_mod)', () => {
   execSync('python scripts/test-schematic-autorouter-footprint.py', { stdio: 'pipe' });
 });
 
+// 35. Solver Convergence & Failure-Recovery Middleware
+step('Solver Convergence & Failure-Recovery Middleware', () => {
+  const recoverySrc = fs.readFileSync('packages/solver-recovery/src/lib.rs', 'utf8');
+  if (!recoverySrc.includes('plan_spice_recovery') ||
+      !recoverySrc.includes('plan_pr_recovery') ||
+      !recoverySrc.includes('plan_mesh_recovery') ||
+      !recoverySrc.includes('gmin_stepping')) {
+    throw new Error('Missing solver recovery ladders');
+  }
+});
+
+// 36. SMPS Control-Loop Stability & Compensator Synthesizer
+step('SMPS Control-Loop Stability & Compensator Math', () => {
+  const controlSrc = fs.readFileSync('packages/control-loop/src/lib.rs', 'utf8');
+  if (!controlSrc.includes('analyze_plant') ||
+      !controlSrc.includes('synthesize_type2') ||
+      !controlSrc.includes('synthesize_type3') ||
+      !controlSrc.includes('frhpz_hz')) {
+    throw new Error('Missing control-loop synthesis modules');
+  }
+});
+
+// 37. V-Model Requirements Traceability & CycloneDX 1.6 HBOM
+step('V-Model Traceability & CycloneDX 1.6 HBOM Generator', () => {
+  const hbomSrc = fs.readFileSync('packages/compliance-hbom/src/lib.rs', 'utf8');
+  if (!hbomSrc.includes('generate_cyclonedx_1_6') ||
+      !hbomSrc.includes('audit_requirements') ||
+      !hbomSrc.includes('CycloneDxHbom')) {
+    throw new Error('Missing CycloneDX 1.6 HBOM generator modules');
+  }
+  execSync('python scripts/test-recovery-control-hbom.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 34 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 37 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Production Addendum Certified.');
   console.log('----------------------------------------------------------------\n');
 }

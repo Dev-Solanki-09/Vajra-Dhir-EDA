@@ -1,0 +1,14 @@
+[package]
+name = "vd-compliance-hbom"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "V-Model requirements traceability matrix and CycloneDX 1.6 Hardware BOM (HBOM) generator"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]

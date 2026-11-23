@@ -27,6 +27,9 @@ vd-cas-store = { path = "../cas-store" }
 vd-schematic-beautifier = { path = "../schematic-beautifier" }
 vd-autorouter = { path = "../autorouter" }
 vd-footprint-synth = { path = "../footprint-synth" }
+vd-solver-recovery = { path = "../solver-recovery" }
+vd-control-loop = { path = "../control-loop" }
+vd-compliance-hbom = { path = "../compliance-hbom" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

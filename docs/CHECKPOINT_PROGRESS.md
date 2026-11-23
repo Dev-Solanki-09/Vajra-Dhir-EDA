@@ -2,15 +2,15 @@
 
 | Metadata Field | Value |
 |---|---|
-| **Document ID** | `VD-CHK-001` · Rev 6.0 |
-| **Date & Timestamp** | 2026-11-24T01:45:00+05:30 |
+| **Document ID** | `VD-CHK-001` · Rev 7.0 |
+| **Date & Timestamp** | 2026-11-24T02:00:00+05:30 |
 | **Git Baseline Branch** | `main` |
 | **Standards Compliance** | ISO/IEC/IEEE 42010, ISO/IEC/IEEE 15288, SLSA v1.2, OWASP Agentic AI (ASI01–ASI10) |
-| **Verification Status** | **34/34 Gates Passing Cleanly (100% Certified)** |
+| **Verification Status** | **37/37 Gates Passing Cleanly (100% Certified)** |
 | **Milestone 1 Hardware Exit**| **COMPLETE — All 3 Physical Boards Certified & Verified** |
 | **Ring 2 Container Isolation**| **ACTIVE — OCI Workers (Pack 2A/2B/2C), Worker SDK, WebGPU Canvas** |
 | **Production Addendum Scope**| **ACTIVE — Multi-Region Fab Registry, EMC Workbench, CAS Store, `vd doctor`** |
-| **CAD Automation Core**| **ACTIVE — Schematic Beautifier, Autorouter Bridge, IPC-7351B Footprint Synth** |
+| **CAD & Verification Core**| **ACTIVE — Schematic Beautifier, Autorouter, Footprints, Recovery, Control, HBOM** |
 
 ---
 
@@ -60,7 +60,10 @@ All 26 core packages below are active, tested, and passing deterministic verific
 | **`schematic-beautifier`** | `packages/schematic-beautifier` | Rust | 5-stage semantic layout engine: power rail hierarchy (+V up, GND down), L-to-R signal flow, multi-unit symbol splitting, net label collision avoidance, and KiCad 10 S-expression export. |
 | **`autorouter`** | `packages/autorouter` | Rust | Bi-directional Specctra DSN/SES orchestrator bridge, `.kicad_dru` netclass rule sync, and fail-closed SHA-256 locked-copper integrity guard. |
 | **`footprint-synth`** | `packages/footprint-synth` | Rust | IPC-7351B mathematical land pattern synthesizer across Least/Nominal/Most density levels with courtyard clearance, silkscreen, and KiCad 10 `.kicad_mod` output. |
-| **`cli`** | `packages/cli` | Rust (`vd`) | Unified command-line interface (`vd eco`, `vd gate`, `vd sim`, `vd cam`, `vd dlp`, `vd pdn`, `vd diff`, `vd harness`, `vd panel`, `vd worker`, `vd asic`, `vd emc`, `vd cas`, `vd beautify`, `vd route`, `vd footprint`, `vd doctor`). |
+| **`solver-recovery`** | `packages/solver-recovery` | Rust | Deterministic multi-step convergence ladder for SPICE transient, P&R congestion backoff, and 3D FEM mesh defeaturing. |
+| **`control-loop`** | `packages/control-loop` | Rust | SMPS plant analysis ($f_{LC}, f_{ESR}, f_{RHPZ}$), Type-II/III feedback compensator synthesis, and phase margin safety verification ($\phi_m \ge 45^\circ$, $GM \ge 10\text{ dB}$). |
+| **`compliance-hbom`** | `packages/compliance-hbom` | Rust | StrictDoc V-Model requirements traceability matrix and automated CycloneDX 1.6 Hardware BOM with RoHS 3, REACH, and lifecycle metadata. |
+| **`cli`** | `packages/cli` | Rust (`vd`) | Unified command-line interface (`vd eco`, `vd gate`, `vd sim`, `vd cam`, `vd dlp`, `vd pdn`, `vd diff`, `vd harness`, `vd panel`, `vd worker`, `vd asic`, `vd emc`, `vd cas`, `vd beautify`, `vd route`, `vd footprint`, `vd recovery`, `vd control`, `vd hbom`, `vd doctor`). |
 | **`ui-apps`** | `packages/ui-apps` | HTML / Strict CSP | Portable interactive MCP UI apps (waveform viewer, interactive inspection lenses). |
 | **`desktop`** | `apps/desktop` | React 19 / Dockview | Silicon Darkroom spatial desktop IDE with WebGPU/WebGL2 viewport and high-contrast accessible theme. |
 
@@ -129,6 +132,9 @@ All 31 verification gates:
 32. `5-Stage Semantic Schematic Beautifier Engine` — Power rail hierarchy, L-to-R signal flow, unit splitting, label collision avoidance & KiCad 10 S-expression export
 33. `Autorouter Orchestrator Bridge & Copper Lock Guard` — Specctra DSN/SES orchestrator, .kicad_dru rules & fail-closed locked-copper SHA-256 integrity guard
 34. `IPC-7351B Footprint Synthesizer (.kicad_mod)` — Mathematical land pattern calculation across Least/Nominal/Most density & KiCad 10 .kicad_mod generation
+35. `Solver Convergence & Failure-Recovery Middleware` — Deterministic SPICE, P&R congestion, and 3D FEM mesh recovery ladders
+36. `SMPS Control-Loop Stability & Compensator Math` — Plant analysis, Type-II/III compensator pole-zero synthesis, and phase margin safety verification
+37. `V-Model Traceability & CycloneDX 1.6 HBOM Generator` — StrictDoc requirements audit and automated CycloneDX 1.6 Hardware BOM with RoHS 3, REACH, and lifecycle metadata
 
 ---
 

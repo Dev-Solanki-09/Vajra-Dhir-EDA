@@ -1,0 +1,13 @@
+[package]
+name = "vd-control-loop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Deterministic SMPS feedback loop compensation and Bode/Nyquist stability math engine"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]

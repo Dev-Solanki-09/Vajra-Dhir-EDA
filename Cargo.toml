@@ -27,6 +27,9 @@ members = [
     "packages/schematic-beautifier",
     "packages/autorouter",
     "packages/footprint-synth",
+    "packages/solver-recovery",
+    "packages/control-loop",
+    "packages/compliance-hbom",
 ]
 
 [workspace.package]

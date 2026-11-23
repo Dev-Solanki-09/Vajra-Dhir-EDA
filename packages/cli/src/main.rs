@@ -15,6 +15,9 @@ use vd_worker_sdk::{WorkerDispatcher, WorkerInputs, WorkerJob, WorkerPack};
 use vd_schematic_beautifier::{BeautifierConfig, Orientation, PinType, SchematicBeautifier, SchematicPin, SchematicSheet, SchematicSymbol};
 use vd_autorouter::{AutorouterOrchestrator, CopperEntity, LockedCopperSnapshot, NetClassRule};
 use vd_footprint_synth::{DensityLevel, FootprintSynthesizer};
+use vd_solver_recovery::SolverRecoveryMiddleware;
+use vd_control_loop::{ControlLoopSynthesizer, ConverterTopology, SmpsSpecs};
+use vd_compliance_hbom::{HbomComponent, HbomGenerator, RequirementBinding};
 
 fn print_usage() {
     println!(r#"Vajra-Dhīr EDA Unified CLI (`vd`) — Rev 2.0 Industrial Baseline
@@ -42,6 +45,9 @@ SUBCOMMANDS:
     beautify              Run 5-stage semantic schematic beautifier and KiCad 10 export
     route                 Autorouter orchestrator bridge, .kicad_dru & copper lock guard
     footprint             IPC-7351B parametric land pattern & KiCad 10 .kicad_mod synth
+    recovery              Solver convergence & failure-recovery ladder (SPICE/P&R/Mesh)
+    control               SMPS feedback loop compensation & Bode stability analysis
+    hbom                  V-Model requirements traceability & CycloneDX 1.6 HBOM export
     doctor                Environment diagnostics, GPU driver blocklist & health preflight
     version               Print version and active ring architecture
 "#);
@@ -358,6 +364,64 @@ fn main() {
             ).expect("Footprint synthesis failed");
             let mod_sexpr = FootprintSynthesizer::export_kicad10_mod(&fp);
             println!("[PASS] Synthesized {} ({} pads). KiCad 10 S-expression:\n{}", fp.name, fp.pads.len(), &mod_sexpr[..mod_sexpr.len().min(300)]);
+        }
+
+        "recovery" => {
+            println!("[*] vd recovery: Solver Convergence & Failure-Recovery Middleware");
+            let sample_err = "timestep too small in transient analysis; singular matrix at V(SW)";
+            let plan = SolverRecoveryMiddleware::plan_spice_recovery(sample_err).expect("Recovery failed");
+            println!("[PASS] Generated {}-step recovery ladder for {:?}:", plan.actions.len(), plan.domain);
+            for a in &plan.actions {
+                println!("  Step {}: {} -> {}", a.step, a.name, a.parameter_delta);
+            }
+        }
+
+        "control" => {
+            println!("[*] vd control: SMPS Control-Loop Stability & Compensator Synthesis");
+            let specs = SmpsSpecs {
+                topology: ConverterTopology::Buck,
+                vin_nom_v: 12.0,
+                vout_v: 3.3,
+                iout_max_a: 3.0,
+                fsw_hz: 500_000.0,
+                l_henry: 4.7e-6,
+                cout_farad: 44e-6,
+                esr_ohm: 0.005,
+            };
+            let plant = ControlLoopSynthesizer::analyze_plant(&specs).expect("Plant analysis failed");
+            let comp = ControlLoopSynthesizer::synthesize_type2(&specs, None, Some(60.0)).expect("Compensator failed");
+            println!("[PASS] Plant f_LC={:.1} kHz, f_ESR={:.1} kHz. Synthesized Type-II compensator: fc={:.1} kHz, PM={:.1} deg, GM={:.1} dB.",
+                plant.flc_hz / 1000.0, plant.fesr_hz / 1000.0, comp.fc_hz / 1000.0, comp.phase_margin_deg, comp.gain_margin_db);
+        }
+
+        "hbom" => {
+            println!("[*] vd hbom: V-Model Requirements Traceability & CycloneDX 1.6 HBOM");
+            let comps = vec![
+                HbomComponent {
+                    refdes: "U1".into(),
+                    mpn: "TPS54302".into(),
+                    manufacturer: "TI".into(),
+                    description: "Buck Converter".into(),
+                    package: "SOT-23-6".into(),
+                    rohs_compliant: true,
+                    reach_svhc_free: true,
+                    halogen_free: true,
+                    lifecycle_status: "Active".into(),
+                    conflict_minerals_3tg: true,
+                }
+            ];
+            let reqs = vec![
+                RequirementBinding {
+                    req_uid: "REQ-PWR-001".into(),
+                    title: "3.3V Output Regulation".into(),
+                    verification_method: "SPICE".into(),
+                    bound_refdes: vec!["U1".into()],
+                    passed: true,
+                    evidence_sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".into(),
+                }
+            ];
+            let cdx_json = HbomGenerator::generate_cyclonedx_1_6("VD-BRD-001", "1.0.0", &comps, &reqs).expect("HBOM gen failed");
+            println!("[PASS] Generated CycloneDX 1.6 HBOM ({} bytes):\n{}", cdx_json.len(), &cdx_json[..cdx_json.len().min(280)]);
         }
 
         "doctor" => {
