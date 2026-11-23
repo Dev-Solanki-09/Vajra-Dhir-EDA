@@ -1,0 +1,19 @@
+Designator,Value,Package,MPN,Manufacturer,LCSC_Part,Description,Feeder_Type
+J1,USB-C-16P,TYPE-C-16P,TYPE-C-16P-001,Korean Hroparts Elec,C709356,USB Type-C Receptacle 16P SMT,Tape 12mm
+U1,CH224K,ESSOP-10,CH224K,WCH,C970725,USB PD Power Delivery Sink Decoy IC,Tape 12mm
+U2,TPS54302,SOT-23-6,TPS54302DDCR,Texas Instruments,C141258,4.5V-28V 3A Synchronous Step-Down Converter,Tape 8mm
+D1,USBLC6-2SC6,SOT-23-6,USBLC6-2SC6,STMicroelectronics,C7519,Very low capacitance ESD protection,Tape 8mm
+L1,4.7uH 4.2A,IND-4030,SWPA4030S4R7MT,Shenzhen Sunlord,C156717,Shielded SMD Power Inductor 4.7uH 4.2A,Tape 12mm
+C1,10uF 50V,1206,CL31B106KBHNNNE,Samsung Electro-Mechanics,C13585,Ceramic Capacitor 10uF 50V X7R,Tape 8mm
+C2,10uF 50V,1206,CL31B106KBHNNNE,Samsung Electro-Mechanics,C13585,Ceramic Capacitor 10uF 50V X7R,Tape 8mm
+C3,100nF 50V,0603,CC0603KRX7R9BB104,YAGEO,C14663,Ceramic Capacitor 100nF 50V X7R,Tape 8mm
+C4,100nF 50V,0603,CC0603KRX7R9BB104,YAGEO,C14663,Ceramic Capacitor 100nF 50V X7R BOOT,Tape 8mm
+C5,22uF 16V,1206,CL31B226KOCLNNC,Samsung Electro-Mechanics,C12891,Ceramic Capacitor 22uF 16V X7R,Tape 8mm
+C6,22uF 16V,1206,CL31B226KOCLNNC,Samsung Electro-Mechanics,C12891,Ceramic Capacitor 22uF 16V X7R,Tape 8mm
+R_CC1,5.1k 1%,0603,RC0603FR-075K1L,YAGEO,C23186,Thick Film Resistor 5.1k 1% 1/10W,Tape 8mm
+R_CC2,5.1k 1%,0603,RC0603FR-075K1L,YAGEO,C23186,Thick Film Resistor 5.1k 1% 1/10W,Tape 8mm
+R1,45.3k 1%,0603,RC0603FR-0745K3L,YAGEO,C23177,Thick Film Resistor 45.3k 1% (Feedback Top),Tape 8mm
+R2,10k 1%,0603,RC0603FR-0710KL,YAGEO,C25804,Thick Film Resistor 10k 1% (Feedback Bottom),Tape 8mm
+R_LED,1.5k 1%,0603,RC0603FR-071K5L,YAGEO,C22806,Thick Film Resistor 1.5k 1% (LED Limiting),Tape 8mm
+D_LED,Green,0603,19-217/GHC-YR1S2/3T,Everlight,C72043,SMD LED 0603 Green 2.1V 20mA,Tape 8mm
+J2,Header-2P,PinHeader_1x02_P2.54mm,PH-2P-2.54,CJT,C2883695,2-Pin Header 2.54mm Pitch VOUT/GND,Bulk / Tray
