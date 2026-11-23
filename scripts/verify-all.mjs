@@ -390,12 +390,17 @@ step('[UNIT TEST] Signed Open-CUBOs & Atopile Compiler Bridge', () => {
   execSync('python packages/cubo-engine/tests/test_cubos.py', { stdio: 'pipe' });
 });
 
+// 45. Real Z3 SMT Pinmux, Pint Derating & SQLite EE Footguns
+step('[UNIT TEST] Real Z3 SMT Pinmux, Pint Derating & SQLite Footguns', () => {
+  execSync('python packages/symbolic-verifier/tests/test_z3_verifier.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 44 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 45 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }
