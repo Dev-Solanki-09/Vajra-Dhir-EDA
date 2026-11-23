@@ -395,12 +395,22 @@ step('[UNIT TEST] Real Z3 SMT Pinmux, Pint Derating & SQLite Footguns', () => {
   execSync('python packages/symbolic-verifier/tests/test_z3_verifier.py', { stdio: 'pipe' });
 });
 
+// 46. Pre-Route KiCad Rule Sync & Locked Copper Guard
+step('[INTEGRATION] Pre-Route KiCad DRU Sync & Copper Guard', () => {
+  execSync('python scripts/test-kicad-sync.py', { stdio: 'pipe' });
+});
+
+// 47. Phase 1 VS Code Extension Pack & Zero-Egress Webview CSP
+step('[UI/UX] VS Code Extension Pack & Zero-Egress CSP (connect-src none)', () => {
+  execSync('python scripts/test-vscode-extension.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 45 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 47 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }
