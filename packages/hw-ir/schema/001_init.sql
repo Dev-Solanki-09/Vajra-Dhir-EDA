@@ -391,6 +391,15 @@ BEGIN
     SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot mutate human-locked component');
 END;
 
+CREATE TRIGGER trg_protect_locked_components_del
+BEFORE DELETE ON components
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot delete human-locked component');
+END;
+
 CREATE TRIGGER trg_protect_locked_traces_upd
 BEFORE UPDATE ON traces
 WHEN OLD.locked = 1
@@ -400,6 +409,15 @@ BEGIN
     SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot mutate human-locked trace');
 END;
 
+CREATE TRIGGER trg_protect_locked_traces_del
+BEFORE DELETE ON traces
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot delete human-locked trace');
+END;
+
 CREATE TRIGGER trg_protect_locked_zones_upd
 BEFORE UPDATE ON copper_zones
 WHEN OLD.locked = 1
@@ -407,6 +425,159 @@ WHEN OLD.locked = 1
  AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
 BEGIN
     SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot mutate human-locked copper zone');
+END;
+
+CREATE TRIGGER trg_protect_locked_copper_zones_upd
+BEFORE UPDATE ON copper_zones
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot mutate human-locked copper zone');
+END;
+
+CREATE TRIGGER trg_protect_locked_zones_del
+BEFORE DELETE ON copper_zones
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot delete human-locked copper zone');
+END;
+
+CREATE TRIGGER trg_protect_locked_copper_zones_del
+BEFORE DELETE ON copper_zones
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot delete human-locked copper zone');
+END;
+
+CREATE TRIGGER trg_protect_locked_vias_upd
+BEFORE UPDATE ON vias
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot mutate human-locked via');
+END;
+
+CREATE TRIGGER trg_protect_locked_vias_del
+BEFORE DELETE ON vias
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot delete human-locked via');
+END;
+
+CREATE TRIGGER trg_protect_locked_nets_upd
+BEFORE UPDATE ON nets
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot mutate human-locked net');
+END;
+
+CREATE TRIGGER trg_protect_locked_nets_del
+BEFORE DELETE ON nets
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot delete human-locked net');
+END;
+
+CREATE TRIGGER trg_protect_locked_pin_net_bindings_upd
+BEFORE UPDATE ON pin_net_bindings
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot mutate human-locked pin_net_binding');
+END;
+
+CREATE TRIGGER trg_protect_locked_pin_net_bindings_del
+BEFORE DELETE ON pin_net_bindings
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot delete human-locked pin_net_binding');
+END;
+
+CREATE TRIGGER trg_protect_locked_boards_upd
+BEFORE UPDATE ON boards
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot mutate human-locked board');
+END;
+
+CREATE TRIGGER trg_protect_locked_boards_del
+BEFORE DELETE ON boards
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot delete human-locked board');
+END;
+
+CREATE TRIGGER trg_protect_locked_net_classes_upd
+BEFORE UPDATE ON net_classes
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot mutate human-locked net_class');
+END;
+
+CREATE TRIGGER trg_protect_locked_net_classes_del
+BEFORE DELETE ON net_classes
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot delete human-locked net_class');
+END;
+
+CREATE TRIGGER trg_protect_locked_electrical_constraints_upd
+BEFORE UPDATE ON electrical_constraints
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot mutate human-locked electrical_constraint');
+END;
+
+CREATE TRIGGER trg_protect_locked_electrical_constraints_del
+BEFORE DELETE ON electrical_constraints
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot delete human-locked electrical_constraint');
+END;
+
+CREATE TRIGGER trg_protect_locked_firmware_pinmux_upd
+BEFORE UPDATE ON firmware_pinmux
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot mutate human-locked firmware_pinmux');
+END;
+
+CREATE TRIGGER trg_protect_locked_firmware_pinmux_del
+BEFORE DELETE ON firmware_pinmux
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Agent/compiler cannot delete human-locked firmware_pinmux');
 END;
 
 -- ============================================================================

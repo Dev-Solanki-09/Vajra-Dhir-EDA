@@ -370,12 +370,17 @@ step('[AUDIT] Claims Register Honesty & Anti-Vaporware Audit', () => {
   execSync('python scripts/audit-claims-honesty.py', { stdio: 'pipe' });
 });
 
+// 41. 30 Canonical Tables & 20 Fail-Closed Lock Triggers
+step('[SCHEMA/SPEC] 30 Canonical Tables & 20 Fail-Closed Lock Triggers', () => {
+  execSync('python scripts/test-sqlite-30tables-locks.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 40 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 41 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }
