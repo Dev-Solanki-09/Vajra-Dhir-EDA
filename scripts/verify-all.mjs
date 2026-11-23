@@ -380,12 +380,17 @@ step('[SCHEMA/SPEC] Python Neuro-Symbolic Workspace & AGPL Firewall', () => {
   execSync('python scripts/test-python-workspace.py', { stdio: 'pipe' });
 });
 
+// 43. Component Knowledge Graph & Zero-Trust Datasheet Quarantine
+step('[UNIT TEST] DuckDB Component KG & Datasheet Quarantine Ledger', () => {
+  execSync('python packages/kg-brain/tests/test_kg_brain.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 42 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 43 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }
