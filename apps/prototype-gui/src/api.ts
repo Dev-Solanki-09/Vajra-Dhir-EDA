@@ -86,3 +86,61 @@ export async function fetchTextExport(kind: "kicad-pcb" | "firmware-pins"): Prom
   const r = await fetch(`/api/v1/export/${kind}`);
   return r.text();
 }
+
+export async function fetchStackup() {
+  const r = await fetch("/api/v1/stackup");
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function fetchNetclasses() {
+  const r = await fetch("/api/v1/netclasses");
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function fetchDrcFull() {
+  const r = await fetch("/api/v1/drc/full");
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function searchComponents(q: string = "", feederType: string = "all") {
+  const r = await fetch(`/api/v1/components/search?q=${encodeURIComponent(q)}&feeder_type=${encodeURIComponent(feederType)}`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function fetchDatasheetPreview(mpn: string = "TPS54302DDCR") {
+  const r = await fetch(`/api/v1/datasheet/preview?mpn=${encodeURIComponent(mpn)}`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function solvePinmux(signals?: Array<{ signal: string; periph: string; pin?: string }>) {
+  const r = await fetch("/api/v1/pinmux/solve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ signals }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function calcSmpsBode(params: {
+  vin?: number;
+  vout?: number;
+  iout?: number;
+  fsw_khz?: number;
+  l_uh?: number;
+  c_nom_uf?: number;
+  esr_mohm?: number;
+}) {
+  const r = await fetch("/api/v1/smps/bode-calc", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}

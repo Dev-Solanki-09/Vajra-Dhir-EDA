@@ -123,6 +123,23 @@ def main():
         assert status == 200
         print("  [PASS] POST /api/v1/undo & /api/v1/redo -> Atomic patch journal rollback & reapply verified")
 
+        # Cleanly restore L1 to original position (40mm, 20mm) so database remains clean
+        http_post("/api/v1/patch", {
+            "actor_kind": "human",
+            "actor_id": "engineer",
+            "summary": "Restore L1 position",
+            "ops": [
+                {
+                    "op": "MOVE_COMPONENT",
+                    "component_id": l1["id"],
+                    "x_nm": 40_000_000,
+                    "y_nm": 20_000_000,
+                    "rot_mdeg": 0,
+                    "side": "top"
+                }
+            ]
+        })
+
         # 7. POST /api/v1/snap (hierarchical magnetic snap)
         status, snap = http_post("/api/v1/snap", {
             "x_nm": u2["x_nm"] + 100_000,

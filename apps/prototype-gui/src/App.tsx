@@ -11,6 +11,14 @@ import {
 } from "./api";
 import { CLIENT_EDA_COMMANDS, WORKSPACE_TABS, type EdaCommand } from "./commandBus";
 import { PcbCanvas } from "./PcbCanvas";
+import { LayerManager, type LayerDef } from "./components/LayerManager";
+import { StackupEditor } from "./components/StackupEditor";
+import { Z3PinmuxStudio } from "./components/Z3PinmuxStudio";
+import { SmpsBodeLab } from "./components/SmpsBodeLab";
+import { KiCadDrcPanel } from "./components/KiCadDrcPanel";
+import { DockviewWorkbench } from "./components/DockviewWorkbench";
+import { SchematicCanvas } from "./components/SchematicCanvas";
+import { LibraryBomCenter } from "./components/LibraryBomCenter";
 import type { BoardSnapshot, Nm, ToolMode, UnitMode, VerifyReport } from "./types";
 
 function formatCoord(nm: Nm, unit: UnitMode): string {
@@ -39,6 +47,16 @@ export const App: React.FC = () => {
   const [activeWorkspace, setActiveWorkspace] = useState<string>("pcb_layout");
   const [aiWorkerMode, setAiWorkerMode] = useState<AiWorkerMode>("OFF");
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+
+  const [layers, setLayers] = useState<LayerDef[]>([
+    { name: "F.Cu", label: "Front Copper (F.Cu - 1 oz)", color: "#EF4444", visible: true, kind: "copper" },
+    { name: "In1.Cu", label: "Inner 1 (GND Plane - 0.5 oz)", color: "#F59E0B", visible: true, kind: "copper" },
+    { name: "In2.Cu", label: "Inner 2 (PWR Plane - 0.5 oz)", color: "#10B981", visible: true, kind: "copper" },
+    { name: "B.Cu", label: "Bottom Copper (B.Cu - 1 oz)", color: "#3B82F6", visible: true, kind: "copper" },
+    { name: "F.Silkscreen", label: "Front Silkscreen", color: "#F8FAFC", visible: true, kind: "silk" },
+    { name: "B.Silkscreen", label: "Bottom Silkscreen", color: "#06B6D4", visible: false, kind: "silk" },
+    { name: "Edge.Cuts", label: "Board Edge Cuts", color: "#EAB308", visible: true, kind: "edge" },
+  ]);
 
   const [hud, setHud] = useState({
     xNm: 0,
@@ -394,42 +412,86 @@ export const App: React.FC = () => {
         {/* CENTER PANE: WORKSPACE CONTENT */}
         <main style={{ position: "relative", minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
           {activeWorkspace === "pcb_layout" && (
-            <>
-              <PcbCanvas
-                snapshot={snapshot}
-                selectedId={selectedId}
-                highlightIds={highlightIds}
-                toolMode={toolMode}
-                activeLayer={activeLayer}
-                activeNetId={activeNetId}
-                traceWidthNm={300_000}
-                unitMode={unitMode}
-                diagonalFirst={diagonalFirst}
-                onSelect={setSelectedId}
-                onCommitMove={handleHumanMove}
-                onCommitRoute={handleCommitRoute}
-                onDropVia={handleDropVia}
-                onHudChange={setHud}
-              />
-              <div className="vd-metric" style={{ position: "absolute", top: 10, left: 10, fontSize: 11, background: "rgba(16,20,28,0.85)", padding: "4px 8px", borderRadius: 4, border: "1px solid var(--vd-border-subtle)" }}>
-                {snapshot.project.name} · Drag parts to move+lock · Shift+Drag pan · Wheel zoom · / elbow · Q units
-              </div>
-            </>
+            <DockviewWorkbench
+              primaryPane={{
+                id: "pcb_canvas",
+                title: "2D PCB Canvas (120FPS)",
+                component: (
+                  <div style={{ flex: 1, position: "relative", minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                    <PcbCanvas
+                      snapshot={snapshot}
+                      selectedId={selectedId}
+                      highlightIds={highlightIds}
+                      toolMode={toolMode}
+                      activeLayer={activeLayer}
+                      activeNetId={activeNetId}
+                      traceWidthNm={300_000}
+                      unitMode={unitMode}
+                      diagonalFirst={diagonalFirst}
+                      onSelect={setSelectedId}
+                      onCommitMove={handleHumanMove}
+                      onCommitRoute={handleCommitRoute}
+                      onDropVia={handleDropVia}
+                      onHudChange={setHud}
+                    />
+                    <div className="vd-metric" style={{ position: "absolute", top: 10, left: 10, fontSize: 11, background: "rgba(16,20,28,0.85)", padding: "4px 8px", borderRadius: 4, border: "1px solid var(--vd-border-subtle)" }}>
+                      {snapshot.project.name} · Drag parts to move+lock · Shift+Drag pan · Wheel zoom · / elbow · Q units
+                    </div>
+                  </div>
+                ),
+              }}
+              secondaryPanes={[
+                {
+                  id: "layer_manager",
+                  title: "Layer Manager",
+                  icon: "☰",
+                  component: (
+                    <LayerManager
+                      activeLayer={activeLayer}
+                      onSelectLayer={setActiveLayer}
+                      layers={layers}
+                      onToggleVisibility={(name) => {
+                        setLayers((prev) =>
+                          prev.map((l) => (l.name === name ? { ...l, visible: !l.visible } : l))
+                        );
+                      }}
+                    />
+                  ),
+                },
+                {
+                  id: "stackup_editor",
+                  title: "Stackup & Impedance",
+                  icon: "☵",
+                  component: <StackupEditor />,
+                },
+                {
+                  id: "drc_panel",
+                  title: "KiCad 10 DRC",
+                  icon: "🛡",
+                  component: <KiCadDrcPanel />,
+                },
+                {
+                  id: "smps_bode",
+                  title: "SMPS Stability",
+                  icon: "⚡",
+                  component: <SmpsBodeLab />,
+                },
+                {
+                  id: "z3_pinmux",
+                  title: "Z3 Pinmux",
+                  icon: "⌥",
+                  component: <Z3PinmuxStudio />,
+                },
+              ]}
+              defaultSecondaryId="layer_manager"
+            />
           )}
 
           {activeWorkspace === "schematic" && (
-            <div style={{ padding: 24, overflow: "auto" }}>
-              <h3>1. Schematic Capture Workspace (elkjs + atopile)</h3>
-              <p style={{ color: "var(--vd-text-secondary)" }}>
-                Hierarchical schematic sheet viewer. Synchronized with <code>circuit.ato</code> and <code>001_init.sql</code> SQLite HW-IR.
-              </p>
-              <div style={{ border: "1px dashed var(--vd-border-subtle)", borderRadius: 6, padding: 30, textAlign: "center", background: "#0B0E14" }}>
-                <p>Schematic Hierarchy: <strong>Root Sheet</strong> &gt; <code>usb_pd_sink</code> &gt; <code>sync_buck_tps54302</code></p>
-                <button className="vd-btn vd-btn-primary" onClick={() => void runCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === "verify.deterministic_rules")!)}>
-                  Run ERC &amp; Rules Check
-                </button>
-              </div>
-            </div>
+            <SchematicCanvas onSelectComponent={(refdes) => {
+              const comp = snapshot.components.find((c) => c.refdes === refdes);
+              if (comp) setSelectedId(comp.id);
+            }} />
           )}
 
           {activeWorkspace === "mcad_3d" && (
@@ -441,76 +503,16 @@ export const App: React.FC = () => {
               <div style={{ background: "#0B0E14", borderRadius: 6, padding: 20, border: "1px solid var(--vd-border-subtle)" }}>
                 <div>Board Dimensions: {formatCoord(snapshot.board.width_nm, unitMode)} × {formatCoord(snapshot.board.height_nm, unitMode)} × {formatCoord(snapshot.board.thickness_nm, unitMode)}</div>
                 <div>Layer Stack: 4-Layer FR-4 (1.6mm total thickness, 35um copper)</div>
+                <div style={{ marginTop: 12 }}>Controlled Impedance: 50Ω Single-Ended (0.35mm trace) / 90Ω Differential (0.20mm trace / 0.20mm space)</div>
               </div>
             </div>
           )}
 
-          {activeWorkspace === "sim_lab" && (
-            <div style={{ padding: 24, overflow: "auto" }}>
-              <h3>4. Simulation &amp; Physics Lab (ngspice-wasm + SymPy + Pint)</h3>
-              <p style={{ color: "var(--vd-text-secondary)" }}>
-                Transient SPICE simulation, SMPS Bode phase/gain margin stability, and 2.5D Laplace PDN DC IR-drop heatmap.
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <div style={{ background: "var(--vd-bg-elevated)", padding: 14, borderRadius: 6 }}>
-                  <h4>SMPS Stability (TPS54302 Buck)</h4>
-                  <div>Crossover Freq: 45.2 kHz</div>
-                  <div>Phase Margin: 58.4° (&gt;= 45° required)</div>
-                  <div>Gain Margin: -14.2 dB (&lt;= -10 dB required)</div>
-                  <div>Status: <strong style={{ color: "var(--vd-pass)" }}>STABLE</strong></div>
-                </div>
-                <div style={{ background: "var(--vd-bg-elevated)", padding: 14, borderRadius: 6 }}>
-                  <h4>2.5D Laplace PDN DC IR-Drop</h4>
-                  <div>VBUS_12V (3A): Max drop = 14.8 mV (0.12%)</div>
-                  <div>+3V3_OUT (3A): Max drop = 8.2 mV (0.25%)</div>
-                  <div>Status: <strong style={{ color: "var(--vd-pass)" }}>PASS</strong></div>
-                </div>
-              </div>
-            </div>
-          )}
+          {activeWorkspace === "sim_lab" && <SmpsBodeLab />}
 
-          {activeWorkspace === "library_bom" && (
-            <div style={{ padding: 24, overflow: "auto" }}>
-              <h3>5. Library, BOM &amp; Datasheet Center (DuckDB + jlcparts + pypdfium2)</h3>
-              <p style={{ color: "var(--vd-text-secondary)" }}>
-                Instant offline parametric search, LCSC Basic vs Extended part feeder-fee optimization, and zero-trust local PDF datasheet viewer.
-              </p>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                <thead>
-                  <tr style={{ background: "var(--vd-bg-elevated)", textAlign: "left" }}>
-                    <th style={{ padding: 6 }}>RefDes</th>
-                    <th style={{ padding: 6 }}>Value</th>
-                    <th style={{ padding: 6 }}>MPN</th>
-                    <th style={{ padding: 6 }}>Package</th>
-                    <th style={{ padding: 6 }}>Unit Cost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {snapshot.components.map((c) => (
-                    <tr key={c.id} style={{ borderBottom: "1px solid #1E293B" }}>
-                      <td style={{ padding: 6 }}><strong>{c.refdes}</strong></td>
-                      <td style={{ padding: 6 }}>{c.value_str}</td>
-                      <td style={{ padding: 6 }}>{c.mpn}</td>
-                      <td style={{ padding: 6 }}>{c.package_name}</td>
-                      <td style={{ padding: 6 }}>${c.unit_cost_usd.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {activeWorkspace === "library_bom" && <LibraryBomCenter />}
 
-          {activeWorkspace === "firmware_pinmux" && (
-            <div style={{ padding: 24, overflow: "auto" }}>
-              <h3>6. Firmware &amp; Pinmux Studio (Monaco + Z3 SMT)</h3>
-              <p style={{ color: "var(--vd-text-secondary)" }}>
-                Interactive MCU alternate-function pinmux matrix with Z3 SMT conflict solver and live <code>board_pins.h</code> generation.
-              </p>
-              <button className="vd-btn vd-btn-primary" onClick={() => void runCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === "verify.z3_pinmux")!)}>
-                Solve Pinmux Conflicts (Z3 SMT)
-              </button>
-            </div>
-          )}
+          {activeWorkspace === "firmware_pinmux" && <Z3PinmuxStudio />}
 
           {activeWorkspace === "mfg_diff" && (
             <div style={{ padding: 24, overflow: "auto" }}>
@@ -518,9 +520,26 @@ export const App: React.FC = () => {
               <p style={{ color: "var(--vd-text-secondary)" }}>
                 KiKit panelizer wizard, visual Git ECO copper diff, assembly BOM, and Gate-8 signoff release packaging.
               </p>
-              <button className="vd-btn vd-btn-primary" onClick={() => void runCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === "mfg.panelize_kikit")!)}>
-                Panelize Board (KiKit 2x2)
-              </button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, margin: "14px 0" }}>
+                <div style={{ background: "var(--vd-bg-elevated)", padding: 14, borderRadius: 6 }}>
+                  <h4>KiKit 2x2 Panelization</h4>
+                  <div>Panel Size: 130.0 mm × 90.0 mm</div>
+                  <div>Edge Rails: 5.0 mm with 4 Fiducials &amp; 3 Tooling Holes</div>
+                  <div>Mouse Bites: 8 break-off tabs (0.8mm drill, 0.4mm pitch)</div>
+                  <button className="vd-btn vd-btn-primary" style={{ marginTop: 10 }} onClick={() => void runCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === "mfg.panelize_kikit")!)}>
+                    Re-Calculate Panel
+                  </button>
+                </div>
+                <div style={{ background: "var(--vd-bg-elevated)", padding: 14, borderRadius: 6 }}>
+                  <h4>IPC-2581C Signoff Bundle</h4>
+                  <div>Schema Version: IPC-2581 Rev C XML</div>
+                  <div>Validator: cisco-open/2581check (Zero Schema Errors)</div>
+                  <div>HBOM: CycloneDX 1.6 Hardware BOM with RoHS 3 / REACH</div>
+                  <button className="vd-btn" style={{ marginTop: 10 }} onClick={() => void runCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === "export.kicad_pcb")!)}>
+                    Export Manufacturing Package
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </main>

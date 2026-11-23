@@ -470,12 +470,22 @@ step('[CMD/BUS] Unified Command Bus & Same-Hands Law (requiresAi: false)', () =>
   execSync('python scripts/test-command-bus.py', { stdio: 'pipe' });
 });
 
+// 61. Multi-Pane Dockview Workstation & Live Stitched Brain
+step('[GUI/DOCK] Dockview Multi-Pane Workstation & Live Stitched Brain (Stackup, Z3 SMT, Bode Lab, DRC)', () => {
+  execSync('python scripts/test-dockview-and-brain.py', { stdio: 'pipe' });
+});
+
+// 62. Schematic Capture & Library/Datasheet Center
+step('[SCH/LIB] Schematic Capture & Library/Datasheet Center (elkjs, DuckDB, Basic/Extended Fee, PDFium)', () => {
+  execSync('python scripts/test-schematic-and-library.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 60 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 62 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }

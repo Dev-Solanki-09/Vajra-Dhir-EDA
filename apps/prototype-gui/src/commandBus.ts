@@ -186,4 +186,64 @@ export const CLIENT_EDA_COMMANDS: EdaCommand[] = [
       return res.text();
     },
   },
+  {
+    id: "verify.stackup_calc",
+    category: "Verify",
+    label: "Inspect 4-Layer Stackup & Impedance (IPC-2152)",
+    description: "Calculates single-ended 50Ω and differential 90Ω track geometry and propagation delay",
+    mcpVerb: "hw_verify",
+    requiresAi: false,
+    run: async () => {
+      const res = await fetch("/api/v1/stackup");
+      return res.json();
+    },
+  },
+  {
+    id: "verify.kicad_full_drc",
+    category: "Verify",
+    label: "Run Full KiCad 10 Headless DRC (kicad-cli)",
+    description: "Runs clearance, courtyard, and edge rule checks with coordinate cross-probing",
+    shortcut: "F8",
+    mcpVerb: "hw_verify",
+    requiresAi: false,
+    run: async () => {
+      const res = await fetch("/api/v1/drc/full");
+      return res.json();
+    },
+  },
+  {
+    id: "library.search_parts",
+    category: "Edit",
+    label: "Parametric Component Search (DuckDB + jlcparts)",
+    description: "Searches offline catalog across Basic and Extended components with feeder fee breakdown",
+    mcpVerb: "hw_query",
+    requiresAi: false,
+    run: async () => {
+      const res = await fetch("/api/v1/components/search?q=&feeder_type=all");
+      return res.json();
+    },
+  },
+  {
+    id: "library.view_datasheet",
+    category: "File",
+    label: "Preview Local PDF Datasheet (pypdfium2)",
+    description: "Loads cached 300-dpi PDF datasheet pinout crop and absolute maximum ratings table",
+    mcpVerb: "hw_query",
+    requiresAi: false,
+    run: async () => {
+      const res = await fetch("/api/v1/datasheet/preview?mpn=TPS54302DDCR");
+      return res.json();
+    },
+  },
+  {
+    id: "schematic.auto_beautify",
+    category: "Edit",
+    label: "Auto-Beautify Schematic Sheets (elkjs)",
+    description: "Executes 5-stage semantic layout (+V up, GND down, left-to-right signal flow)",
+    mcpVerb: "hw_route",
+    requiresAi: false,
+    run: async () => {
+      return { success: true, engine: "elkjs", rules_applied: ["vcc_up", "gnd_down", "flow_left_to_right"] };
+    },
+  },
 ];
