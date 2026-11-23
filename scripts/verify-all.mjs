@@ -290,10 +290,10 @@ step('Vajra-Dhīr Diagnostics Preflight (`vd doctor`)', () => {
 step('5-Stage Semantic Schematic Beautifier Engine', () => {
   const beautifierSrc = fs.readFileSync('packages/schematic-beautifier/src/lib.rs', 'utf8');
   if (!beautifierSrc.includes('stage1_power_rail_hierarchy') ||
-      !beautifierSrc.includes('stage2_signal_flow_left_to_right') ||
-      !beautifierSrc.includes('stage3_multi_unit_splitting') ||
-      !beautifierSrc.includes('stage4_net_label_collision_avoidance') ||
-      !beautifierSrc.includes('export_kicad10_sexpr')) {
+    !beautifierSrc.includes('stage2_signal_flow_left_to_right') ||
+    !beautifierSrc.includes('stage3_multi_unit_splitting') ||
+    !beautifierSrc.includes('stage4_net_label_collision_avoidance') ||
+    !beautifierSrc.includes('export_kicad10_sexpr')) {
     throw new Error('Missing 5-stage schematic beautifier pipeline stages');
   }
 });
@@ -302,10 +302,10 @@ step('5-Stage Semantic Schematic Beautifier Engine', () => {
 step('Autorouter Orchestrator Bridge & Copper Lock Guard', () => {
   const routerSrc = fs.readFileSync('packages/autorouter/src/lib.rs', 'utf8');
   if (!routerSrc.includes('generate_kicad_dru') ||
-      !routerSrc.includes('export_specctra_dsn') ||
-      !routerSrc.includes('import_specctra_ses') ||
-      !routerSrc.includes('LockedCopperSnapshot') ||
-      !routerSrc.includes('CopperLockViolation')) {
+    !routerSrc.includes('export_specctra_dsn') ||
+    !routerSrc.includes('import_specctra_ses') ||
+    !routerSrc.includes('LockedCopperSnapshot') ||
+    !routerSrc.includes('CopperLockViolation')) {
     throw new Error('Missing autorouter bridge or locked copper guard');
   }
 });
@@ -314,9 +314,9 @@ step('Autorouter Orchestrator Bridge & Copper Lock Guard', () => {
 step('IPC-7351B Footprint Synthesizer (.kicad_mod)', () => {
   const fpSrc = fs.readFileSync('packages/footprint-synth/src/lib.rs', 'utf8');
   if (!fpSrc.includes('synthesize_chip') ||
-      !fpSrc.includes('synthesize_qfn') ||
-      !fpSrc.includes('export_kicad10_mod') ||
-      !fpSrc.includes('DensityLevel')) {
+    !fpSrc.includes('synthesize_qfn') ||
+    !fpSrc.includes('export_kicad10_mod') ||
+    !fpSrc.includes('DensityLevel')) {
     throw new Error('Missing IPC-7351B footprint synthesis functions');
   }
   execSync('python scripts/test-schematic-autorouter-footprint.py', { stdio: 'pipe' });
@@ -326,9 +326,9 @@ step('IPC-7351B Footprint Synthesizer (.kicad_mod)', () => {
 step('Solver Convergence & Failure-Recovery Middleware', () => {
   const recoverySrc = fs.readFileSync('packages/solver-recovery/src/lib.rs', 'utf8');
   if (!recoverySrc.includes('plan_spice_recovery') ||
-      !recoverySrc.includes('plan_pr_recovery') ||
-      !recoverySrc.includes('plan_mesh_recovery') ||
-      !recoverySrc.includes('gmin_stepping')) {
+    !recoverySrc.includes('plan_pr_recovery') ||
+    !recoverySrc.includes('plan_mesh_recovery') ||
+    !recoverySrc.includes('gmin_stepping')) {
     throw new Error('Missing solver recovery ladders');
   }
 });
@@ -337,9 +337,9 @@ step('Solver Convergence & Failure-Recovery Middleware', () => {
 step('SMPS Control-Loop Stability & Compensator Math', () => {
   const controlSrc = fs.readFileSync('packages/control-loop/src/lib.rs', 'utf8');
   if (!controlSrc.includes('analyze_plant') ||
-      !controlSrc.includes('synthesize_type2') ||
-      !controlSrc.includes('synthesize_type3') ||
-      !controlSrc.includes('frhpz_hz')) {
+    !controlSrc.includes('synthesize_type2') ||
+    !controlSrc.includes('synthesize_type3') ||
+    !controlSrc.includes('frhpz_hz')) {
     throw new Error('Missing control-loop synthesis modules');
   }
 });
@@ -348,8 +348,8 @@ step('SMPS Control-Loop Stability & Compensator Math', () => {
 step('V-Model Traceability & CycloneDX 1.6 HBOM Generator', () => {
   const hbomSrc = fs.readFileSync('packages/compliance-hbom/src/lib.rs', 'utf8');
   if (!hbomSrc.includes('generate_cyclonedx_1_6') ||
-      !hbomSrc.includes('audit_requirements') ||
-      !hbomSrc.includes('CycloneDxHbom')) {
+    !hbomSrc.includes('audit_requirements') ||
+    !hbomSrc.includes('CycloneDxHbom')) {
     throw new Error('Missing CycloneDX 1.6 HBOM generator modules');
   }
   execSync('python scripts/test-recovery-control-hbom.py', { stdio: 'pipe' });
@@ -410,12 +410,32 @@ step('[CAM/RELEASE] Gate 8 Release Bundle & Cryptographic Human Signoff', () => 
   execSync('python scripts/test-gate8-release.py', { stdio: 'pipe' });
 });
 
+// 49. Hardware-Firmware Co-Design Synchronizer & Virtual Lab
+step('[FW/SIM] Hardware-Firmware Pinmux Sync & Virtual Lab SPICE', () => {
+  execSync('python packages/compilers/firmware-sync/tests/test_firmware_sync.py', { stdio: 'pipe' });
+});
+
+// 50. Deep DFM/DFA, Tombstoning & IPC-2221 Creepage Safety
+step('[DFM/DFA] Deep DFM/DFA, Tombstoning & IPC-2221 Safety', () => {
+  execSync('python packages/dfm-dfa-safety/tests/test_dfm_dfa.py', { stdio: 'pipe' });
+});
+
+// 51. Universal CAD Importers & Gerber X2 Netlist Reconstructor
+step('[CAD/TRANS] Universal CAD Importers & Gerber X2 Netlist Reconstructor', () => {
+  execSync('python packages/cad-transcoder/tests/test_universal_importers.py', { stdio: 'pipe' });
+});
+
+// 52. Portable MCP Apps (ui://) & React 19.3.1 Viewports
+step('[UI/UX] Portable MCP Apps (ui://) & React 19.3.1 Viewports', () => {
+  execSync('node --test apps/mcp-apps-ui/tests/mcp_apps_ui.test.mjs', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 48 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 52 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }
