@@ -1,0 +1,23 @@
+[cubo]
+id = "stm32g4_core"
+name = "STM32G431 Mixed-Signal Advanced Motor Compute Core"
+version = "1.0.0"
+tier = 1
+primary_ic = "STM32G431C8T6"
+description = "ARM Cortex-M4F 170MHz with hardware math accelerator, high-resolution timers, and analog PGA"
+verified_by = "Vajra-Dhir Core Team"
+
+[electrical]
+vin_min = 2.0
+vin_nom = 3.3
+vin_max = 3.6
+logic_level_v = 3.3
+
+[signoff]
+spice_model = "stm32g4_vdd.lib"
+max_tj_c = 105.0
+
+[interfaces]
+power_in = ["v3v3", "gnd"]
+debug = ["swdio", "swclk", "nrst"]
+motor_pwm = ["pwm_1h", "pwm_1l", "pwm_2h", "pwm_2l"]

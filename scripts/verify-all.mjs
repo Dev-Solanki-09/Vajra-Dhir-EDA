@@ -385,12 +385,17 @@ step('[UNIT TEST] DuckDB Component KG & Datasheet Quarantine Ledger', () => {
   execSync('python packages/kg-brain/tests/test_kg_brain.py', { stdio: 'pipe' });
 });
 
+// 44. Signed Open-CUBO Blocks & Atopile Compiler Bridge
+step('[UNIT TEST] Signed Open-CUBOs & Atopile Compiler Bridge', () => {
+  execSync('python packages/cubo-engine/tests/test_cubos.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 43 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 44 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }

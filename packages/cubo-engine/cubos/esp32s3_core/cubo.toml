@@ -1,0 +1,24 @@
+[cubo]
+id = "esp32s3_core"
+name = "ESP32-S3 Wi-Fi & BLE 5.0 Dual-Core Compute Stage"
+version = "1.0.0"
+tier = 1
+primary_ic = "ESP32-S3-WROOM-1-N16R8"
+description = "Dual-core Xtensa LX7 MCU with 50-ohm CPWG antenna interface, USB-OTG, and native flash/PSRAM"
+verified_by = "Vajra-Dhir Core Team"
+
+[electrical]
+vin_min = 3.0
+vin_nom = 3.3
+vin_max = 3.6
+logic_level_v = 3.3
+
+[signoff]
+spice_model = "esp32s3_power.lib"
+max_tj_c = 85.0
+esd_contact_kv = 4.0
+
+[interfaces]
+power_in = ["v3v3", "gnd"]
+comms = ["uart0_tx", "uart0_rx", "usb_d_pos", "usb_d_neg"]
+control = ["en", "boot0"]

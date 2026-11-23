@@ -1,0 +1,12 @@
+# BME280 Sensor Module
+import Capacitor, Resistor
+
+module Bme280Sensor:
+    signal vdd
+    signal gnd
+    signal sda
+    signal scl
+
+    c_vdd = new Capacitor
+    r_sda_pull = new Resistor
+    r_scl_pull = new Resistor

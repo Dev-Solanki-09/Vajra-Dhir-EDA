@@ -1,0 +1,12 @@
+# ESP32-S3 Core Compute Stage
+import Capacitor, Resistor
+
+module Esp32s3Core:
+    signal v3v3
+    signal gnd
+    signal en
+    signal io0
+
+    c_vdd1 = new Capacitor
+    c_vdd2 = new Capacitor
+    r_en_pull = new Resistor

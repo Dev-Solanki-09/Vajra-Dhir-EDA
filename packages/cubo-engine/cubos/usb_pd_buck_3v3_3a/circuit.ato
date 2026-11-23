@@ -1,0 +1,24 @@
+# USB-C PD 12V to 3.3V / 3A Buck Power Stage
+import Resistor, Capacitor, Inductor
+
+module UsbPdBuck3v3:
+    signal vin
+    signal vout
+    signal gnd
+    signal en
+    signal pgood
+
+    # Input Decoupling (2x 10uF 50V X7R 1206)
+    c_in1 = new Capacitor
+    c_in2 = new Capacitor
+    c_in1.capacitance = 10uF +/- 10%
+    c_in2.capacitance = 10uF +/- 10%
+
+    # Power Inductor (4.7uH, Isat >= 4.2A)
+    l1 = new Inductor
+    l1.inductance = 4.7uH +/- 20%
+
+    # Output Decoupling (3x 22uF 10V X7R 0805)
+    c_out1 = new Capacitor
+    c_out2 = new Capacitor
+    c_out3 = new Capacitor

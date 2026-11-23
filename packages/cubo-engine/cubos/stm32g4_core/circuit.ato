@@ -1,0 +1,11 @@
+# STM32G4 Core Module
+import Capacitor, Resistor
+
+module Stm32g4Core:
+    signal v3v3
+    signal gnd
+    signal nrst
+
+    c_decouple1 = new Capacitor
+    c_decouple2 = new Capacitor
+    r_nrst_pull = new Resistor

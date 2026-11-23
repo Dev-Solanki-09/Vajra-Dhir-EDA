@@ -1,0 +1,24 @@
+[cubo]
+id = "can_fd_transceiver"
+name = "5 Mbps Isolated / Robust CAN-FD Transceiver"
+version = "1.0.0"
+tier = 1
+primary_ic = "TCAN334GDCNT"
+description = "High-speed 3.3V CAN-FD physical layer transceiver with split termination and +/- 30V bus fault protection"
+verified_by = "Vajra-Dhir Core Team"
+
+[electrical]
+vin_min = 3.0
+vin_nom = 3.3
+vin_max = 3.6
+logic_level_v = 3.3
+
+[signoff]
+spice_model = "tcan334_ibis.lib"
+max_tj_c = 125.0
+esd_contact_kv = 15.0
+
+[interfaces]
+power_in = ["v3v3", "gnd"]
+bus = ["can_h", "can_l"]
+mcu = ["txd", "rxd"]

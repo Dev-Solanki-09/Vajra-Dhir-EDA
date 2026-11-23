@@ -1,0 +1,21 @@
+[cubo]
+id = "i2c_sensor_bme280"
+name = "BME280 Environmental Sensor (Pressure, Temperature, Humidity)"
+version = "1.0.0"
+tier = 1
+primary_ic = "BME280"
+description = "Combined humidity and pressure sensor with fast I2C mode (400 kHz) and low noise"
+verified_by = "Vajra-Dhir Core Team"
+
+[electrical]
+vin_min = 1.71
+vin_nom = 3.3
+vin_max = 3.6
+logic_level_v = 3.3
+
+[signoff]
+max_tj_c = 85.0
+
+[interfaces]
+power_in = ["vdd", "gnd"]
+i2c = ["sda", "scl"]

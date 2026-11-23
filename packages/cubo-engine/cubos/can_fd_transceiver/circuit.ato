@@ -1,0 +1,15 @@
+# CAN-FD Transceiver Module
+import Capacitor, Resistor
+
+module CanFdTransceiver:
+    signal v3v3
+    signal gnd
+    signal can_h
+    signal can_l
+    signal txd
+    signal rxd
+
+    c_vdd = new Capacitor
+    r_term1 = new Resistor
+    r_term2 = new Resistor
+    c_split = new Capacitor
