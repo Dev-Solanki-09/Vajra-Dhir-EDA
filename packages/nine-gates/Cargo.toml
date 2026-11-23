@@ -1,0 +1,18 @@
+[package]
+name = "vd-nine-gates"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "Deterministic 9-Gate Fail-Closed Pipeline & Automated Hardware Signoff State Machine"
+
+[dependencies]
+vd-ir = { path = "../hw-ir" }
+vd-symbolic-verifier = { path = "../symbolic-verifier" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+sha2 = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.17"

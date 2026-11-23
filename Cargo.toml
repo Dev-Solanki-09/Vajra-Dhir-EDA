@@ -9,6 +9,14 @@ members = [
     "packages/cad-geom",
     "packages/placement-router",
     "packages/cad-transcoder",
+    "packages/component-kg",
+    "packages/open-cubo",
+    "packages/symbolic-verifier",
+    "packages/nine-gates",
+    "packages/eco-engine",
+    "packages/sim-compat",
+    "packages/cam-pnp",
+    "packages/cli",
 ]
 
 [workspace.package]

@@ -1,0 +1,16 @@
+[package]
+name = "vd-cam-pnp"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "Deterministic Solder Paste Stencil Synthesis, IPC-7525B DFM & SMT Pick-and-Place Feeder Optimizer"
+
+[dependencies]
+vd-ir = { path = "../hw-ir" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.17"
