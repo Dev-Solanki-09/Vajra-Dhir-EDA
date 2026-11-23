@@ -1,0 +1,24 @@
+# Vajra-Dhīr EDA Git Attributes & Custom Merge Drivers
+
+# Semantic Hardware 3-Way Merge Driver
+*.vd-ir.jsonl merge=hwir text eol=lf
+
+# LF line endings for deterministic hashing
+*.rs text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.sql text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+
+# Raw CAD files: treat as binary if non-text
+*.kicad_pcb text eol=lf
+*.kicad_sch text eol=lf
+*.kicad_pro text eol=lf
+*.step binary
+*.stp binary
+*.gds binary
+*.oas binary

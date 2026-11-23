@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vajra-dhir.org/schemas/hw-plugin.v1.json",
+  "title": "Vajra-Dhīr EDA Plugin Manifest Schema",
+  "description": "Specification for Ring 3 Enterprise/Team and Third-Party EDA Extension Plugins",
+  "type": "object",
+  "required": [
+    "plugin_id",
+    "name",
+    "version",
+    "license_spdx",
+    "target_ring",
+    "entrypoint"
+  ],
+  "properties": {
+    "plugin_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": { "type": "string" },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+.*$"
+    },
+    "description": { "type": "string" },
+    "license_spdx": { "type": "string" },
+    "target_ring": {
+      "type": "string",
+      "enum": ["ring-1", "ring-2", "ring-3", "ring-4"]
+    },
+    "entrypoint": {
+      "type": "object",
+      "required": ["kind", "path"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["wasm", "node", "python", "oci"] },
+        "path": { "type": "string" }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

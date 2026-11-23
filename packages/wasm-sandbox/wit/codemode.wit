@@ -1,0 +1,34 @@
+package vajradhir:sandbox@0.1.0;
+
+interface types {
+    record execution-limits {
+        max-memory-bytes: u64,
+        fuel-units: u64,
+        timeout-ms: u32,
+        max-output-bytes: u32,
+    }
+
+    record execution-output {
+        stdout: string,
+        stderr: string,
+        exit-code: s32,
+        fuel-consumed: u64,
+        duration-ms: u64,
+    }
+
+    variant sandbox-error {
+        fuel-exhausted,
+        timeout,
+        memory-limit-exceeded,
+        io-error(string),
+        runtime-trap(string),
+    }
+}
+
+world code-mode-runner {
+    import types;
+    export execute-script: func(
+        source: string,
+        limits: types.execution-limits
+    ) -> result<types.execution-output, types.sandbox-error>;
+}

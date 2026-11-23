@@ -1,0 +1,38 @@
+name: Architecture RFC / Design Proposal
+description: Propose a change to HW-IR, MCP v2 verbs, WorkerContract, or Ring 1–4 architecture
+title: "[RFC]: "
+labels: ["rfc", "architecture"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Engineering Problem & Motivation
+      placeholder: Describe the concrete failure mode, hardware constraint, or gap.
+    validations:
+      required: true
+  - type: dropdown
+    id: ring
+    attributes:
+      label: Affected Architectural Ring
+      options:
+        - "Ring 1 — Lean Core (MIT / Apache-2.0)"
+        - "Ring 2 — Opt-In OCI / gVisor Worker Pack"
+        - "Ring 3 — Enterprise / Team Plugin"
+        - "Ring 4 — EvalOps / Offline Harness²"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Concrete Technical Proposal (Schemas / Trade-offs / Failure Modes)
+    validations:
+      required: true
+  - type: checkboxes
+    id: invariants
+    attributes:
+      label: Non-Negotiable Invariant Check
+      options:
+        - label: Preserves MIT/Apache-2.0 Ring 1 license isolation (zero AGPL / linked GPL)
+          required: true
+        - label: Preserves CPU-first Tier 0 laptop compatibility & offline $0 CI testing
+          required: true

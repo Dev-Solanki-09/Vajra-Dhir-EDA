@@ -1,0 +1,20 @@
+# Global project ownership
+* @Vajra-Dhir-EDA/maintainers
+
+# Core Architecture & Specifications
+/docs/ @Vajra-Dhir-EDA/architecture
+/schemas/ @Vajra-Dhir-EDA/architecture
+/AGENTS.md @Vajra-Dhir-EDA/architecture
+
+# Hardware IR & Compilers
+/packages/hw-ir/ @Vajra-Dhir-EDA/systems
+/packages/hw-merge/ @Vajra-Dhir-EDA/systems
+/packages/wasm-sandbox/ @Vajra-Dhir-EDA/systems
+/packages/cad-geom/ @Vajra-Dhir-EDA/geometry
+/packages/placement-router/ @Vajra-Dhir-EDA/geometry
+/packages/cad-transcoder/ @Vajra-Dhir-EDA/eda
+
+# Security & Policies
+/packages/hw-dlp/ @Vajra-Dhir-EDA/security
+/SECURITY.md @Vajra-Dhir-EDA/security
+/.github/workflows/ @Vajra-Dhir-EDA/devops

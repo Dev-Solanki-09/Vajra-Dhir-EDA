@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vajra-dhir.org/schemas/worker_contract.v1.json",
+  "title": "Vajra-Dhīr EDA Ring 2 Stateless Worker Contract",
+  "description": "Zero-egress gVisor/OCI job execution interface for heavy physical simulation and silicon compilation",
+  "type": "object",
+  "required": [
+    "job_id",
+    "pack_id",
+    "image_digest_sha256",
+    "network_mode",
+    "timeout_sec",
+    "inputs",
+    "expected_outputs"
+  ],
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "pack_id": {
+      "type": "string",
+      "enum": ["pack-2a", "pack-2b", "pack-2c", "pack-2c-vlsi", "pack-2d", "pack-2e"]
+    },
+    "image_digest_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "network_mode": {
+      "type": "string",
+      "const": "none"
+    },
+    "timeout_sec": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 7200
+    },
+    "resource_limits": {
+      "type": "object",
+      "properties": {
+        "max_memory_mib": { "type": "integer", "default": 8192 },
+        "max_cpus": { "type": "number", "default": 4.0 }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "required": ["board_id", "input_files"],
+      "properties": {
+        "board_id": { "type": "string" },
+        "input_files": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "parameters": { "type": "object" }
+      }
+    },
+    "expected_outputs": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

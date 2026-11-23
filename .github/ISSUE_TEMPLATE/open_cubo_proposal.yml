@@ -1,0 +1,26 @@
+name: Open-CUBO Proposal
+description: Propose a verified reusable circuit block for the Open-CUBO library
+title: "[CUBO]: "
+labels: ["open-cubo", "hardware"]
+body:
+  - type: input
+    id: block_name
+    attributes:
+      label: Circuit Block Name
+      placeholder: e.g. USB-PD 12V-to-3.3V Synchronous Buck Converter
+    validations:
+      required: true
+  - type: textarea
+    id: specifications
+    attributes:
+      label: Electrical & Thermal Specifications
+      placeholder: Input voltage range, output current, efficiency, ripple limit, BOM cost target.
+    validations:
+      required: true
+  - type: textarea
+    id: verification_data
+    attributes:
+      label: Verification & Simulation Evidence
+      placeholder: Reference schematic, SPICE transient simulation results, or lab bench data.
+    validations:
+      required: true

@@ -1,0 +1,8 @@
+{
+  "name": "@vajradhir/ui-apps",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "description": "Portable MCP UI Apps for SPICE Waveforms, Smith Charts & 3D WebGPU Inspection"
+}

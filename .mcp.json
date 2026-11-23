@@ -1,0 +1,50 @@
+{
+  "mcpServers": {
+    "serena": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server", "--context", "ide-assistant", "--project", "."],
+      "alwaysOn": true
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "alwaysOn": true
+    },
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git", "--repository", "."],
+      "alwaysOn": true
+    },
+    "ast-grep": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/ast-grep/ast-grep-mcp", "ast-grep-server"],
+      "defer_loading": true,
+      "profile": "refactor"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest", "--headless"],
+      "defer_loading": true,
+      "profile": "ui"
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest", "--headless"],
+      "defer_loading": true,
+      "profile": "ui"
+    },
+    "sqlite-hwir": {
+      "command": "uvx",
+      "args": ["mcp-server-sqlite", "--db-path", "./.vd-dev/dev.vd.db"],
+      "defer_loading": true,
+      "profile": "db"
+    },
+    "semgrep-local": {
+      "command": "uvx",
+      "args": ["semgrep-mcp"],
+      "env": { "SEMGREP_SEND_METRICS": "off" },
+      "defer_loading": true,
+      "profile": "sec"
+    }
+  }
+}

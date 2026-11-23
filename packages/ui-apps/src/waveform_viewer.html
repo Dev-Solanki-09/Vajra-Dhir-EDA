@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vajra-Dhīr EDA — SPICE Waveform Viewer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #090A0F;
+      color: #E2E8F0;
+      font-family: monospace;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #1F2438;
+      font-size: 12px;
+    }
+    .traces {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .trace-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .canvas-container {
+      flex: 1;
+      position: relative;
+      margin-top: 8px;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .cursor-readout {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: #12151FEE;
+      border: 1px solid #1F2438;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span>TRANSIENT ANALYSIS: <strong>Buck_Converter_3V3_3A.cir</strong></span>
+    <div class="traces">
+      <div class="trace-item"><div class="dot" style="background:#00F0FF;"></div><span>V(out) [3.31V]</span></div>
+      <div class="trace-item"><div class="dot" style="background:#10B981;"></div><span>V(sw)</span></div>
+      <div class="trace-item"><div class="dot" style="background:#F59E0B;"></div><span>I(L1) [1.82A]</span></div>
+    </div>
+  </div>
+
+  <div class="canvas-container">
+    <canvas id="wfCanvas"></canvas>
+    <div class="cursor-readout" id="readout">Time: 12.50us | V(out): 3.308V | Ripple: 14.2mV</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('wfCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      draw();
+    }
+
+    function draw() {
+      ctx.fillStyle = '#090A0F';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Grid
+      ctx.strokeStyle = '#161A26';
+      ctx.lineWidth = 1;
+      const stepX = canvas.width / 10;
+      const stepY = canvas.height / 8;
+      for (let x = 0; x <= canvas.width; x += stepX) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y <= canvas.height; y += stepY) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      // V(out) steady state with ripple
+      ctx.strokeStyle = '#00F0FF';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const midY = canvas.height * 0.45;
+      for (let x = 0; x < canvas.width; x++) {
+        const ripple = Math.sin(x * 0.15) * 4;
+        const y = midY + ripple;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // V(sw) pulse train
+      ctx.strokeStyle = '#10B981';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let x = 0; x < canvas.width; x++) {
+        const high = (x % 40) < 15;
+        const y = high ? canvas.height * 0.15 : canvas.height * 0.85;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+  </script>
+</body>
+</html>

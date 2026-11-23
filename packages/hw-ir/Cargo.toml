@@ -1,0 +1,17 @@
+[package]
+name = "vd-ir"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "Canonical HW-IR SQLite Kernel, Atomic HardwarePatch Bus & Lock Guards for Vajra-Dhīr EDA"
+
+[dependencies]
+rusqlite = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+sha2 = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.17"

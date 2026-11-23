@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "currency": "USD",
+  "limits": {
+    "session_cost_cap_usd": 5.00,
+    "per_turn_cost_cap_usd": 0.50,
+    "max_gate_retries": 3,
+    "max_wall_clock_sec": 7200,
+    "max_tokens_per_turn": 30000,
+    "max_tool_output_bytes": 16384
+  },
+  "pricing": {
+    "tier_a_input_per_million": 3.00,
+    "tier_a_output_per_million": 15.00,
+    "tier_b_input_per_million": 0.50,
+    "tier_b_output_per_million": 1.50,
+    "tier_local_ollama": 0.00
+  },
+  "circuit_breakers": {
+    "stop_on_consecutive_solver_failures": 3,
+    "stop_on_budget_exceeded": true,
+    "require_human_confirmation_above_usd": 2.50
+  }
+}

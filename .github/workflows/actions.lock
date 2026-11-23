@@ -1,0 +1,5 @@
+{
+  "actions/checkout@v4": "eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871",
+  "actions/setup-node@v4": "1e60f639196014664a7e1a67761462a56eadd818",
+  "dtolnay/rust-toolchain@1.100.0": "d2f447f52554e565ea285f5e93344d9f67a6d8cf"
+}

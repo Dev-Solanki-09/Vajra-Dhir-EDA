@@ -1,0 +1,17 @@
+[package]
+name = "vd-cad-geom"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "Deterministic Manual CAD Geometry Engine: R-Tree Indexing, Integer Polygon Booleans & Polyline Offsetting"
+
+[dependencies]
+rstar = { workspace = true }
+i_overlay = { workspace = true }
+cavalier_contours = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.17"

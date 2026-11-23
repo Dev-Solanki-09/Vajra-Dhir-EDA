@@ -1,0 +1,28 @@
+{
+  "name": "vajra-dhir-eda",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@10.6.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "check:licenses": "node scripts/check-spdx-firewall.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@opentelemetry/api": "^1.9.0",
+    "dockview-react": "^8.9.0",
+    "elkjs": "^0.10.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "yjs": "^13.6.24"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0",
+    "vitest": "^3.1.0"
+  }
+}

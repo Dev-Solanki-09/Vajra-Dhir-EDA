@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vajra-dhir.org/schemas/mcp-v2-12verbs.json",
+  "title": "Vajra-Dhīr EDA Harness MCP v2 12-Verb Protocol Schema",
+  "description": "Deterministic JSON-RPC tool schemas for autonomous and human-in-the-loop EDA verbs",
+  "type": "object",
+  "required": ["version", "verbs"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "2.0.0"
+    },
+    "verbs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description", "inputSchema"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "eda_patch_circuit",
+              "eda_query_design",
+              "eda_verify_drc",
+              "eda_run_spice",
+              "eda_synthesize_block",
+              "eda_pinmux_solve",
+              "eda_export_fab",
+              "eda_diff_revisions",
+              "eda_route_walkaround",
+              "eda_check_datasheet",
+              "eda_signoff_waiver",
+              "eda_run_code_mode"
+            ]
+          },
+          "description": { "type": "string" },
+          "inputSchema": { "type": "object" }
+        }
+      }
+    }
+  }
+}

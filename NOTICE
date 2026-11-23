@@ -1,0 +1,8 @@
+Vajra-Dhīr EDA (vajra-dhir-eda)
+Copyright 2026 Vajra-Dhīr EDA Contributors
+
+Ring 1 Core Isolation Notice:
+All software contained in packages/* and apps/* is strictly MIT or Apache-2.0.
+External multi-physics and silicon compilers (KiCad, openEMS, ElmerFEM, CalculiX, LibreLane)
+execute as isolated external processes or OCI/gVisor containers (Ring 2) and are never linked
+into the Ring 1 permissive core.

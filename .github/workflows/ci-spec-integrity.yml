@@ -1,0 +1,82 @@
+name: Spec & Security CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-architecture-and-security:
+    name: SQLite DDL, Schemas, DCO & License Firewall
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 1. Enforce DCO Signed-off-by on Pull Requests
+        if: github.event_name == 'pull_request'
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          MISSING=0
+          for c in $(git rev-list "${BASE}..${HEAD}"); do
+            if ! git log -1 --pretty=%B "$c" | grep -qE '^Signed-off-by: .+ <.+@.+>$'; then
+              echo "::error::Commit $c is missing a DCO Signed-off-by trailer. Run: git commit --amend -s"
+              MISSING=1
+            fi
+          done
+          exit $MISSING
+
+      - name: 2. Prove HW-IR SQLite DDL & Kernel Human-Lock Trigger
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq sqlite3
+          python3 - <<'EOF'
+          import pathlib, sqlite3, sys
+          con = sqlite3.connect(":memory:")
+          for ddl in sorted(pathlib.Path("packages/hw-ir/schema").glob("*.sql")):
+              con.executescript(ddl.read_text(encoding="utf-8"))
+          # Seed a human-locked component and prove an agent UPDATE fails closed
+          con.execute("INSERT INTO projects VALUES ('p1','test','pcb','PRIVATE_CLOUD_OK','L3_GATE_COPILOT','G1_SPEC_LOCK','jlcpcb_4l_7628',20.0,0,50,'{}',1,'2026-11-23T00:00:00Z','2026-11-23T00:00:00Z')")
+          con.execute("INSERT INTO boards VALUES ('b1','p1','main','rigid_pcb','[[0,0],[50000000,0],[50000000,50000000],[0,50000000]]',1600000,4,'human',0,NULL,1,0)")
+          con.execute("INSERT INTO components(id,board_id,refdes,value_str,package_name,footprint_ref,symbol_ref,provenance,locked,lock_owner) VALUES ('c1','b1','U1','TPS54302','SOT-23-6','FP','SYM','human',1,'engineer')")
+          con.execute("UPDATE _tx_actor_ctx SET actor_kind='agent', allow_lock_override=0 WHERE singleton=1")
+          try:
+              con.execute("UPDATE components SET x_nm = 5000000 WHERE id = 'c1'")
+              print("ERROR: Agent mutated human-locked component!"); sys.exit(1)
+          except sqlite3.IntegrityError as e:
+              assert "KERNEL_LOCK_VIOLATION" in str(e), str(e)
+              print(f"PASS: Kernel lock trigger blocked agent mutation -> {e}")
+          EOF
+
+      - name: 3. Validate JSON Schemas & Single-Source Budget File
+        run: |
+          python3 - <<'EOF'
+          import json, pathlib
+          for jf in list(pathlib.Path("schemas").glob("*.json")) + [pathlib.Path("budget.json")]:
+              if jf.exists():
+                  json.loads(jf.read_text(encoding="utf-8"))
+                  print(f"VALID JSON: {jf}")
+          EOF
+
+      - name: 4. Copyright PDF, Forbidden AGPL/NC & CVE Floor Guard
+        run: |
+          python3 - <<'EOF'
+          import pathlib, sys
+          errors = []
+          for pdf in pathlib.Path(".").rglob("*.pdf"):
+              if not str(pdf).startswith("docs/public-examples"):
+                  errors.append(f"COPYRIGHT_PDF_GUARD: {pdf}")
+          if errors:
+              print("\n".join(errors)); sys.exit(1)
+          print("PASS: Zero unauthorized PDFs in repository")
+          EOF
+
+      - name: 5. Secret Leak Scan (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

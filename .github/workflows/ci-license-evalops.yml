@@ -1,0 +1,36 @@
+name: Vajra-Dhir License Firewall & Hardware EvalOps
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 2 * * 0"
+
+jobs:
+  license-and-supply-chain-firewall:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26.13.1
+      - name: Run SPDX & Package Deny-List Check
+        run: node scripts/check-spdx-firewall.mjs
+      - name: Check Shell Hook Invariants
+        run: |
+          chmod +x scripts/hooks/vd-guard.sh
+          ./scripts/hooks/vd-guard.sh
+
+  cargo-workspace-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust 1.100.0
+        uses: dtolnay/rust-toolchain@1.100.0
+        with:
+          components: clippy, rustfmt
+      - name: Cargo Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Cargo Test
+        run: cargo test --workspace

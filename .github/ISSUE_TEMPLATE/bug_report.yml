@@ -1,0 +1,26 @@
+name: Bug Report
+description: Report a reproducible defect in the compiler, geometry kernel, or IDE
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      placeholder: Describe what happened versus what was expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal Reproducible Example
+      placeholder: Step-by-step instructions or minimal hardware patch to trigger the bug.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: OS, Node version, Rust version, target fab profile.
+    validations:
+      required: true

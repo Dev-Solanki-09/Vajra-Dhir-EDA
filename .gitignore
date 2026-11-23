@@ -1,0 +1,49 @@
+# Vajra-Dhīr EDA — Git Ignore Rules
+
+# Target builds
+target/
+dist/
+build/
+*.pyc
+__pycache__/
+
+# Dependencies
+node_modules/
+.pnpm-store/
+.venv/
+venv/
+env/
+
+# Zero PDF files in Git (Cryptographic Datasheet Evidence rule)
+*.pdf
+*.PDF
+!docs/public-examples/*.pdf
+
+# Local database & journal files
+*.vd.db*
+*.sqlite-wal
+*.sqlite-shm
+.vajradhir/
+*.log
+
+# Sensitive environments & credentials
+.env*
+*.pem
+*.key
+*.secret
+
+# Upstream mirrored source trees (managed by scripts/import-upstream-stack.sh)
+vendor/ring1-refs/
+workers/sources/
+plugins/sources/
+evalops/sources/
+tools/local-mcps/
+
+# IDE and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+prompt-and-skills/
+prompt and skill/
