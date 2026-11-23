@@ -1,0 +1,13 @@
+[project]
+name = "ambient-knowledge"
+version = "0.1.0"
+description = "Vajra-Dhīr EDA — 7-Level Ambient Knowledge UX Engine"
+requires-python = ">=3.10"
+dependencies = [
+    "duckdb>=1.1.0",
+    "pydantic>=2.9.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

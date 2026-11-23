@@ -430,12 +430,27 @@ step('[UI/UX] Portable MCP Apps (ui://) & React 19.3.1 Viewports', () => {
   execSync('node --test apps/mcp-apps-ui/tests/mcp_apps_ui.test.mjs', { stdio: 'pipe' });
 });
 
+// 53. Manual CAD Perfection Geometry Engine
+step('[CAD/PERF] Manual CAD Perfection Engine (Snapping, Meanders, Teardrops, Rooms)', () => {
+  execSync('python scripts/test-cad-perfection.py', { stdio: 'pipe' });
+});
+
+// 54. 7-Level Ambient Knowledge UX Engine
+step('[UX/AMB] 7-Level Ambient Knowledge UX Engine (Pin, Net, Comp, Subsystem, HUD)', () => {
+  execSync('python scripts/test-ambient-knowledge.py', { stdio: 'pipe' });
+});
+
+// 55. 30 Tables & 22 Fail-Closed Lock Triggers
+step('[SCHEMA/SPEC] 30 Canonical Tables & 22 Fail-Closed Lock Triggers (including layout_rooms)', () => {
+  execSync('python scripts/test-sqlite-30tables-locks.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 52 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 55 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }

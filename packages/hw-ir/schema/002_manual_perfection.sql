@@ -35,6 +35,28 @@ CREATE TABLE layout_rooms (
     UNIQUE(board_id, room_group, channel_index)
 );
 
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_layout_rooms_upd
+BEFORE UPDATE ON layout_rooms
+FOR EACH ROW
+WHEN OLD.locked = 1
+BEGIN
+    SELECT CASE
+        WHEN (SELECT actor_kind FROM _tx_actor_ctx LIMIT 1) != 'human'
+        THEN RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: layout_room is human-locked and cannot be modified by non-human actor')
+    END;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_layout_rooms_del
+BEFORE DELETE ON layout_rooms
+FOR EACH ROW
+WHEN OLD.locked = 1
+BEGIN
+    SELECT CASE
+        WHEN (SELECT actor_kind FROM _tx_actor_ctx LIMIT 1) != 'human'
+        THEN RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: layout_room is human-locked and cannot be deleted by non-human actor')
+    END;
+END;
+
 -- 3. CRYPTOGRAPHICALLY SIGNED, GEOMETRY-HASH-BOUND DRC WAIVERS
 -- Auto-invalidates the millisecond any waived copper/component moves by >= 1 nm!
 CREATE TABLE drc_waivers (

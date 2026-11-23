@@ -28,4 +28,5 @@ members = [
     "packages/symbolic-verifier",
     "packages/kg-brain",
     "packages/cubo-engine",
+    "packages/ambient-knowledge",
 ]

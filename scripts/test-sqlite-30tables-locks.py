@@ -14,10 +14,11 @@ def test_schema_and_triggers():
     
     triggers = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='trigger'").fetchall()]
     
-    # 10 lockable entities
+    # 11 lockable entities
     lockable = [
         "components", "traces", "vias", "copper_zones", "nets",
-        "pin_net_bindings", "boards", "net_classes", "electrical_constraints", "firmware_pinmux"
+        "pin_net_bindings", "boards", "net_classes", "electrical_constraints", "firmware_pinmux",
+        "layout_rooms"
     ]
     
     missing_triggers = []
@@ -88,7 +89,7 @@ def test_schema_and_triggers():
     row = conn.execute("SELECT x_nm FROM components WHERE id = '018e0000-0000-7000-8000-000000000003'").fetchone()
     assert row[0] == 2000000, f"Expected 2000000, got {row[0]}"
     
-    print(f"PASS: 30 tables, all 20 fail-closed triggers, and functional lock enforcement verified.")
+    print(f"PASS: 30 tables, all 22 fail-closed triggers, and functional lock enforcement verified.")
 
 if __name__ == "__main__":
     test_schema_and_triggers()
