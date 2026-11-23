@@ -21,6 +21,7 @@ vd-pdn-solver = { path = "../pdn-solver" }
 vd-pcb-diff = { path = "../pcb-diff" }
 vd-wire-harness = { path = "../wire-harness" }
 vd-panelizer = { path = "../panelizer" }
+vd-worker-sdk = { path = "../worker-sdk" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

@@ -226,12 +226,36 @@ step('Hardware-Firmware Co-Design Parity & DT Overlays', () => {
   }
 });
 
+// 25. Ring 2 OCI Container Isolation & Zero-Egress Compose
+step('Ring 2 OCI Container Isolation & Zero-Egress Compose', () => {
+  const compose = fs.readFileSync('docker-compose.workers.yml', 'utf8');
+  if (!compose.includes('network_mode: "none"') || !compose.includes('read_only: true') || !compose.includes('user: "10001:10001"')) {
+    throw new Error('docker-compose.workers.yml fails Ring 2 security invariants');
+  }
+  const df2a = fs.readFileSync('containers/pack-2a-kicad/Dockerfile', 'utf8');
+  const df2b = fs.readFileSync('containers/pack-2b-virtual-lab/Dockerfile', 'utf8');
+  const df2c = fs.readFileSync('containers/pack-2c-silicon-asic/Dockerfile', 'utf8');
+  if (!df2a.includes('vdworker') || !df2b.includes('openhtf') || !df2c.includes('verilator')) {
+    throw new Error('Missing worker definitions in Dockerfiles');
+  }
+});
+
+// 26. Ring 2 Stateless Worker SDK & Job Contract Dispatcher
+step('Ring 2 Stateless Worker SDK & Job Contract Dispatcher', () => {
+  execSync('node --test packages/worker-sdk/tests/worker_sdk.test.mjs', { stdio: 'pipe' });
+});
+
+// 27. WebGPU CAD Canvas Engine with WebGL2 Fallback
+step('WebGPU CAD Canvas Engine with WebGL2 Fallback', () => {
+  execSync('node --test packages/webgpu-cad-engine/tests/engine.test.mjs', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
-  console.error('  MILSTONE 1 VERIFICATION FAILED: See errors above.');
+  console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 24 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
-  console.log('  Milestone 1 Architecture, Implementation & Hardware Exit certified.');
+  console.log('  ALL 27 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  Milestone 1 Core, 3 Physical Boards & Ring 2 Architecture Certified.');
   console.log('----------------------------------------------------------------\n');
 }

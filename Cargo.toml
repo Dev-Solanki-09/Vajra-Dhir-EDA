@@ -21,6 +21,7 @@ members = [
     "packages/pcb-diff",
     "packages/wire-harness",
     "packages/panelizer",
+    "packages/worker-sdk",
 ]
 
 [workspace.package]

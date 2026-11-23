@@ -1,0 +1,76 @@
+# ==============================================================================
+# Vajra-Dhīr EDA — Ring 2 Production OCI Workers (Zero-Egress gVisor)
+# ==============================================================================
+services:
+  worker-kicad:
+    build:
+      context: ./containers/pack-2a-kicad
+      dockerfile: Dockerfile
+    image: vajradhir/pack-2a-kicad:latest
+    container_name: vd_worker_kicad
+    network_mode: "none"
+    read_only: true
+    user: "10001:10001"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=512m
+    volumes:
+      - vd_cas_work:/vd_work:rw
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 8192M
+
+  worker-virtual-lab:
+    build:
+      context: ./containers/pack-2b-virtual-lab
+      dockerfile: Dockerfile
+    image: vajradhir/pack-2b-virtual-lab:latest
+    container_name: vd_worker_virtual_lab
+    network_mode: "none"
+    read_only: true
+    user: "10001:10001"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=512m
+    volumes:
+      - vd_cas_work:/vd_work:rw
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 8192M
+
+  worker-silicon-asic:
+    build:
+      context: ./containers/pack-2c-silicon-asic
+      dockerfile: Dockerfile
+    image: vajradhir/pack-2c-silicon-asic:latest
+    container_name: vd_worker_silicon_asic
+    network_mode: "none"
+    read_only: true
+    user: "10001:10001"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=512m
+    volumes:
+      - vd_cas_work:/vd_work:rw
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 8192M
+
+volumes:
+  vd_cas_work:
+    name: vd_cas_work
