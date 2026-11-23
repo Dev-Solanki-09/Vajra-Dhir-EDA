@@ -375,12 +375,17 @@ step('[SCHEMA/SPEC] 30 Canonical Tables & 20 Fail-Closed Lock Triggers', () => {
   execSync('python scripts/test-sqlite-30tables-locks.py', { stdio: 'pipe' });
 });
 
+// 42. Python Neuro-Symbolic uv Workspace & AGPL Firewall
+step('[SCHEMA/SPEC] Python Neuro-Symbolic Workspace & AGPL Firewall', () => {
+  execSync('python scripts/test-python-workspace.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 41 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 42 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }

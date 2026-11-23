@@ -1,6 +1,7 @@
 [project]
 name = "vajra-dhir-eda-py"
 version = "0.1.0"
+description = "Vajra-Dhīr EDA — Python Neuro-Symbolic Brain Workspace"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
@@ -8,7 +9,8 @@ dependencies = [
     "sympy>=1.13.3",
     "pint>=0.24.4",
     "control>=0.10.1",
-    "pymupdf>=1.25.0",
+    "pypdfium2>=4.30.0",
+    "pdfplumber>=0.11.0",
     "duckdb>=1.2.0",
     "pydantic>=2.10.0",
     "atopile>=0.3.0",
@@ -26,6 +28,4 @@ members = [
     "packages/symbolic-verifier",
     "packages/kg-brain",
     "packages/cubo-engine",
-    "packages/dfm-dfa-safety",
-    "packages/worker-sdk",
 ]
