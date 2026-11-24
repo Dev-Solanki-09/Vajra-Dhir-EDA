@@ -4,10 +4,16 @@
   "revision": "1.0",
   "verification_date": "2026-11-24T00:28:00Z",
   "auditor_id": "vajra-dhir-milestone1-harness",
-  "signoff_actor": "human:lead_hardware_engineer",
-  "human_signoff_token": "a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0",
-  "all_gates_passed": true,
+  "all_software_gates_passed": true,
   "highest_passed_gate": "G8_MANUFACTURING_CAM",
+  "release_authorized": false,
+  "release_status": "NOT_RELEASED_PENDING_HUMAN_SIGNOFF",
+  "human_signoff": {
+    "status": "PENDING",
+    "actor": null,
+    "token": null
+  },
+  "signoff_note": "Software gates only. No physical fabrication or bench measurement performed; production release requires a human-issued signoff token.",
   "gate_verdicts": {
     "G1_SPEC_LOCK": {
       "passed": true,

@@ -18,6 +18,18 @@ import urllib.error
 PORT = 41901
 BASE_URL = f"http://127.0.0.1:{PORT}"
 
+def _ensure_utf8_console() -> None:
+    """Windows cp1252 consoles must not crash the gate on non-ASCII output."""
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is not None and hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
+_ensure_utf8_console()
+
 def http_get(path: str) -> tuple[int, dict | str]:
     url = f"{BASE_URL}{path}"
     req = urllib.request.Request(url)
@@ -45,14 +57,42 @@ def http_post(path: str, payload: dict) -> tuple[int, dict]:
     except urllib.error.HTTPError as e:
         return e.code, json.loads(e.read().decode("utf-8"))
 
+def wait_for_health(proc, timeout_s: float = 15.0) -> dict:
+    """Poll /api/v1/health until ready; fail loudly on early exit (no fixed sleep)."""
+    deadline = time.time() + timeout_s
+    last_err = None
+    while time.time() < deadline:
+        if proc.poll() is not None:
+            stderr = b""
+            try:
+                stderr = proc.stderr.read() or b""
+            except Exception:
+                pass
+            raise RuntimeError(
+                f"daemon exited early (code {proc.returncode}) before binding:\n"
+                f"{stderr.decode('utf-8', 'replace')[-2000:]}"
+            )
+        try:
+            status, body = http_get("/api/v1/health")
+            if status == 200:
+                return body
+        except (urllib.error.URLError, ConnectionRefusedError, OSError) as exc:
+            last_err = exc
+        time.sleep(0.1)
+    raise TimeoutError(f"daemon not healthy after {timeout_s}s: {last_err}")
+
 def main():
-    print("[*] Launching vd-daemon on test port 41901...")
+    print("[*] Launching vd-daemon on test port 41901 (cp1252 console regression)...")
+    # Regression: a cp1252 Windows console must not kill the daemon on non-ASCII log output.
+    env = {**os.environ, "PYTHONIOENCODING": "cp1252"}
     proc = subprocess.Popen(
         [sys.executable, "packages/vd-daemon/src/daemon.py", str(PORT)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=env,
     )
-    time.sleep(1.2) # Allow server to bind and seed DB
+    wait_for_health(proc)
+    print("  [PASS] daemon survived cp1252 console and answered /api/v1/health")
 
     try:
         # 1. GET /api/v1/health

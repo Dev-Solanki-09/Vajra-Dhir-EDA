@@ -1363,6 +1363,16 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
         # Keep daemon logs compact and quiet
         pass
 
+def _ensure_utf8_console() -> None:
+    """Non-UTF-8 consoles (Windows cp1252) must not kill the daemon on non-ASCII log output."""
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is not None and hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
 def run_server(port: int = PORT):
     con = init_db(DB_PATH)
     seed_reference_board(con)
@@ -1382,5 +1392,6 @@ def run_server(port: int = PORT):
             httpd.shutdown()
 
 if __name__ == "__main__":
+    _ensure_utf8_console()
     p = int(sys.argv[1]) if len(sys.argv) > 1 else PORT
     run_server(p)
