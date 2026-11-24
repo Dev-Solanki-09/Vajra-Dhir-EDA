@@ -19,6 +19,18 @@ import urllib.error
 PORT = 41903
 BASE_URL = f"http://127.0.0.1:{PORT}"
 
+def _ensure_utf8_console() -> None:
+    """Windows cp1252 consoles must not crash the gate on non-ASCII output."""
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is not None and hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
+_ensure_utf8_console()
+
 def http_get(path: str) -> tuple[int, dict]:
     url = f"{BASE_URL}{path}"
     req = urllib.request.Request(url)
@@ -52,6 +64,30 @@ def test_frontend_components():
     assert "QUARANTINE VERIFIED" in lc_src
     print("  [PASS] LibraryBomCenter.tsx: parametric search, feeder fee filters, and local PDF viewer")
 
+def wait_for_health(proc, timeout_s: float = 15.0) -> None:
+    """Poll /api/v1/health until ready; fail loudly on early exit (no fixed sleep)."""
+    deadline = time.time() + timeout_s
+    last_err = None
+    while time.time() < deadline:
+        if proc.poll() is not None:
+            stderr = b""
+            try:
+                stderr = proc.stderr.read() or b""
+            except Exception:
+                pass
+            raise RuntimeError(
+                f"daemon exited early (code {proc.returncode}) before binding:\n"
+                f"{stderr.decode('utf-8', 'replace')[-2000:]}"
+            )
+        try:
+            with urllib.request.urlopen(f"{BASE_URL}/api/v1/health", timeout=5) as resp:
+                if resp.status == 200:
+                    return
+        except (urllib.error.URLError, ConnectionRefusedError, OSError) as exc:
+            last_err = exc
+        time.sleep(0.1)
+    raise TimeoutError(f"daemon not healthy after {timeout_s}s: {last_err}")
+
 def test_backend_endpoints():
     print(f"[*] Launching vd-daemon on test port {PORT}...")
     proc = subprocess.Popen(
@@ -59,7 +95,7 @@ def test_backend_endpoints():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    time.sleep(1.2)
+    wait_for_health(proc)
 
     try:
         # 1. GET /api/v1/components/search (all)
