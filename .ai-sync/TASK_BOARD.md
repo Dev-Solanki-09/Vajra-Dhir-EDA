@@ -14,8 +14,8 @@ Inventory: `.ai-sync/tickets/INCOMPLETE-WORK-AND-CLEANUP.md` (all unfinished tic
 ## Active program
 | Phase | Content | Owner | Status |
 |---|---|---|---|
-| G0 | T-02c Rust `1.100.0` pin + truthful handoff §4 + `verify-handoff.mjs` receipt | GEMINI | **READY** (`T-02b` REJECTED F-21; `T-02c-gemini.md` READY; all other `T-02b` work passed) |
-| G1 | T-03 takeover (`vd-merge`/bin `hw-merge` F-06; F-05/F-07 adopt-tests) + `Cargo.lock` + Rust `1.100.0` `min-publish-age` + TS `7.0.2` cross-OS/API audit | GEMINI | QUEUED (blocked on G0 merge) |
+| G0 | T-02c Rust `1.100.0` pin + truthful handoff §4 + `verify-handoff.mjs` receipt | GEMINI | **MERGED** (`T-02b + T-02c` `b80fdde` merged `--no-ff`) |
+| G1 | T-03 takeover (`vd-merge`/bin `hw-merge` F-06; F-05/F-07 adopt-tests) + `Cargo.lock` + Rust `1.100.0` `min-publish-age` + TS `7.0.2` cross-OS/API audit | GEMINI | **READY** (ticket `.ai-sync/tickets/G1-gemini.md`) |
 | G2 | T-04 CAD/geometry truth (F-08/F-09/F-20 UUIDv7, `w_cong`, IPC-2152 vs 2221, `cavalier_contours`) | GEMINI | QUEUED |
 | G3 | T-05 verification hardening (explicit `STRUCTURAL_CHECK` / `GUI_DEFERRED_TO_G6D` labels, real `vd doctor`, Wasmtime `>= 51.0.0` negatives, G4→G8 fail-closed, F-19 validator, `hw-dlp`, solver-recovery) | GEMINI | QUEUED |
 | G4 | T-12 fixed `import-upstream-stack.sh --dry-run` + PUBLIC vendored `MANIFEST.json` + INTERNAL `.ai-sync/private/PRIVATE_REGISTRY.json` (146) + golden fixtures + `docs/LICENSE_EXCEPTIONS.md` | GEMINI | QUEUED |
@@ -41,15 +41,11 @@ You are WORKER-GEMINI, sole worker on Vajra-Dhir EDA in D:\project-gemini (branc
 1. Run `git rebase main`.
 2. Read ONLY these 2 files completely:
    - `D:\Vajra-Dhir-EDA\.ai-sync\WORKER_BOOTSTRAP.md` (read-only Tier-0 binding rulebook; `.ai-sync` is kept git-untracked on main; backed by VD-TOOL-001 & VD-PERF-001)
-   - `.ai-sync/tickets/T-02c-gemini.md` (your active G0 ticket — sole source of WRITE_SCOPE and VERIFY_CMD)
-3. Execute G0 (T-02c) with surgical precision:
-   - Run `git ls-remote --tags https://github.com/rust-lang/rust "1.100*"` and preserve 100% verbatim output.
-   - Pin `toolchain: 1.100.0` in `.github/workflows/ci-license-evalops.yml`.
-   - Update `.ai-sync/handoffs/T-02b-gemini.md` §4 truthfully with raw ls-remote output ("pinned 1.100.0, no deviation").
-   - Touch NOTHING outside WRITE_SCOPE.
-4. Run `node scripts/verify-handoff.mjs --phase G0 --ticket .ai-sync/tickets/T-02c-gemini.md` and confirm exit 0 + receipt JSON written.
-5. Commit with `git commit -s`, reference the receipt in your handoff, signal `READY_FOR_REVIEW`, and STOP.
-   Do NOT push. Do NOT start G1 until the orchestrator merges G0 and flips G1 to READY on `.ai-sync/TASK_BOARD.md`.
+   - `D:\Vajra-Dhir-EDA\.ai-sync\tickets\G1-gemini.md` (your active G1 ticket — sole source of WRITE_SCOPE and VERIFY_CMD)
+3. Execute G1 (G1.1–G1.5) in sequential RED→GREEN sub-phases with `git commit -s` per sub-phase.
+4. Run `node scripts/verify-handoff.mjs --phase G1 --ticket D:\Vajra-Dhir-EDA\.ai-sync\tickets\G1-gemini.md` and confirm exit 0 + receipt JSON written.
+5. Write `.ai-sync/handoffs/G-01-gemini.md` referencing the receipt, signal `READY_FOR_REVIEW`, and STOP.
+   Do NOT push. Do NOT start G2 until the orchestrator merges G1 and flips G2 to READY on `.ai-sync/TASK_BOARD.md`.
 ```
 
 ## History (merged/closed)
@@ -58,7 +54,8 @@ You are WORKER-GEMINI, sole worker on Vajra-Dhir EDA in D:\project-gemini (branc
 | T-01 daemon+lockfiles | MERGED 5964a8f (64/64 fresh, dual-context APPROVE_WITH_NOTES → F-19/F-20) |
 | T-07 gap audit | MERGED 1639a03 (root-cause claim corrected, F-17) |
 | T-02 CI | REJECTED → T-02b (false root cause, missing jobs, Node 22 downgrade) |
-| T-02b CI remediation | REJECTED → T-02c (F-21: fabricated Rust 1.100.0 check; pins/jobs/schema/diagnosis all PASSED) |
+| T-02b CI remediation | MERGED (with T-02c `b80fdde`) |
+| T-02c Rust 1.100.0 pin | MERGED (G0 `--no-ff`, receipt `G0-receipt.json`) |
 | T-03 (DeepSeek) | RETIRED mid-flight; WIP preserved ab2ec71 → Gemini adopts in G1 |
 | T-04/T-05/T-06/T-08..T-16 | FOLDED into G1–G8 + P-track + X-track |
 

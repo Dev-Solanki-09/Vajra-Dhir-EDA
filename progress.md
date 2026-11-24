@@ -1,5 +1,12 @@
 # PROGRESS — Wave Log (orchestrator-maintained)
 
+## 2026-11-24 · Step 1 SSOT Upgrade + G0 (T-02b + T-02c) AUDITED & MERGED · G1 READY
+
+- **Orchestrator SSOT Upgrade (`dd4ea87`):** reconciled `.ai-sync/` specs (`G5A/B/C`, `G6A/B/C/D`, `P0–P5`, `X1–X4`), created `.ai-sync/WORKER_BOOTSTRAP.md` (untracked) and `scripts/verify-handoff.mjs` receipt gate, fixed `docs/TECHSTACK.md` + `scripts/import-upstream-stack.sh` license/path traps (`occt-import-js` LGPL worker exception, `KiKit` Ring-2 subprocess, `surfer` EUPL removed, `serde_kicad_sexpr` dropped), recorded user rulings (`wasmtime >= 51.0.0`, `vd studio` v0.1.0 / optional Tauri v2 v0.2.0), archived `stash@{0}` to `.ai-sync/private/archive/stash0-v005-backup.patch` and dropped it.
+- **G0 ACCEPTED (`T-02b + T-02c`, `b80fdde`, merged `--no-ff`):** `ci-license-evalops.yml:106` pinned to `toolchain: 1.100.0`; `T-02b-gemini.md` §4 updated truthfully with raw `git ls-remote` output; `node scripts/check-actions-lock.mjs` PASS; `jsonschema` valid/invalid fixtures verified; `G0-receipt.json` generated (`overallPassed: true`).
+- **Pre-existing Cargo bug noted during host run:** `node scripts/verify-all.mjs` reported `63 PASS / 1 FAIL` (`scripts/test-cad-perfection.py` failed on `packages/cli/Cargo.toml` requesting `vd-hw-dlp` instead of `vd-dlp`, surfaced now that `rustc`/`cargo` `1.100.0` are installed on the host).
+- **G1 READY:** `.ai-sync/tickets/G1-gemini.md` issued (`D:\project-gemini` rebased onto `main`).
+
 ## 2026-11-24 · T-01 AUDITED & MERGED — harness ground truth now 64/64 · Wave 2 dispatched
 
 - **T-01 ACCEPTED** (WORKER-DEEPSEEK, commits f4caaf2/adf390e/0e12174, merged --no-ff `5964a8f`). Audit evidence: fresh orchestrator harness run **64/64 exit 0** (baseline was 58/6); `pnpm install --frozen-lockfile` exit 0; scope exactly 13 files, all in WRITE_SCOPE; DCO on all commits; uv conflict raw output provided (atopile bands mutually exclusive ⇒ requires-python >=3.14,<3.15 approved).
