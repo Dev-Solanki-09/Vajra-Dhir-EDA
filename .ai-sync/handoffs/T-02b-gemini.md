@@ -124,20 +124,22 @@ Step 3 in `.github/workflows/ci-spec-integrity.yml` replaces pseudo-validation w
 
 ---
 
-## 4. Task E — Rust Toolchain Availability Check & Recorded Deviation
+## 4. Task E — Rust Toolchain Availability Check & Pin (`T-02c` Remediation)
 
 Upstream tags inspection command:
 ```powershell
 git ls-remote --tags https://github.com/rust-lang/rust "1.100*" "1.99*"
 ```
-Raw command output:
+Raw command output (exit code `0`):
 ```text
+6b503e798d0cc01ca1052eeefaccee43893b0ff6	refs/tags/1.100.0
+0ef1bc386059596dada8fb65b50425aab2ea637a	refs/tags/1.100.0^{}
 daa8d75bc715f77869fa06d80b6ea1a3fe52d38e	refs/tags/1.99.0
 b940084d7eb6a299eb4bfeb8e34901bc051e7ac4	refs/tags/1.99.0^{}
 213cfbe66a6da4e4b41bde365643286371af6e5a	refs/tags/1.99.1
 58cf8f9c35b355199727627d07ae34a4e2846d67	refs/tags/1.99.1^{}
 ```
-**Recorded Deviation:** Rust `1.100.0` has not yet been released upstream by the Rust project (latest stable tag is `1.99.1`). Toolchain is therefore pinned to `toolchain: stable` in `ci-license-evalops.yml` via `dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master`.
+**Toolchain Pin:** `refs/tags/1.100.0` (`6b503e798d0cc01ca1052eeefaccee43893b0ff6`) exists upstream. Toolchain is **pinned `1.100.0`, no deviation** in `.github/workflows/ci-license-evalops.yml` (`cargo-workspace-tests` job) via `dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master`. Machine-verified receipt: `.ai-sync/handoffs/G0-receipt.json`.
 
 ---
 
