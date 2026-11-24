@@ -1,6 +1,6 @@
 # Ticket T-02b — CI Remediation (WORKER-GEMINI / Antigravity)
 
-- **Status:** READY (2026-11-24) — T-01 merged (main @ 4924b57, pnpm-lock.yaml + uv.lock now exist); your worktree is already rebased; your old T-02 commit is now `b53e26f`. START NOW.
+- **Status:** READY (2026-11-24) — T-01 merged; pnpm-lock.yaml + uv.lock now exist on main. Your worktree is rebased; your old T-02 commit is the branch tip labeled `[T-02] gemini: fix CI workflows…` (currently `23e1108`; identify it by message, not hash — rebases renumber it). **Before starting: run `git rebase main` in your worktree to pick up this ticket update.** START NOW.
 - **Worktree / branch:** `D:\project-gemini` · `feat/worker-gemini` (keep building on your commit `6d09fb3`)
 - **Depends on:** T-01 merged (pnpm-lock.yaml + uv.lock must exist on main before frozen-install jobs can pass)
 - **Supersedes:** T-02 acceptance. Your T-02 was AUDITED and RETURNED. Keep the good parts (40-char SHA pins — verified authentic upstream; `check-actions-lock.mjs` — passes fresh; DCO step; concurrency; minimal permissions). Fix the defects below.

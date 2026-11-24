@@ -7,7 +7,7 @@ Updated: 2026-11-24 (post T-01 merge) · Wave 2 · Baseline main @ 5964a8f (T-01
 | T-01 daemon+lockfiles | 1 | WORKER-DEEPSEEK (OpenCode) | D:\project-deepseek · feat/worker-deepseek | **MERGED** (5964a8f; audit: fresh 64/64 + frozen install exit 0 + dual-context APPROVE_WITH_NOTES → F-19/F-20) | — |
 | T-07 M1 gap audit (read-only) | 1 | WORKER-GEMINI (Antigravity) | D:\project-gemini · feat/worker-gemini | **MERGED** (cherry-pick 1639a03; root-cause claim corrected by findings F-17) | — |
 | T-02 CI repair | 2 | WORKER-GEMINI | same | **REJECTED → T-02b** (false root cause, missing Node/Python jobs, pseudo schema validation, unauthorized Node 22 downgrade) | — |
-| T-02b CI remediation | 2 | WORKER-GEMINI (Antigravity) | same (rebased; your old T-02 commit is now b53e26f — keep as base) | **READY** | — |
+| T-02b CI remediation | 2 | WORKER-GEMINI (Antigravity) | same (rebased; keep your `[T-02]` commit as base — identify by message, hashes renumber on rebase) | **READY** | — |
 | T-03 kernel parity | 2 | WORKER-DEEPSEEK (OpenCode) | same (rebased onto 4924b57) | **READY** | — |
 | T-04 CAD defects | 2→3 | WORKER-DEEPSEEK | same | QUEUED (ticket pending; ADD F-20 UUIDv7 fix in autorouter) | T-03 merged |
 | T-05 behavioral gates | 3 | TBD | — | QUEUED (ticket pending; seeds: T-07 §3 static-gate list + F-19 gate hardening) | T-03, T-04 |
@@ -20,8 +20,8 @@ Updated: 2026-11-24 (post T-01 merge) · Wave 2 · Baseline main @ 5964a8f (T-01
 The unattributed v0.0.5 main-tree work was evacuated to `stash@{0}` (labeled) so T-01 could merge. Provenance: pre-bus partial work of a stopped Qoder subagent (timestamp evidence in T-01 handoff §5). Do NOT merge; if revived, reconcile daemon.py against f4caaf2 first. Workers: never write to `D:\Vajra-Dhir-EDA`.
 
 ## Dispatch prompts (Wave 2 — both READY now)
-- **OpenCode (DeepSeek):** open project `D:\project-deepseek`, fresh session, prompt: `Read .ai-sync/tickets/T-03-deepseek.md and execute it exactly. Follow .ai-sync/README.md rules. Your branch is rebased onto main 5964a8f; T-01 is merged.`
-- **Antigravity (Gemini):** open project `D:\project-gemini`, fresh session, prompt: `Read .ai-sync/tickets/T-02b-gemini.md and execute it exactly. Follow .ai-sync/README.md rules. Your branch is rebased onto main 5964a8f; your old T-02 commit is now 886ca1e — keep it as the base and fix the audit findings.`
+- **OpenCode (DeepSeek):** open project `D:\project-deepseek`, fresh session, prompt: `Run "git rebase main" first. Then read .ai-sync/tickets/T-03-deepseek.md and execute it exactly. Follow .ai-sync/README.md rules. T-01 is merged; harness ground truth at main is 64/64.`
+- **Antigravity (Gemini):** open project `D:\project-gemini`, fresh session, prompt: `Run "git rebase main" first. Then read .ai-sync/tickets/T-02b-gemini.md and execute it exactly. Follow .ai-sync/README.md rules. Your T-02 was audited and RETURNED — keep your old [T-02] commit as base and fix every audit finding in the ticket. pnpm-lock.yaml and uv.lock now exist on main.`
 - After each handoff: orchestrator audits (scope diff + fresh VERIFY_CMD + dual-context review where required), merges --no-ff, rebases worktrees, flips next QUEUED ticket to READY here.
 
 ## Ground truth
