@@ -19,6 +19,10 @@ import { KiCadDrcPanel } from "./components/KiCadDrcPanel";
 import { DockviewWorkbench } from "./components/DockviewWorkbench";
 import { SchematicCanvas } from "./components/SchematicCanvas";
 import { LibraryBomCenter } from "./components/LibraryBomCenter";
+import { ThreeDGerberViewer } from "./components/ThreeDGerberViewer";
+import { VirtualLabWorkbench } from "./components/VirtualLabWorkbench";
+import { PanelizerDiffCenter } from "./components/PanelizerDiffCenter";
+import { CopperPourLayer } from "./components/CopperPourLayer";
 import type { BoardSnapshot, Nm, ToolMode, UnitMode, VerifyReport } from "./types";
 
 function formatCoord(nm: Nm, unit: UnitMode): string {
@@ -91,15 +95,19 @@ export const App: React.FC = () => {
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
-        void undoPatch().then(refreshAll).catch(() => {});
+        void undoPatch().then(refreshAll).catch(() => { });
         return;
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "y") {
         e.preventDefault();
-        void redoPatch().then(refreshAll).catch(() => {});
+        void redoPatch().then(refreshAll).catch(() => { });
         return;
       }
       if (e.key.toLowerCase() === "x") setToolMode("ROUTE");
+      if (e.key.toLowerCase() === "b" && !e.ctrlKey && !e.metaKey) {
+        const cmd = CLIENT_EDA_COMMANDS.find((c) => c.id === "pcb.copper.refill");
+        if (cmd) void runCommand(cmd);
+      }
       if (e.key === "Escape") {
         setToolMode("SELECT");
         setCommandPaletteOpen(false);
@@ -325,8 +333,8 @@ export const App: React.FC = () => {
           <button className={`vd-btn ${toolMode === "SELECT" ? "vd-btn-primary" : ""}`} onClick={() => setToolMode("SELECT")}>Select (Esc)</button>
           <button className={`vd-btn ${toolMode === "ROUTE" ? "vd-btn-primary" : ""}`} onClick={() => setToolMode("ROUTE")}>Route 45° (X)</button>
           <button className="vd-btn" onClick={() => setActiveLayer((l) => (l === "F.Cu" ? "B.Cu" : "F.Cu"))}>Layer: {activeLayer}</button>
-          <button className="vd-btn" onClick={() => void undoPatch().then(refreshAll).catch(() => {})}>Undo</button>
-          <button className="vd-btn" onClick={() => void redoPatch().then(refreshAll).catch(() => {})}>Redo</button>
+          <button className="vd-btn" onClick={() => void undoPatch().then(refreshAll).catch(() => { })}>Undo</button>
+          <button className="vd-btn" onClick={() => void redoPatch().then(refreshAll).catch(() => { })}>Redo</button>
           <button className="vd-btn" onClick={() => void openExport("kicad-pcb")}>Export .kicad_pcb</button>
           <button className="vd-btn" onClick={() => void openExport("firmware-pins")}>board_pins.h</button>
         </div>
@@ -471,6 +479,16 @@ export const App: React.FC = () => {
                   component: <KiCadDrcPanel />,
                 },
                 {
+                  id: "copper_pour",
+                  title: "Copper Pour Zone",
+                  icon: "⛶",
+                  component: (
+                    <div style={{ padding: 10 }}>
+                      <CopperPourLayer layer={activeLayer} net={activeNetId || "+3V3_OUT"} />
+                    </div>
+                  ),
+                },
+                {
                   id: "smps_bode",
                   title: "SMPS Stability",
                   icon: "⚡",
@@ -495,52 +513,17 @@ export const App: React.FC = () => {
           )}
 
           {activeWorkspace === "mcad_3d" && (
-            <div style={{ padding: 24, overflow: "auto" }}>
-              <h3>3. 3D PCB, MCAD &amp; Gerber Viewer (Three.js + tracespace)</h3>
-              <p style={{ color: "var(--vd-text-secondary)" }}>
-                Interactive 3D board rendering with STEP component models, enclosure collision analysis, and RS-274X Gerber stack inspector.
-              </p>
-              <div style={{ background: "#0B0E14", borderRadius: 6, padding: 20, border: "1px solid var(--vd-border-subtle)" }}>
-                <div>Board Dimensions: {formatCoord(snapshot.board.width_nm, unitMode)} × {formatCoord(snapshot.board.height_nm, unitMode)} × {formatCoord(snapshot.board.thickness_nm, unitMode)}</div>
-                <div>Layer Stack: 4-Layer FR-4 (1.6mm total thickness, 35um copper)</div>
-                <div style={{ marginTop: 12 }}>Controlled Impedance: 50Ω Single-Ended (0.35mm trace) / 90Ω Differential (0.20mm trace / 0.20mm space)</div>
-              </div>
-            </div>
+            <ThreeDGerberViewer snapshot={snapshot} unitMode={unitMode} />
           )}
 
-          {activeWorkspace === "sim_lab" && <SmpsBodeLab />}
+          {activeWorkspace === "sim_lab" && <VirtualLabWorkbench />}
 
           {activeWorkspace === "library_bom" && <LibraryBomCenter />}
 
           {activeWorkspace === "firmware_pinmux" && <Z3PinmuxStudio />}
 
           {activeWorkspace === "mfg_diff" && (
-            <div style={{ padding: 24, overflow: "auto" }}>
-              <h3>7. Manufacturing, Harness &amp; Diff Center (KiKit + kiri + 2581check)</h3>
-              <p style={{ color: "var(--vd-text-secondary)" }}>
-                KiKit panelizer wizard, visual Git ECO copper diff, assembly BOM, and Gate-8 signoff release packaging.
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, margin: "14px 0" }}>
-                <div style={{ background: "var(--vd-bg-elevated)", padding: 14, borderRadius: 6 }}>
-                  <h4>KiKit 2x2 Panelization</h4>
-                  <div>Panel Size: 130.0 mm × 90.0 mm</div>
-                  <div>Edge Rails: 5.0 mm with 4 Fiducials &amp; 3 Tooling Holes</div>
-                  <div>Mouse Bites: 8 break-off tabs (0.8mm drill, 0.4mm pitch)</div>
-                  <button className="vd-btn vd-btn-primary" style={{ marginTop: 10 }} onClick={() => void runCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === "mfg.panelize_kikit")!)}>
-                    Re-Calculate Panel
-                  </button>
-                </div>
-                <div style={{ background: "var(--vd-bg-elevated)", padding: 14, borderRadius: 6 }}>
-                  <h4>IPC-2581C Signoff Bundle</h4>
-                  <div>Schema Version: IPC-2581 Rev C XML</div>
-                  <div>Validator: cisco-open/2581check (Zero Schema Errors)</div>
-                  <div>HBOM: CycloneDX 1.6 Hardware BOM with RoHS 3 / REACH</div>
-                  <button className="vd-btn" style={{ marginTop: 10 }} onClick={() => void runCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === "export.kicad_pcb")!)}>
-                    Export Manufacturing Package
-                  </button>
-                </div>
-              </div>
-            </div>
+            <PanelizerDiffCenter snapshot={snapshot} />
           )}
         </main>
 

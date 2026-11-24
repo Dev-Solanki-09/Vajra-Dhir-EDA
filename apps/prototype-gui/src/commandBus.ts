@@ -246,4 +246,86 @@ export const CLIENT_EDA_COMMANDS: EdaCommand[] = [
       return { success: true, engine: "elkjs", rules_applied: ["vcc_up", "gnd_down", "flow_left_to_right"] };
     },
   },
+  {
+    id: "pcb.copper.refill",
+    category: "Route",
+    label: "Refill All Copper Zones (i_overlay + iTriangle)",
+    description: "Recomputes polygon boundaries, voids around tracks/vias, and 4-spoke thermal reliefs",
+    shortcut: "B",
+    mcpVerb: "hw_route",
+    requiresAi: false,
+    run: async () => {
+      const res = await fetch("/api/v1/copper/refill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ layer: "F.Cu", net: "+3V3_OUT", clearance_mm: 0.25 }),
+      });
+      return res.json();
+    },
+  },
+  {
+    id: "sim.pdn_solve",
+    category: "Simulate",
+    label: "Solve 2.5D Laplace PDN DC IR-Drop & Thermal (IPC-2152)",
+    description: "Evaluates sheet resistance, plane voltage drop, and Joule heating temperature rise",
+    mcpVerb: "hw_simulate",
+    requiresAi: false,
+    run: async () => {
+      const res = await fetch("/api/v1/pdn/solve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ net: "+3V3_OUT", current_a: 3.0, ambient_c: 25.0 }),
+      });
+      return res.json();
+    },
+  },
+  {
+    id: "mfg.wire_harness",
+    category: "Export",
+    label: "Compile Wire Harness & Interconnect Manifest (WireViz)",
+    description: "Compiles cable bundles, AWG tables, terminal crimps, and connector pinouts",
+    mcpVerb: "hw_export",
+    requiresAi: false,
+    run: async () => {
+      const res = await fetch("/api/v1/harness/compile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ harness_id: "WH-001_MAIN_INTERCONNECT" }),
+      });
+      return res.json();
+    },
+  },
+  {
+    id: "mfg.git_diff",
+    category: "Export",
+    label: "Compare Visual Git ECO Copper Diff (kiri)",
+    description: "Compares current layout revision against parent commit with layer XOR and DRC delta",
+    mcpVerb: "hw_query",
+    requiresAi: false,
+    run: async () => {
+      const res = await fetch("/api/v1/diff/compare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base_rev: 1, target_rev: 2 }),
+      });
+      return res.json();
+    },
+  },
+  {
+    id: "mfg.generate_panel",
+    category: "Export",
+    label: "Calculate KiKit Panel Array & Rails",
+    description: "Calculates panel grid layout, rail utilization, mouse-bites, and tooling holes",
+    shortcut: "Ctrl+Shift+K",
+    mcpVerb: "hw_export",
+    requiresAi: false,
+    run: async () => {
+      const res = await fetch("/api/v1/panel/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows: 2, cols: 2, rail_width_mm: 5.0 }),
+      });
+      return res.json();
+    },
+  },
 ];

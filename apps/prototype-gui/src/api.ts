@@ -144,3 +144,53 @@ export async function calcSmpsBode(params: {
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
+
+export async function solvePdn(net: string = "+3V3_OUT", currentA: number = 3.0, ambientTempC: number = 25.0) {
+  const r = await fetch("/api/v1/pdn/solve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ net, current_a: currentA, ambient_temp_c: ambientTempC }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function compileHarness(harnessName: string = "WH-001_MAIN_INTERCONNECT") {
+  const r = await fetch("/api/v1/harness/compile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ harness_name: harnessName }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function generatePanel(rows: number = 2, cols: number = 2, railMm: number = 5.0) {
+  const r = await fetch("/api/v1/panel/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rows, cols, rail_mm: railMm }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function compareDiff(revOld: number = 1, revNew: number = 2) {
+  const r = await fetch("/api/v1/diff/compare", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rev_old: revOld, rev_new: revNew }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function refillCopper(layer: string = "F.Cu", net: string = "GND", clearanceMm: number = 0.25) {
+  const r = await fetch("/api/v1/copper/refill", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ layer, net, clearance_mm: clearanceMm }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}

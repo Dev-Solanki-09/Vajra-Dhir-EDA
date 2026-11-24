@@ -480,12 +480,22 @@ step('[SCH/LIB] Schematic Capture & Library/Datasheet Center (elkjs, DuckDB, Bas
   execSync('python scripts/test-schematic-and-library.py', { stdio: 'pipe' });
 });
 
+// 63. 3D STEP & Gerber RS-274X Viewer & Virtual Lab
+step('[3D/LAB] 3D STEP / Gerber RS-274X Viewer & Virtual Lab (PDN IR-Drop Heatmap, 60 FPS Scope, Copper Refill)', () => {
+  execSync('python scripts/test-v004-cad-and-lab.py', { stdio: 'pipe' });
+});
+
+// 64. Manufacturing, KiKit Panelizer & Wire Harness Center
+step('[MFG/DIFF] Manufacturing Center, KiKit Panelizer & Wire Harness Studio (kiri Diff, WireViz, iBOM)', () => {
+  execSync('python scripts/test-v004-mfg-and-harness.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 62 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log('  ALL 64 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
   console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }
