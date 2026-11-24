@@ -7,8 +7,8 @@ Updated: 2026-11-24 (post T-01 merge) · Wave 2 · Baseline main @ 5964a8f (T-01
 | T-01 daemon+lockfiles | 1 | WORKER-DEEPSEEK (OpenCode) | D:\project-deepseek · feat/worker-deepseek | **MERGED** (5964a8f; audit: fresh 64/64 + frozen install exit 0 + dual-context APPROVE_WITH_NOTES → F-19/F-20) | — |
 | T-07 M1 gap audit (read-only) | 1 | WORKER-GEMINI (Antigravity) | D:\project-gemini · feat/worker-gemini | **MERGED** (cherry-pick 1639a03; root-cause claim corrected by findings F-17) | — |
 | T-02 CI repair | 2 | WORKER-GEMINI | same | **REJECTED → T-02b** (false root cause, missing Node/Python jobs, pseudo schema validation, unauthorized Node 22 downgrade) | — |
-| T-02b CI remediation | 2 | WORKER-GEMINI (Antigravity) | same (rebased; your old T-02 commit is now 886ca1e — keep as base) | **READY** | — |
-| T-03 kernel parity | 2 | WORKER-DEEPSEEK (OpenCode) | same (rebased onto 5964a8f) | **READY** | — |
+| T-02b CI remediation | 2 | WORKER-GEMINI (Antigravity) | same (rebased; your old T-02 commit is now b53e26f — keep as base) | **READY** | — |
+| T-03 kernel parity | 2 | WORKER-DEEPSEEK (OpenCode) | same (rebased onto 4924b57) | **READY** | — |
 | T-04 CAD defects | 2→3 | WORKER-DEEPSEEK | same | QUEUED (ticket pending; ADD F-20 UUIDv7 fix in autorouter) | T-03 merged |
 | T-05 behavioral gates | 3 | TBD | — | QUEUED (ticket pending; seeds: T-07 §3 static-gate list + F-19 gate hardening) | T-03, T-04 |
 | T-06 claims truth | 4 | WORKER-GEMINI | same | QUEUED (ticket pending; ADD F-19 fabricated evidence hashes) | T-02b, T-05 |
