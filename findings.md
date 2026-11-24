@@ -46,17 +46,17 @@ Footgun message says 900–11000; check enforces [1k, 10k]. Canonical range must
 ### F-12 · Claims register evidence gaps (to verify at T-06)
 CLM-004/005 cite bench files (`benches/spatial_index.rs`, `tests/boolean_invariants.rs`) — existence unverified. CLM-008/009 board performance claims are software-pipeline results; must stay labeled software-only (0/3 fabricated). CVE claims CLM-002/003 cite advisories without URLs — add primary sources + re-verification dates.
 
-### F-13 · Daemon crashes on Windows — VERIFIED ROOT CAUSE (Wave 0)
-`packages/vd-daemon/src/daemon.py:1691` prints "Vajra-Dhīr" (U+012B) to a cp1252 console → `UnicodeEncodeError`, process exits code 1 immediately after binding. Reproduced on port 41999. `verify-all.mjs` sets no `PYTHONIOENCODING`. This single bug fails 5 gates (DAEMON/API, GUI/DOCK, SCH/LIB, 3D/LAB, MFG/DIFF) via connection-refused. Fix: reconfigure stdout/stderr to UTF-8 at daemon startup + regression test under cp1252. Owner: T-01.
+### F-13 · Daemon crashes on Windows — FIXED, MERGED (T-01 @ 5964a8f, 2026-11-24)
+`packages/vd-daemon/src/daemon.py:1691` printed "Vajra-Dhīr" (U+012B) to a cp1252 console → `UnicodeEncodeError`, exit 1 after binding; failed 5 gates via connection-refused. Fix: `_ensure_utf8_console()` (hasattr-guarded UTF-8 `errors="replace"` reconfigure); regression gate launches daemon under `PYTHONIOENCODING=cp1252`. Orchestrator fresh harness: 64/64 exit 0. CLOSED.
 
-### F-14 · Gate 8 release report lacks human_signoff_token — VERIFIED (Wave 0)
-`designs/board-1-buck-pd/verification_report.json` has NO `human_signoff_token` key; `scripts/test-gate8-release.py:25-26` requires it (≥32 chars). Agents MUST NEVER fabricate a human token. Resolution path: align report + test with fail-closed semantics (signoff explicitly pending; release blocked without token; token validated only when human-issued). Escalate to user if a real token is desired. Owner: T-01.
+### F-14 · Board-1 report carried a FORGED human signoff token — CORRECTED & FIXED (T-01)
+Original diagnosis ("token missing") was WRONG — it read the dirty F-18 tree. Committed HEAD (`1c157d4`) contained `human_signoff_token: "a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0"` + `signoff_actor: "human:lead_hardware_engineer"` + `all_gates_passed: true`. **Gate 8 was passing on a fabricated human signoff** — a direct violation of the fail-closed invariant, worse than diagnosed. T-01 removed it: `human_signoff.status=PENDING`, `release_authorized=false`, `release_status=NOT_RELEASED_PENDING_HUMAN_SIGNOFF`; `all_gates_passed` renamed `all_software_gates_passed`. Dual-context review confirmed the new gate rejects signed-without-token, short tokens, and contradictory flags, with a self-test. CLOSED (residual issue → F-19).
 
-### F-15 · Host toolchain gaps — VERIFIED (Wave 0)
-Node v24.19.0 (policy floor 26.13.1 — deviation, verify upstream availability before any pin change), Python 3.14.7, uv 0.12.5 present; **cargo/rustc and pnpm NOT installed**. Rust gates cannot run locally until a worker provisions the toolchain. Owner: T-01 (pnpm), T-03 (rustup attempt; BLOCKER if unavailable).
+### F-15 · Host toolchain gaps — UPDATED (2026-11-24)
+pnpm 10.6.0 now provisioned (T-01); pnpm-lock.yaml + uv.lock committed and frozen-install verified (exit 0). Node v24.19.0 (floor 26.13.1) and typescript 5.9.3 (floor 7.0.2) remain below floor — upstream availability CONFIRMED (F-17), so this is a manifest/host defect, owner T-08 + user host upgrade. cargo/rustc still absent → T-03 provisions or BLOCKERs.
 
-### F-16 · Cold-start races in daemon-launching gates — VERIFIED (Wave 0)
-`test-v004-mfg-and-harness.py:68` uses fixed `time.sleep(1.2)` (the audit fixed this class elsewhere; these scripts were missed). All daemon-launching gate scripts need readiness polling. Owner: T-01.
+### F-16 · Cold-start races in daemon-launching gates — FIXED (T-01)
+All fixed `time.sleep(1.2)` calls replaced with `/api/v1/health` polling (15s cap, 100ms interval, early-exit detection surfacing daemon stderr; raises on timeout — dual-context verified no silent-pass path). CLOSED.
 
 ## Wave 0 results (2026-11-24, host Windows, HEAD 1c157d4)
 
@@ -80,5 +80,11 @@ Gemini's T-02 (commit 6d09fb3, NOT merged) audited. Good: 40-char SHA pins verif
 3. Required Node/Python build-test jobs absent; schema step is pseudo-validation (`json.loads` + string asserts, no jsonschema); `toolchain: stable` unpinned without recorded deviation; T-02 executed while QUEUED (process violation).
 Remediation: `.ai-sync/tickets/T-02b-gemini.md`. T-07 audit handoff itself ACCEPTED and cherry-picked to main as 1639a03.
 
-### F-18 · Unattributed v0.0.5 work in main checkout — QUARANTINED (2026-11-24)
-Main working tree (`D:\Vajra-Dhir-EDA`) carries uncommitted changes NOT from the orchestrator and NOT from either worker worktree: new GUI components (DftTestpointInspector, FabricationDraftsman, PrintCheckDialog, VariantsManager), `scripts/test-v005-draftsman-and-dft.py`, daemon.py +315 lines, verify-all.mjs classify() refactor + new gates, autorouter/lib.rs edits, command-bus additions, verification_report.json edits, `.gitignore`, docs/CHECKPOINT_PROGRESS.md truth-fix, and an AGENTS.md "Universal Multi-Agent Law" block naming "Qwen 4 Max" as orchestrator. Provenance unknown (possibly a third agent or an IDE session pointed at main). **Left untouched and uncommitted; NOT merged, NOT discarded.** Orchestrator-owned progress.md/task_plan.md edits in the same tree ARE the orchestrator's (external-switch update) and were committed separately. Action: user to identify which agent/session wrote these; until then no product commits from main tree. If confirmed worker output, it must be re-delivered via a ticket branch + handoff + audit.
+### F-18 · Unattributed v0.0.5 work in main checkout — QUARANTINED → STASHED (2026-11-24)
+Main working tree carried uncommitted v0.0.5 work (4 GUI components: DftTestpointInspector/FabricationDraftsman/PrintCheckDialog/VariantsManager, `scripts/test-v005-draftsman-and-dft.py`, daemon.py +315 lines, verify-all.mjs classify() refactor, autorouter edits, command-bus additions, report JSON edits, AGENTS.md "Qwen 4 Max" law block). **Attribution:** DeepSeek timestamps (files written 07:25–08:48, before its session) + content match ⇒ pre-bus partial work of a stopped Qoder subagent, superseded. **Action taken:** evacuated to `stash@{0}` ("F-18 quarantine…") so T-01 could merge; nothing deleted. **Merge-order hazard:** the stash's daemon.py +315 lines conflict with T-01's fix — if ever revived, reconcile against `f4caaf2`, never apply blind. Do not merge without user ruling.
+
+### F-19 · Fabricated evidence hashes remain in board-1 verification report — NEW (dual-context audit, 2026-11-24)
+`designs/board-1-buck-pd/verification_report.json` gate evidence fields are forged: G2 `evidence_hash` (line ~31) is byte-identical to the removed fake signoff token `a1b2c3d4…cdef0`; G3–G8 hashes are sequential rotations of the same string; G1 is SHA-256 of empty input. Predates T-01 (unchanged in its diff); Gate 8 never validates them. Owner: T-06 (claims truth) — replace with real computed hashes or explicit `null` + PENDING semantics; T-05 — gate should reject known-fabricated hash patterns. Also from the same review: contradiction check in test-gate8-release.py is one-directional and a whitespace-only ≥32-char token would pass — harden in T-05.
+
+### F-20 · Standing UUIDv7 invariant violation in autorouter — NEW (T-01 handoff observation)
+`packages/autorouter/src/lib.rs` uses `uuid::Uuid::new_v4()` at committed HEAD, violating AGENTS.md invariant 1 (all entity IDs immutable UUIDv7). Pre-existing. Owner: T-04 (CAD defects) — swap to UUIDv7 (uuid crate `now_v7` feature) + regression test asserting version nibble = 7.

@@ -5,8 +5,10 @@
 | Owner | WORKER-DEEPSEEK (OpenCode) |
 | Worktree | `D:\project-deepseek` |
 | Branch | `feat/worker-deepseek` |
-| Status | **QUEUED — start only after T-01 is merged and your worktree is rebased on main** |
+| Status | **READY (2026-11-24) — T-01 merged (main @ 5964a8f); your worktree is already rebased. START NOW.** |
 | Handoff | `.ai-sync/handoffs/T-03-deepseek.md` |
+
+> **Orchestrator signal (post T-01 merge):** fresh harness at your base is 64/64 exit 0 — protect it, zero regressions. pnpm 10.6.0 + lockfiles now exist. Hints from the merged T-07 audit: `.gitattributes` actually binds `merge=hwir` (NOT `vd-merge`) and NO `git config merge.hwir.driver` registration script exists anywhere — F-06 canonical work = align name + add registration script + simulated 3-way conflict test. Also noted for T-04 (not yours here): autorouter uses `Uuid::new_v4()` (F-20). If cargo/rustc cannot be provisioned, file the BLOCKER handoff per contract — do not fake Rust test output.
 
 ## Mission
 Fix three verified spec/code drift defects in the SHIPPED code (spec artifacts in `prompt-and-skills/` may differ — verify against actual source). Failing test FIRST for each.

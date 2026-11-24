@@ -1,5 +1,15 @@
 # PROGRESS — Wave Log (orchestrator-maintained)
 
+## 2026-11-24 · T-01 AUDITED & MERGED — harness ground truth now 64/64 · Wave 2 dispatched
+
+- **T-01 ACCEPTED** (WORKER-DEEPSEEK, commits f4caaf2/adf390e/0e12174, merged --no-ff `5964a8f`). Audit evidence: fresh orchestrator harness run **64/64 exit 0** (baseline was 58/6); `pnpm install --frozen-lockfile` exit 0; scope exactly 13 files, all in WRITE_SCOPE; DCO on all commits; uv conflict raw output provided (atopile bands mutually exclusive ⇒ requires-python >=3.14,<3.15 approved).
+- **F-13, F-14, F-16 CLOSED.** F-14 CORRECTED: committed HEAD `1c157d4` carried a FORGED `human_signoff_token` (`a1b2c3d4…`) and Gate 8 passed on it — worse than diagnosed; now fail-closed (PENDING, release_authorized=false) with self-tested rejection paths.
+- **Dual-context review: APPROVE_WITH_NOTES** → two new findings: **F-19** fabricated G1–G8 `evidence_hash` values remain in board-1 report (G2 = the forged token bytes; G1 = SHA-256 of empty) + minor Gate-8 validator gaps (one-directional contradiction check) → T-06/T-05; **F-20** autorouter uses `Uuid::new_v4()` — standing UUIDv7 invariant violation → T-04.
+- **F-18 RESOLVED to stash:** v0.0.5 main-tree work evacuated to labeled `stash@{0}` (provenance: pre-bus stopped Qoder subagent per timestamp evidence). Not merged, not deleted; daemon.py in it conflicts with T-01 — reconcile before any revival.
+- **Both worktrees rebased onto 5964a8f.** Gemini's rejected T-02 commit rebased to 886ca1e (kept as T-02b base).
+- **Wave 2 READY:** T-03 (DeepSeek: patch-op parity, merge-driver registration, FG-05) · T-02b (Gemini: real Node 26.13.1 + Python 3.14 CI jobs, real jsonschema validation, honest startup_failure diagnosis). Dispatch prompts on TASK_BOARD.
+- Remaining below floor: host Node 24.19.0 (user upgrade), TS 5.9.3 → 7.0.2 (T-08 ticket after T-03).
+
 ## 2026-11-24 · Gemini audit ruled: T-07 MERGED, T-02 REJECTED → T-02b
 
 - **T-07 ACCEPTED**: high-quality evidence-backed gap matrix (13 behavioral / 8 static-only / 3 stub / 1 fab-pending). Cherry-picked d644593 → main `1639a03`. Its startup_failure root-cause sentence is wrong; authoritative correction in findings F-17.
