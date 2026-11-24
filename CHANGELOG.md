@@ -3,7 +3,7 @@
 All notable changes to Vajra-Dhīr EDA will be documented in this file.
 The format is based on Keep a Changelog.
 
-## [v0.1.0-architecture] - 2026-11-24
+## [v0.0.1] - 2026-11-24
 
 ### Added
 - 5-Stage Semantic Schematic Beautifier (`packages/schematic-beautifier`) enforcing power rail hierarchy (+V up, GND down), left-to-right signal flow, multi-unit symbol splitting, net label collision avoidance, and KiCad 10 S-expression export.

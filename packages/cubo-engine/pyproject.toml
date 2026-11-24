@@ -1,6 +1,6 @@
 [project]
 name = "vajra-dhir-cubo-engine"
-version = "0.1.0"
+version = "0.0.1"
 description = "Vajra-Dhīr Signed Open-CUBO Parametric Engine & Atopile Bridge"
 requires-python = ">=3.11"
 license = { text = "MIT" }

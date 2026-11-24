@@ -62,7 +62,7 @@ fn main() {
 
     match args[1].as_str() {
         "version" | "--version" | "-v" => {
-            println!("vd 0.1.0-architecture (Ring 1 Lean Core · Nov 2026 CVE Floor)");
+            println!("vd 0.0.1 (Ring 1 Lean Core · Nov 2026 CVE Floor)");
             println!("Standards: ISO/IEC/IEEE 42010, SLSA v1.2, OWASP ASVS 5.0");
         }
 

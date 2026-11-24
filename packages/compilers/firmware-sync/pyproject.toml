@@ -1,6 +1,6 @@
 [project]
 name = "vajra-dhir-firmware-sync"
-version = "0.1.0"
+version = "0.0.1"
 description = "Vajra-Dhīr Hardware-to-Firmware Co-Design Synchronizer & Virtual Lab"
 requires-python = ">=3.11"
 license = { text = "MIT" }

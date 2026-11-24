@@ -1,6 +1,6 @@
 [package]
 name = "vd-pdn-solver"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Pure-MIT 2.5D DC Power Integrity, IR-Drop & IPC-2152 Thermal PDN Solver for Vajra-Dhīr EDA"

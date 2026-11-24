@@ -1,6 +1,6 @@
 {
   "name": "@vajradhir/mcp-apps-ui",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Vajra-Dhīr Portable MCP Apps (ui://) & Silicon Darkroom Viewports",
   "type": "module",
   "license": "MIT",
