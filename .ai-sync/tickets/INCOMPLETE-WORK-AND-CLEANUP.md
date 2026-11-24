@@ -55,7 +55,7 @@ User archive, not orchestrator-created → moved aside rather than destroyed. Re
 - `docs/REVERSE_ENGINEERED_ENGINES.md` — gitignored, internal secret provenance (privacy policy). Keep, never commit.
 - `docs/CHECKPOINT_PROGRESS.md` — tracked, stale "37/37 / 3 Physical Boards Certified" → **G7.5 reconciles**, not deleted (reconciliation target).
 - `docs/TECHSTACK.md`, `CLAIMS_REGISTER.md`, `THREAT_MODEL.md`, `ADDENDUM_01`, `AGENT_KNOWLEDGE_UPDATE`, `progress.md`, `task_plan.md`, `findings.md`, README/CHANGELOG/AGENTS/SECURITY — current evidence.
-- `stash@{0}` (F-18 quarantine) — superseded v0.0.5 work, daemon.py conflicts T-01. KEEP; user ruling drop-or-mine pending.
+- `stash@{0}` (F-18 quarantine) — **ARCHIVED & DROPPED (user ruling 2026-11-24):** exported to gitignored `.ai-sync/private/archive/stash0-v005-backup.patch` and removed from `git stash list`.
 
 ### 4d. Orchestrator scratch
 - `.qoder/worktrees/agent-general-purpose-054ca616`, `-8b4838ce` — gitignored completed subagent worktrees. Removed if unregistered/stale (orchestrator-owned scratch).

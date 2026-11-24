@@ -3,28 +3,55 @@ set -euo pipefail
 
 # ==============================================================================
 # Vajra-Dhīr EDA — Complete License-Isolated Upstream Tech Stack Importer
-# Excludes ALL skill repos and strictly blocks AGPL / Non-Commercial exclusions.
-# Usage: ./scripts/import-upstream-stack.sh [--ring1 | --ring2 | --ring3 | --ring4 | --mcp | --all]
+# Excludes ALL skill repos and strictly blocks AGPL / EUPL / Non-Commercial exclusions.
+# Usage: ./scripts/import-upstream-stack.sh [--dry-run] [--ring1 | --ring2 | --ring3 | --ring4 | --mcp | --all]
 # ==============================================================================
 
-MODE="${1:---ring1}"
+DRY_RUN=0
+MODE="--ring1"
+
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run) DRY_RUN=1 ;;
+    --ring1|--ring2|--ring3|--ring4|--mcp|--all) MODE="$arg" ;;
+    *) echo "Usage: $0 [--dry-run] [--ring1 | --ring2 | --ring3 | --ring4 | --mcp | --all]"; exit 1 ;;
+  esac
+done
+
+# Ensure gitignored mirror roots exist BEFORE any cloning
+mkdir -p vendor/ring1-refs vendor/quarantine workers/sources plugins/sources evalops/sources tools/local-mcps
+
+# Forbidden AGPL / Non-Commercial / EUPL deny-list (never clone into Ring 1 or mirrors)
+FORBIDDEN_PATTERN="(PyMuPDF|KiBot|Konnect|Part-DB-server|pypsa-app|OpenModelica|surfer-project/surfer|serde_kicad_sexpr)"
 
 clone_shallow() {
   local dest="$1"
   local url="$2"
+  local license_class="${3:-unknown}"
   local name
   name="$(basename "$url" .git)"
+
+  if [[ "$url" =~ $FORBIDDEN_PATTERN ]]; then
+    echo "[DENY] Blocked forbidden/excluded repo: $url" >&2
+    exit 1
+  fi
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "[DRY-RUN] [$license_class] $url -> $dest/$name"
+    return 0
+  fi
+
   mkdir -p "$dest"
   if [ -d "$dest/$name/.git" ]; then
     echo "[SKIP] $dest/$name already imported"
   else
-    echo "[IMPORT] $url -> $dest/$name"
+    echo "[IMPORT] [$license_class] $url -> $dest/$name"
     git clone --depth 1 --filter=blob:none "$url" "$dest/$name" || echo "[WARN] Failed to clone $url (check network/auth)"
   fi
 }
 
 import_ring1() {
-  echo "=== RING 1: PURE PERMISSIVE CORE (MIT / Apache-2.0 / BSD) ==="
+  echo "=== RING 1: PURE PERMISSIVE CORE (MIT / Apache-2.0 / BSD / Documented Exceptions) ==="
   local DIR="vendor/ring1-refs"
   local REPOS=(
     # UI, IDE & 2D/3D Rendering
@@ -38,7 +65,6 @@ import_ring1() {
     "https://github.com/pmndrs/zustand.git"
     "https://github.com/gfx-rs/wgpu.git"
     "https://github.com/mrdoob/three.js.git"
-    "https://github.com/kovacsv/occt-import-js.git"
     "https://github.com/kovacsv/Online3DViewer.git"
     "https://github.com/theacodes/kicanvas.git"
     "https://github.com/tracespace/tracespace.git"
@@ -83,19 +109,16 @@ import_ring1() {
     "https://github.com/yaqwsx/jlcparts.git"
     "https://github.com/uPesy/easyeda2kicad.py.git"
     "https://github.com/TousstNicolas/JLC2KiCad_lib.git"
-    "https://github.com/kicad-rs/serde_kicad_sexpr.git"
     "https://github.com/adom-inc/kicad_lib.git"
     "https://github.com/Atlantix-EDA/KiParse.git"
     "https://github.com/2AMLogic/kicad-tools.git"
     "https://github.com/drandyhaas/KiCadRoutingTools.git"
     "https://github.com/parisxmas/fastroute.git"
     "https://github.com/mikwielgus/topola.git"
-    "https://github.com/yaqwsx/KiKit.git"
     "https://github.com/cisco-open/2581check.git"
     "https://github.com/openscopeproject/InteractiveHtmlBom.git"
     "https://github.com/yaqwsx/PcbDraw.git"
     "https://github.com/wokwi/ngspice-wasm.git"
-    "https://gitlab.com/surfer-project/surfer.git"
     "https://bitbucket.org/jpcgt/flatcam.git"
     "https://gitlab.com/kicad/code/kicad-python.git"
     # Core Polyglot LSP & Tooling
@@ -104,20 +127,31 @@ import_ring1() {
     "https://github.com/astral-sh/uv.git"
     "https://github.com/astral-sh/ruff.git"
   )
-  for r in "${REPOS[@]}"; do clone_shallow "$DIR" "$r"; done
+  for r in "${REPOS[@]}"; do clone_shallow "$DIR" "$r" "ring1-permissive"; done
+  # LGPL-2.1-with-OCCT-exception kept separate from pure-MIT Ring 1 (isolated runtime Web Worker)
+  clone_shallow "vendor/quarantine" "https://github.com/kovacsv/occt-import-js.git" "lgpl-2.1-occt-worker-exception"
 }
 
 import_ring2() {
-  echo "=== RING 2: ISOLATED OCI / gVisor WORKER PACKS (NEVER LINKED INTO RING 1) ==="
+  echo "=== RING 2: QUARANTINED STUDY / OCI WORKER PACKS (NEVER LINKED INTO RING 1) ==="
 
-  local PACK_2A=(
+  local QUARANTINE_STUDY=(
     "https://github.com/KiCad/kicad-source-mirror.git"
     "https://gitlab.com/kicad/libraries/kicad-footprint-generator.git"
     "https://gitlab.com/kicad/libraries/kicad-symbols.git"
     "https://gitlab.com/kicad/libraries/kicad-footprints.git"
+    "https://github.com/yaqwsx/KiKit.git"
+    "https://github.com/wireviz/WireViz.git"
+    "https://github.com/leoheck/kiri.git"
+    "https://github.com/Gasman2014/KiCad-Diff.git"
+    "https://github.com/horizon-eda/horizon.git"
+    "https://github.com/thesourcerer8/altium2kicad.git"
+  )
+  for r in "${QUARANTINE_STUDY[@]}"; do clone_shallow "vendor/quarantine" "$r" "ring2-quarantine"; done
+
+  local PACK_2A=(
     "https://github.com/freerouting/freerouting.git"
     "https://github.com/bbenchoff/OrthoRoute.git"
-    "https://github.com/thesourcerer8/altium2kicad.git"
     "https://github.com/atx/padne.git"
     "https://github.com/kbralten/KiPIDA.git"
     "https://github.com/coldlogix/fasthenry.git"
@@ -137,11 +171,8 @@ import_ring2() {
     "https://gitlab.onelab.info/gmsh/gmsh.git"
     "https://github.com/ElmerCSC/elmerfem.git"
     "https://github.com/Dhondtguido/CalculiX.git"
-    "https://github.com/wireviz/WireViz.git"
-    "https://github.com/leoheck/kiri.git"
-    "https://github.com/Gasman2014/KiCad-Diff.git"
   )
-  for r in "${PACK_2A[@]}"; do clone_shallow "workers/sources/pack-2a-pcb-physics" "$r"; done
+  for r in "${PACK_2A[@]}"; do clone_shallow "workers/sources/pack-2a-pcb-physics" "$r" "ring2-oci-2a"; done
 
   local PACK_2B=(
     "https://github.com/renode/renode.git"
@@ -161,7 +192,7 @@ import_ring2() {
     "https://github.com/openpnp/openpnp-capture.git"
     "https://github.com/google/openhtf.git"
   )
-  for r in "${PACK_2B[@]}"; do clone_shallow "workers/sources/pack-2b-virtual-hil" "$r"; done
+  for r in "${PACK_2B[@]}"; do clone_shallow "workers/sources/pack-2b-virtual-hil" "$r" "ring2-oci-2b"; done
 
   local PACK_2C=(
     "https://github.com/iic-jku/IIC-OSIC-TOOLS.git"
@@ -212,7 +243,7 @@ import_ring2() {
     "https://github.com/AUCOHL/Fault.git"
     "https://github.com/ChairImpSec/PROLEAD.git"
   )
-  for r in "${PACK_2C[@]}"; do clone_shallow "workers/sources/pack-2c-silicon-vlsi" "$r"; done
+  for r in "${PACK_2C[@]}"; do clone_shallow "workers/sources/pack-2c-silicon-vlsi" "$r" "ring2-oci-2c"; done
 
   local PACK_2D=(
     "https://github.com/e2nIEE/pandapower.git"
@@ -223,7 +254,7 @@ import_ring2() {
     "https://github.com/autonomy-logic/openplc-runtime.git"
     "https://github.com/autonomy-logic/openplc-editor.git"
   )
-  for r in "${PACK_2D[@]}"; do clone_shallow "workers/sources/pack-2d-power-machines" "$r"; done
+  for r in "${PACK_2D[@]}"; do clone_shallow "workers/sources/pack-2d-power-machines" "$r" "ring2-oci-2d"; done
 
   local PACK_2E=(
     "https://github.com/NVlabs/sionna.git"
@@ -233,11 +264,11 @@ import_ring2() {
     "https://github.com/grame-cncm/faust.git"
     "https://github.com/newaetech/chipwhisperer.git"
   )
-  for r in "${PACK_2E[@]}"; do clone_shallow "workers/sources/pack-2e-comms-photonics" "$r"; done
+  for r in "${PACK_2E[@]}"; do clone_shallow "workers/sources/pack-2e-comms-photonics" "$r" "ring2-oci-2e"; done
 }
 
 import_ring3_and_4() {
-  echo "=== RING 3: ENTERPRISE & TEAM PLUGINS ==="
+  echo "=== RING 3: ENTERPRISE & TEAM PLUGINS (MIT/Apache-2.0 ONLY; reuse-tool CI-CLI-only) ==="
   local RING3=(
     "https://github.com/yjs/yjs.git"
     "https://github.com/y-crdt/y-crdt.git"
@@ -246,11 +277,9 @@ import_ring3_and_4() {
     "https://github.com/inventree/InvenTree.git"
     "https://github.com/strictdoc-project/strictdoc.git"
     "https://github.com/google/gvisor.git"
-    "https://github.com/horizon-eda/horizon.git"
     "https://github.com/vllm-project/vllm.git"
-    "https://github.com/fsfe/reuse-tool.git"
   )
-  for r in "${RING3[@]}"; do clone_shallow "plugins/sources" "$r"; done
+  for r in "${RING3[@]}"; do clone_shallow "plugins/sources" "$r" "ring3-plugin"; done
 
   echo "=== RING 4: HARDWARE EVALOPS BENCHMARKS ==="
   local RING4=(
@@ -258,7 +287,7 @@ import_ring3_and_4() {
     "https://github.com/LGAI-Research/PCBWorld.git"
     "https://github.com/Koppar-AI/autorouter-bench.git"
   )
-  for r in "${RING4[@]}"; do clone_shallow "evalops/sources" "$r"; done
+  for r in "${RING4[@]}"; do clone_shallow "evalops/sources" "$r" "ring4-evalops"; done
 }
 
 import_local_mcps() {
@@ -273,16 +302,15 @@ import_local_mcps() {
     "https://github.com/semgrep/mcp.git"
     "https://github.com/mixelpixx/KiCAD-MCP-Server.git"
   )
-  for r in "${MCPS[@]}"; do clone_shallow "tools/local-mcps" "$r"; done
+  for r in "${MCPS[@]}"; do clone_shallow "tools/local-mcps" "$r" "local-mcp"; done
 }
 
 case "$MODE" in
-  --ring1|--ring\ 1) import_ring1 ;;
-  --ring2|--ring\ 2) import_ring2 ;;
-  --ring3|--ring4)   import_ring3_and_4 ;;
-  --mcp)             import_local_mcps ;;
-  --all)             import_ring1; import_ring2; import_ring3_and_4; import_local_mcps ;;
-  *) echo "Usage: $0 [--ring1 | --ring2 | --ring3 | --mcp | --all]"; exit 1 ;;
+  --ring1) import_ring1 ;;
+  --ring2) import_ring2 ;;
+  --ring3|--ring4) import_ring3_and_4 ;;
+  --mcp) import_local_mcps ;;
+  --all) import_ring1; import_ring2; import_ring3_and_4; import_local_mcps ;;
 esac
 
-echo "DONE: Selected Vajra-Dhīr upstream stack imported cleanly with license isolation."
+echo "DONE: Selected Vajra-Dhīr upstream stack processed cleanly with license isolation."

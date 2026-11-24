@@ -45,7 +45,7 @@ User wants the reverse-engineering effort kept private. Accommodated as **privat
 
 - **G4 step 3:** split manifest per Part A.1 (public vendored-subset vs internal full registry). Add `.ai-sync/private/` to `.gitignore`.
 - **G4 WRITE_SCOPE:** add `.ai-sync/private/**` (gitignored, local only).
-- **G6:** executes as the detailed content of `MASTER-GEMINI-UI-REDESIGN.md` (VD-UI-001, phases U0–U6). G6 acceptance = VD-UI-001 acceptance.
+- **G6:** executes as `MASTER-GEMINI-UI-REDESIGN.md` (VD-UI-001, split across **G6A / G6B / G6C / G6D**). G6 acceptance = VD-UI-001 acceptance.
 - **G7 step 3:** RE doc stays internal; correct KiKit license (MIT) in the INTERNAL ledger; public spec-source citations only to published standards.
 - **G7 step 5:** DELETE the "un-ignore REVERSE_ENGINEERED_ENGINES.md" instruction. Keep it gitignored. README/public docs claim native MIT implementations + measured behavior only.
 - **G7 WRITE_SCOPE:** remove `.gitignore (that one line)` for un-ignoring; instead `.gitignore` ensures `.ai-sync/private/` + `.hallmark/` ignored.
@@ -75,9 +75,9 @@ User wants the reverse-engineering effort kept private. Accommodated as **privat
 | 17 | **L35** | Snapshot symbol/footprint/SPICE/hw.lock digest per project (2030-proof) | X2 |
 | 18 | L37 | Stick to frozen VD-SAD-001 Rev 2.0; build T1.01 | SUPERSEDED by VD-MASTER-001 (recorded deviation; repo has 5 commits/546+ files) |
 | 19 | L43 | Collapse 146 into 5 tiers; M1 ~26 permissive + 5 CLIs | G4 tiering |
-| 20 | L56-64 | 9 Rust crates (rusqlite WAL+locks, rstar 177ns/120FPS, iOverlay i64-nm, iTriangle, cavalier_contours, wasmtime≥50, ACP, OTel, wgpu WebGPU+WebGL2 60FPS) | G1/G2/G5 + U2; bench-verify or relabel |
-| 21 | **L69-77** | VS Code extension first (no Code-OSS fork until Ph3); React≥19.3.1; ext-apps ui:// PcbCanvas/Schematic/VirtualLab; zustand <16ms CrossProbeBus + BroadcastChannel; elkjs beautifier; ngspice-wasm; uPlot 60FPS/166k/25ms; Surfer WASM; tracespace Gerber | U-track (VD-UI-001) + X2/X3 |
-| 22 | L79 | Defer electron/monaco/dockview-react/xyflow/xterm/node-pty/three.js/occt/spacemouse to M2 | **OVERRIDE (user vision 2026-11-24):** dockview-react/three.js/occt pulled forward (already in manifest + shipped claims). monaco/xterm/node-pty adopted for agent terminal dock. electron stays deferred (vite+daemon local-first). Recorded deviation. |
+| 20 | L56-64 | 9 Rust crates (rusqlite WAL+locks, rstar 177ns/120FPS, iOverlay i64-nm, iTriangle `i64` integer API, cavalier_contours, wasmtime≥51, ACP, OTel, wgpu WebGPU+WebGL2 60FPS) | G1/G2/G5B + G6B; bench-verify or relabel |
+| 21 | **L69-77** | VS Code extension first (no Code-OSS fork until Ph3); React≥19.3.1; ext-apps ui:// PcbCanvas/Schematic/VirtualLab; zustand <16ms CrossProbeBus + BroadcastChannel; elkjs beautifier; ngspice-wasm; uPlot 60FPS/166k/25ms; Surfer WASM; tracespace Gerber | G6A–G6D (VD-UI-001) + X2/X3 (Option B pure-MIT VCD/FST track replaces EUPL Surfer) |
+| 22 | L79 | Defer electron/monaco/dockview-react/xyflow/xterm/node-pty/three.js/occt/spacemouse to M2 | **OVERRIDE (user vision + ruling 2026-11-24):** `dockview-react` (MIT `8.9.x`, NEVER `dockview-enterprise`), `three.js`, `occt-import-js` (LGPL-2.1-with-OCCT-exception isolated Web Worker), `monaco`, `xterm`, `node-pty` pulled forward into `apps/workstation` served by `vd studio` (v0.1.0), with optional Tauri v2 shell in v0.2.0. Electron stays deferred. |
 | 23 | L84-93 | 10 Python pkgs (atopile, Z3, SymPy+Pint, python-control, DuckDB, pypdfium2+pdfplumber replacing AGPL PyMuPDF, jlcparts, JLC2KiCad_lib, KiKit+2581check, iBOM+PcbDraw) | G5/G6 + X4 |
 | 24 | L101-105 | 5 external CLIs never forked (KiCad, KiCadRoutingTools, fastroute, ollama NDA_AIRGAPPED, dev/CI+MCP) | Ring-2 subprocess; ollama for airgap agent (U1) |
 | 25 | L115-122 | Study-only 10; kicanvas layer-visibility UX (L117); own ~400-line MIT S-expr parser in cad-transcoder (L120) | U1 layer UX study; G5 parser |
@@ -109,7 +109,7 @@ Ceiling raise. Respects L3 (orchestration, not solver rewrites), L20 (12-verb MC
 - VERIFY: <16ms measured budget gate · multi-peer lock negative test · digest round-trip · harness.
 
 ### X3 · Simulation & field-solver bridges (Ring-2 OCI, NEVER fork)
-- ngspice-wasm Tier-0 in-browser SPICE (critic L74) + Xyce Pack-2B worker; vd-spice-compat transpiler. openEMS/ElmerFEM/CalculiX/Palace behind CadQuery→Gmsh + WorkerContract gVisor OCI (L12). Renode digital-twin + lockstep ngspice co-sim (L14). uPlot scope 60FPS/166k pts/25ms (L75, measured). Surfer WASM waveform (L76 — EUPL gray zone: Option A exception register OR MIT replacement per user ruling). Virtual Lab becomes a real instrument bench (transient/AC/noise + field-solver heatmap overlays).
+- ngspice-wasm Tier-0 in-browser SPICE (critic L74) + Xyce Pack-2B worker; vd-spice-compat transpiler. openEMS/ElmerFEM/CalculiX/Palace behind CadQuery→Gmsh + WorkerContract gVisor OCI (L12). Renode digital-twin + lockstep ngspice co-sim (L14). uPlot scope 60FPS/166k pts/25ms (L75, measured). **Option B pure-MIT digital VCD/FST waveform track** rendered on `uPlot`/Canvas (replaces EUPL-1.2 `surfer` so zero EUPL risk enters Ring 1). Virtual Lab becomes a real instrument bench (transient/AC/noise + field-solver heatmap overlays).
 - WRITE_SCOPE: `packages/vd-spice-compat/**`, `packages/worker-sdk/**`, `apps/**` sim lab, Ring-2 OCI configs (gitignored quarantine), tests.
 - VERIFY: wasm fuel/epoch/memory negatives · co-sim lockstep fixture · uPlot perf gate · zero-egress probe · harness.
 
@@ -124,4 +124,4 @@ After X4 audit: orchestrator compiles `docs/RELEASE_PACKET_v0.2.0.md` (fresh har
 ---
 
 ## Sequencing
-G0 → G1 → G2 → G3 → G4 → G5 → G6(=U0–U6) → G7 → G8 (v0.1.0 packet) → X1 → X2 → X3 → X4 (v0.2.0 packet). Strictly serial, sole worker, STOP-for-review after each. Privacy policy (Part A) binds every phase from G4 onward.
+G0 → G1 → G2 → G3 → G4 → G5A → G5B → G5C → G6A → G6B → G6C → G6D → G7 → G8 (v0.1.0 packet) → P0→P1→P2→P3→P4→P5 (VD-PERF-001 zero-regression optimization) → X1 → X2 → X3 → X4 (v0.2.0 packet). Strictly serial, sole worker, STOP-for-review after each. Privacy policy (Part A) binds every phase from G4 onward.

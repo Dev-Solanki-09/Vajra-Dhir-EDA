@@ -35,14 +35,14 @@
 - sub-step 5: uuid v7 generation cost (now_v7) — keep immutable IDs, avoid per-call entropy syscalls where safe.
 - VERIFY: `cargo test` + criterion benches meet budget OR relabel · harness 64/64 · lock-trigger negatives still green. SCOPE: cad-geom/hw-ir/autorouter/cas-store. Dual-context audit (geometry).
 
-## P2 · GUI render & interaction (prototype-gui, webgpu-cad-engine, crossprobe-bus)
+## P2 · GUI render & interaction (`apps/workstation`, webgpu-cad-engine, crossprobe-bus)
 - sub-step 1: real wgpu WebGPU pipeline — batched draw calls, instancing for pads/tracks/vias, dirty-rect redraw, offscreen canvas; WebGL2 fallback; Canvas2D last resort. → 60 FPS render budget (measured rAF).
 - sub-step 2: geometry off the main thread — Web Worker for cad-geom wasm/boolean ops; main thread only renders. → 120 FPS manual-edit path.
 - sub-step 3: React 19 — compiler/memo, `useMemo`/`useCallback` granularity, zustand selector subscriptions (avoid whole-store re-render); virtualize large tables/BOM (tanstack-virtual, MIT). context7: react 19.3.1 + zustand + tanstack-virtual.
 - sub-step 4: CrossProbeBus <16 ms — zustand + BroadcastChannel, measured timer gate; batch cross-probe updates per frame.
 - sub-step 5: uPlot scope (not React re-render) — 60 FPS / 166k pts / 25 ms budget; data-viz figures = measured product data.
 - sub-step 6: measured FPS meter in status bar (real rAF delta, never a claimed constant).
-- VERIFY: browser-use MCP perf evaluate_script + Playwright budget gates · sloplint Floor 0 · harness 64/64 · console-clean. SCOPE: apps/prototype-gui, webgpu-cad-engine, crossprobe-bus, ui-core. Dual-context audit.
+- VERIFY: browser-use MCP perf evaluate_script + Playwright budget gates · sloplint Floor 0 · harness green · console-clean. SCOPE: `apps/workstation`, webgpu-cad-engine, crossprobe-bus, ui-core. Dual-context audit.
 
 ## P3 · Daemon & API (vd-daemon — supervision scope only, T-01 lock respected)
 - sub-step 1: measure per-endpoint latency (P0 baseline); set budgets.
@@ -64,4 +64,4 @@
 - ACCEPTANCE: faster on measured budgets, **zero functional regression**, zero fabricated number, harness 64/64.
 
 ## Sequencing update
-G0→G1→G2→G3→G4→G5→G6(=U0–U6)→G7→G8 (v0.1.0) → **P0→P1→P2→P3→P4→P5 (optimization)** → X1→X2→X3→X4 (v0.2.0). Strictly serial, sole worker, STOP-for-review each phase. Perf budgets also enforced inline during G2/G5/G6 engine work (measure-as-you-build); P-track is the system-wide hardening pass.
+G0→G1→G2→G3→G4→G5A→G5B→G5C→G6A→G6B→G6C→G6D→G7→G8 (v0.1.0) → **P0→P1→P2→P3→P4→P5 (optimization)** → X1→X2→X3→X4 (v0.2.0). Strictly serial, sole worker, STOP-for-review each phase. Perf budgets also enforced inline during G2/G5*/G6* engine work (measure-as-you-build); P-track is the system-wide hardening pass. (`i_triangle` uses native `i64` integer coordinates only.)

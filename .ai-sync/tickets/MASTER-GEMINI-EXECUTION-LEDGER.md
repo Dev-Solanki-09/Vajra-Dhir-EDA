@@ -19,7 +19,8 @@
 7. **Privacy (VD-MASTER-002 Part A):** RE provenance internal-only; public claims native MIT + published-spec conformance.
 8. **Anti-vapor:** every named tech real+tested, truthfully relabeled, or removed.
 9. **STOP-for-review at each PHASE end** (handoff + READY_FOR_REVIEW). Sub-phases commit incrementally; do not start the next PHASE before the orchestrator READY flip.
-10. **Floors:** wasmtime≥50, react≥19.3.1, node≥26.13.1, typescript==7.0.2, Rust 1.100.0 (all confirmed to exist upstream). i64 nm / i32 millidegrees / UUIDv7. Fail-closed human locks.
+10. **Floors:** wasmtime ≥ 51.0.0 (replaces EOL-imminent 50.0.0), react ≥ 19.3.1, node ≥ 26.13.1 (native `crypto.randomUUIDv7()`), typescript == 7.0.2 (audit programmatic API + cross-OS lockfile), Rust 1.100.0 (native `min-publish-age` 72h). i64 nm / i32 millidegrees / UUIDv7. Fail-closed human locks.
+11. **Sequencing:** `G0 → G1 → G2 → G3 → G4 → G5A → G5B → G5C → G6A → G6B → G6C → G6D → G7 → G8 (v0.1.0) → P0–P5 → X1–X4 (v0.2.0)`. Every phase ends with `node scripts/verify-handoff.mjs --phase <PHASE> --ticket <TICKET>`.
 
 ---
 
@@ -30,9 +31,9 @@
 - sub-step: `grep -n "toolchain:" .github/workflows/ci-license-evalops.yml` shows 1.100.0.
 **G0.2 · Truthful handoff**
 - step 1: replace T-02b handoff §4 fabricated claim with the raw ls-remote output + "pinned 1.100.0, no deviation".
-**G0.3 · Verify + commit**
-- `node scripts/check-actions-lock.mjs` (exit 0) · commit -s · STOP READY_FOR_REVIEW.
-- SCOPE: `ci-license-evalops.yml`, `.ai-sync/handoffs/T-02b-gemini.md`. Do NOT re-do passing T-02b work.
+**G0.3 · Verify + receipt + commit**
+- `node scripts/verify-handoff.mjs --phase G0 --ticket .ai-sync/tickets/T-02c-gemini.md` (writes `.ai-sync/handoffs/G0-receipt.json`, exit 0) · commit -s · STOP READY_FOR_REVIEW.
+- SCOPE: `ci-license-evalops.yml`, `.ai-sync/handoffs/T-02b-gemini.md`, `.ai-sync/handoffs/G0-receipt.json` (new edits only; do NOT re-do passing T-02b work).
 
 ## G1 · Kernel parity + floors + Cargo.lock (DeepSeek T-03 takeover)
 > Inventory correction: F-05 ALREADY fixed at HEAD; F-07 range is PHANTOM. Only F-06 is genuine undone work. Adopt DeepSeek's 3 tests + 1 production script from `D:\project-deepseek` @ ab2ec71.
@@ -53,8 +54,8 @@
 - step 2: document in handoff: the 900–11000 / [1000,10000] range was a `prompt-2.txt` spec phantom, absent from shipped code; FG-04 decoupling already consistent (2_000_000 nm / "2.00 mm"). No range change needed.
 **G1.5 · T-08 version floors**
 - step 1: RED — grep `apps/desktop/package.json` typescript ^5.8.2 (violation). sub-step: repo-wide grep for typescript/react/node pins below floor.
-- step 2: bump typescript==7.0.2 everywhere, react≥19.3.1; `moduleResolution: bundler|nodenext`. context7: typescript 7.0.2 + react 19.3.1 release notes.
-- step 3: `pnpm install --frozen-lockfile` regenerate + commit lockfile; `pnpm -r exec tsc --noEmit` green.
+- step 2: bump typescript==7.0.2 everywhere, react≥19.3.1; `moduleResolution: bundler|nodenext`; audit tools importing `import * as ts from "typescript"`; configure Cargo 1.100.0 native `min-publish-age` (72h) & unused-dep checks. context7: typescript 7.0.2 + react 19.3.1 release notes.
+- step 3: `pnpm install --frozen-lockfile` regenerate + commit lockfile (preserve cross-OS optional binaries `win32-x64` + `linux-x64`); `pnpm -r exec tsc --noEmit --checkers 2` green.
 **G1 handoff** `.ai-sync/handoffs/G-01-gemini.md` · SCOPE: hw-ir/hw-merge/symbolic-verifier tests+registration, schemas (patch-op/actor only), Cargo.lock, package.json/pnpm-lock, .gitattributes. Dual-context audit before merge.
 
 ## G2 · CAD/geometry truth (T-04)
@@ -68,7 +69,7 @@
 ## G3 · Verification hardening (T-05)
 **G3.1 · Gate classification** — enumerate every `scripts/verify-all.mjs` gate; tag structural(source-string) vs behavioral. RED-first convert top structural gates to behavioral (start: GUI gates → DOM in G6; daemon gates → real HTTP already).
 **G3.2 · `vd doctor` fake-pass (NEW vapor)** — RED: `cli/main.rs:431-439` all-hardcoded `[PASS]`. GREEN: real preflight (check daemon health, toolchain versions vs floor, lockfiles) with honest FAIL paths. Also fix canned C2P2B `cli/main.rs:238-241`.
-**G3.3 · wasm negatives** — fuel exhaustion / epoch interrupt / memory OOB tests for wasmtime≥50 sandbox; each must FAIL-closed.
+**G3.3 · wasm negatives** — fuel exhaustion / epoch interrupt / memory OOB tests for wasmtime ≥ 51.0.0 sandbox; each must FAIL-closed.
 **G3.4 · G4→G8 fail-closed** — RED: 1 un-waived DRC clearance error ⇒ Gate 8 REFUSES mfg bundle. GREEN.
 **G3.5 · Gate-8 validator (F-19)** — bidirectional contradiction check; reject whitespace-only ≥32-char token; reject known fabricated hash patterns (`a1b2c3d4…` rotations, SHA-256-of-empty); raise-not-assert. Self-test.
 **G3.6 · hw-dlp egress probe** — loopback-only egress negative test (zero outbound).
@@ -81,23 +82,32 @@
 **G4.3 · PUBLIC manifest** — `vendor/MANIFEST.json` = vendored/linked/subprocess subset only (attribution). VERIFY: JSON valid + firewall covers every vendored dir.
 **G4.4 · INTERNAL registry** — `.ai-sync/private/PRIVATE_REGISTRY.json` (gitignored) full 146 disposition + `RE_METHODOLOGY.md`. Orchestrator completeness audit (not public CI).
 **G4.5 · golden fixtures** — generate from upstream behavior via subprocess where installable (KiKit panel, WireViz SVG/BOM, kiri diff); else spec-derived hand-authored, labeled. Fixtures = DATA, strip upstream code/comments.
-**G4.6 · license exceptions** — `docs/LICENSE_EXCEPTIONS.md` Option A (elkjs EPL unmodified npm dep; surfer EUPL deferred). User may override Option B.
+**G4.6 · license exceptions** — `docs/LICENSE_EXCEPTIONS.md`: Option A (`elkjs` EPL-2.0 unmodified npm dep; `occt-import-js` LGPL-2.1-with-OCCT-exception isolated runtime WASM Web Worker); Option B (`surfer` EUPL-1.2 removed/replaced by pure-MIT VCD/FST track on `uPlot`/Canvas in X3).
 **G4 handoff** G-04 · SCOPE: import script, .gitignore, vendor/MANIFEST.json, .ai-sync/private/, tests/fixtures/, docs/LICENSE_EXCEPTIONS.md.
 
-## G5 · Clean-room rewrites to parity (T-14/T-11/T-09) — each RED-first vs G4 fixtures
-**G5.1 panelizer** → real `.kicad_pcb` panel (2×2), parse-back via cad-transcoder sexpr, i64 nm geometry, KiKit fixture compare (tolerance-labeled).
-**G5.2 wire-harness** → WireViz-schema YAML import/export (spec-derived), SVG renderer, BOM+cut-list CSV.
-**G5.3 pcb-diff** → kiri-parity layer SVG (F.Cu/B.Cu/silk/mask), moved/added/removed detection from HW-IR revisions, feeds GUI GIT_DIFF.
-**G5.4 KiBot-style checks** → DRC/DFM bundle via kicad-cli subprocess + own MIT dfm-dfa-safety; never import KiBot code.
-**G5.5 KiKit real invoke** → daemon `/api/v1/panel/generate` calls real kikit API (MIT) w/ own-panelizer fallback; mock-boundary offline test proves invocation (kill CLI-preview-string vapor).
-**G5.6 iTriangle** → integrate `i_triangle` crate into cad-geom copper-pour w/ behavior test OR remove every claim (daemon.py:1339, commandBus.ts:252). Default integrate.
-**G5.7 STEP AP242 + RS-274X** → occt-import-js STEP import (replace cli/main.rs:200 print-only vapor); real RS-274X plotter/parser in cad-transcoder (D01/D02/D03, G-codes, X2) round-trip golden. Export deferred honestly if out of reach.
-**G5.8 CAS zstd/WAL** → zstd blob compression, WAL ladder (PASSIVE/250 patches, TRUNCATE idle), `.vd.autosave.jsonl` atomic shadow + recovery test.
-**G5.9 supervision** → Windows Job Objects (KILL_ON_JOB_CLOSE) + Linux PR_SET_PDEATHSIG in vd-daemon child supervision, orphan-kill test.
-**G5 handoff** G-05 · SCOPE: panelizer/wire-harness/pcb-diff/cad-geom/cad-transcoder/cas-store/hw-ir(WAL)/vd-daemon(supervision+panel+vapor)/dfm-dfa-safety, fixtures. Dual-context audit.
+## G5A · Manufacturing, Transcoder & Ring-2 KiKit
+**G5A.1 panelizer (`vd-panelizer`)** → real `.kicad_pcb` panel (2×2), parse-back via cad-transcoder sexpr, i64 nm geometry, KiKit fixture compare (tolerance-labeled).
+**G5A.2 KiKit Ring-2 subprocess** → daemon `/api/v1/panel/generate` invokes `kikit panelize` strictly as Ring-2 subprocess via KiCad env (NEVER import GPL `pcbnew` in Ring 1 `vd-daemon`!) with fallback to MIT `vd-panelizer`; offline boundary test proves invocation.
+**G5A.3 KiBot-style MIT checks** → DRC/DFM bundle via `kicad-cli` subprocess + own MIT dfm-dfa-safety; never import KiBot.
+**G5A.4 RS-274X + EAGLE/KiCad import** → real RS-274X plotter/parser in cad-transcoder (D01/D02/D03, G-codes, X2) round-trip golden + EAGLE 6.x+ / KiCad 10 import.
 
-## G6 · UI/UX redesign = VD-UI-001 (U0–U6) — see that doc for sub-steps
-U0 design-system lock (Hallmark scaffold, unify palettes, load fonts, design.md, sloplint --before) → U1 hybrid shell (VS Code/Blender/Adobe/sim-lab/real agent chat/Flux-Protoflow canvas, real dockview-react) → U2 real wgpu engine + measured FPS → U3 per-workspace recomposition (7, four states) → U4 behavioral DOM/browser gates + sloplint --kept Floor 0 → U5 accessibility AA + finish review → U6 acceptance/handoff. context7: dockview-react, wgpu, elkjs, uPlot, Playwright latest APIs. iBOM/ngspice-wasm/elkjs real-or-deferred. SCOPE per VD-UI-001.
+## G5B · Harness, Diff, `i_triangle` (`i64`) & LGPL-Isolated STEP Worker
+**G5B.1 wire-harness** → WireViz-schema YAML import/export (spec-derived), SVG renderer, BOM+cut-list CSV vs G4 fixture.
+**G5B.2 pcb-diff** → kiri-parity layer SVG (F.Cu/B.Cu/silk/mask), moved/added/removed detection from HW-IR revisions vs G4 fixture.
+**G5B.3 `i_triangle` (`MIT OR Apache-2.0`) `i64` API** → integrate `i_triangle::int::*` (native `i64` integer coordinates, zero float conversion) into cad-geom copper-pour w/ behavior test; kill `daemon.py:1339` / `commandBus.ts:252` vapor.
+**G5B.4 STEP AP242 worker** → `occt-import-js` (**LGPL-2.1-with-OCCT-exception**) loaded ONLY as an unmodified runtime WASM Web Worker (`docs/LICENSE_EXCEPTIONS.md`), replacing `cli/main.rs:200` print-only vapor. Export deferred honestly if out of scope.
+
+## G5C · Durability, Transactional Undo/Redo, Supervision & `vd studio`
+**G5C.1 CAS zstd/WAL** → zstd blob compression, WAL ladder (`PASSIVE`/250 patches, `TRUNCATE` idle), `.vd.autosave.jsonl` atomic shadow + recovery test.
+**G5C.2 Transactional Undo/Redo (`Ctrl+Z`/`Ctrl+Shift+Z`)** → inverse `PatchSet` command history in HW-IR respecting fail-closed `locked=1`.
+**G5C.3 supervision** → Windows Job Objects (`KILL_ON_JOB_CLOSE`) + Linux `PR_SET_PDEATHSIG` in vd-daemon child supervision, orphan-kill test.
+**G5C.4 `vd studio` launcher** → static UI serving in `vd-daemon` (`127.0.0.1:41900`, strict CSP) + `vd studio [project]` in `packages/cli`.
+
+## G6A–G6D · UI/UX redesign = VD-UI-001 (U0–U6) — see that doc for sub-steps
+- **G6A (`U0+U1 Shell`):** consolidate `apps/prototype-gui` + `apps/desktop` → `apps/workstation`, unified Silicon Darkroom tokens, self-hosted fonts, `design.md`, real `dockview-react` `8.9.x` (MIT ONLY — never `dockview-enterprise`), Project Lifecycle/Templates, Crash-Recovery banner, Per-Panel Error Boundaries, `?`/`F1` shortcut overlay.
+- **G6B (`U2 Engine`):** real instanced WebGPU/WebGL2 + Canvas2D fallback + Geometry Web Worker, real `elkjs` auto-layout, `zustand` CrossProbeBus `<16 ms`, measured `rAF` FPS meter.
+- **G6C (`U1-Agent+U3 Workspaces`):** additive `packages/vd-daemon/src/agent_routes.py` (SSE chat + proposal cards + `deterministic_offline` & `ollama` providers + fail-closed locks), 7 workspaces (4 states), built-in physics calculators, `iBOM`, `PcbDraw`, `uPlot`.
+- **G6D (`U4–U6 Proof`):** Playwright behavioral gates + **5 Golden E2E Journeys** against cold-booted `vd studio`, Hallmark `sloplint --render --kept` Floor 0, `.hallmark/compare.html`, WCAG AA, finish review.
 
 ## G7 · Claims truth (T-06 + F-19)
 **G7.1 F-19 real hashes** — replace fabricated evidence_hash in board-1 verification_report.json with SHA-256 of actual artifact bytes or null+PENDING.
@@ -122,32 +132,20 @@ Each: WRITE_SCOPE + offline VERIFY + handoff + STOP. v0.2.0 packet human-gated; 
 
 ---
 
-## KICKOFF PROMPT (paste into a fresh Antigravity session in D:\project-gemini)
-```
-You are WORKER-GEMINI, sole worker on Vajra-Dhir EDA. Work carefully in SMALL, perfectly-planned, incremental, sequential, staged chunks.
+## KICKOFF PROMPT (Slim Tier-0 + Active-Ticket — paste into a fresh Antigravity session in `D:\project-gemini`)
+```text
+You are WORKER-GEMINI, sole worker on Vajra-Dhir EDA in D:\project-gemini (branch feat/worker-gemini).
 
-1. Run `git rebase main` first.
-2. Read COMPLETELY, in order: .ai-sync/README.md, AGENTS.md, task_plan.md, findings.md,
-   .ai-sync/tickets/MASTER-GEMINI-ENDGAME.md (VD-MASTER-001),
-   .ai-sync/tickets/MASTER-GEMINI-EXPANSION.md (VD-MASTER-002, binding privacy policy),
-   .ai-sync/tickets/MASTER-GEMINI-UI-REDESIGN.md (VD-UI-001),
-   .ai-sync/tickets/EXECUTION-TOOLKIT-AND-GUARDRAILS.md (VD-TOOL-001 — binding every sub-step),
-   .ai-sync/tickets/MASTER-GEMINI-EXECUTION-LEDGER.md (VD-EXEC-001, your step-by-step),
-   .ai-sync/tickets/MASTER-GEMINI-OPTIMIZATION.md (VD-PERF-001, P-track after G8),
-   .ai-sync/tickets/INCOMPLETE-WORK-AND-CLEANUP.md (what is unfinished),
-   .ai-sync/tickets/T-02c-gemini.md (your FIRST task).
-3. Execute G0 (T-02c) EXACTLY: pin toolchain 1.100.0 + truthful handoff §4. Nothing else.
-4. For EVERY sub-step: consult context7 for the latest docs of any unfamiliar API BEFORE coding
-   (record lib+version+date); load the routed vd-* skill; write the failing test FIRST (paste red),
-   implement, paste green; run the exact VERIFY_CMD offline ($0, zero credentials, 127.0.0.1 only);
-   stay inside WRITE_SCOPE; commit -s per sub-phase.
-5. DeepSeek's unfinished T-03 is YOURS (G1): adopt its 3 tests + register_merge_driver.py from
-   D:\project-deepseek @ ab2ec71. F-05/F-07 are already-fixed/phantom — adopt tests + document; F-06 is the real work.
-6. Keep all reverse-engineering provenance INTERNAL (.ai-sync/private/, gitignored). Public docs claim
-   native MIT + published-spec conformance only. Zero GPL expression in Ring 1. No fabricated evidence.
-7. After EACH phase: write the handoff with raw evidence, STOP, signal READY_FOR_REVIEW.
-   Do NOT start the next phase before the orchestrator flips it READY on .ai-sync/TASK_BOARD.md.
-8. Never push, never fabricate a human signoff, never edit AGENTS.md. 3 failed fixes ⇒ STOP + BLOCKER handoff.
-
-Begin with G0 now.
+1. Run `git rebase main`.
+2. Read ONLY these 2 files completely:
+   - `D:\Vajra-Dhir-EDA\.ai-sync\WORKER_BOOTSTRAP.md` (read-only Tier-0 binding rulebook; `.ai-sync` is kept git-untracked on main; backed by VD-TOOL-001 & VD-PERF-001)
+   - `.ai-sync/tickets/T-02c-gemini.md` (your active G0 ticket — sole source of WRITE_SCOPE and VERIFY_CMD)
+3. Execute G0 (T-02c) with surgical precision:
+   - Run `git ls-remote --tags https://github.com/rust-lang/rust "1.100*"` and preserve 100% verbatim output.
+   - Pin `toolchain: 1.100.0` in `.github/workflows/ci-license-evalops.yml`.
+   - Update `.ai-sync/handoffs/T-02b-gemini.md` §4 truthfully with raw ls-remote output ("pinned 1.100.0, no deviation").
+   - Touch NOTHING outside WRITE_SCOPE.
+4. Run `node scripts/verify-handoff.mjs --phase G0 --ticket .ai-sync/tickets/T-02c-gemini.md` and confirm exit 0 + receipt JSON written.
+5. Commit with `git commit -s`, reference the receipt in your handoff, signal `READY_FOR_REVIEW`, and STOP.
+   Do NOT push. Do NOT start G1 until the orchestrator merges G0 and flips G1 to READY on `.ai-sync/TASK_BOARD.md`.
 ```

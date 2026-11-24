@@ -25,7 +25,7 @@
 - **A.1 RAW EVIDENCE ONLY.** Every VERIFY_CMD pasted verbatim + exit code. Never paraphrase/truncate in a way that changes meaning. Never delete lines from command output.
 - **A.2 NO CLAIM WITHOUT ARTIFACT.** "passes/green/fixed/certified/resolved" requires the exact command + pasted exit-0 output OR a CI run URL. Banned without evidence: "certified", "100%", "all gates pass", "resolved" (re startup_failure).
 - **A.3 EXISTENCE CHECKS.** Any "X unreleased/unavailable" claim MUST include the raw upstream query (`npm view <pkg> version`, `git ls-remote --tags <url>`, nodejs dist index). Orchestrator RE-RUNS it. (Rust 1.100.0, node 26.13.1, TS 7.0.2, react 19.3.1 all CONFIRMED to exist.)
-- **A.4 NO UNAUTHORIZED DOWNGRADE.** Floors: wasmtime≥50, react≥19.3.1, node≥26.13.1, typescript==7.0.2, Rust 1.100.0. If a floor seems unavailable: STOP + BLOCKER + raw evidence. Never silently downgrade.
+- **A.4 NO UNAUTHORIZED DOWNGRADE.** Floors: wasmtime≥51.0.0 (user ruling: replaces EOL-imminent 50.0.0), react≥19.3.1, node≥26.13.1, typescript==7.0.2, Rust 1.100.0. If a floor seems unavailable: STOP + BLOCKER + raw evidence. Never silently downgrade.
 - **A.5 context7 + serena FIRST.** Consult context7 for current docs of any unfamiliar API BEFORE coding (record lib+version+doc-date in step log). Use serena LSP symbols before reading whole files. Never code from memory against a stale API.
 - **A.6 REAL VALIDATION.** `jsonschema.validate` (not json.loads+string asserts); real DOM/browser gates (not source-string asserts); real subprocess invocation (not canned output strings).
 - **A.7 SCOPE LOCK.** `git diff --name-only $(git merge-base main HEAD)..HEAD` ⊆ WRITE_SCOPE. Orchestrator audits scope every merge.
@@ -46,8 +46,8 @@
 |---|---|---|---|---|---|
 | Rust kernel / SQLite / hw-merge / cad-geom (G1,G2,G5,P1) | `vd-principal-systems-rust` + `rust-skills` | serena (symbols), context7 (rusqlite/uuid/rstar/i_overlay/i_triangle/cavalier_contours/wasmtime), cargo/rustup 1.100.0, criterion (bench) | — | Antigravity | RED-first cargo test; i64 nm/i32 mdeg/UUIDv7; thiserror no unwrap/expect in Ring1 libs; lock-trigger negatives |
 | KiCad / atopile / PCB / Z3 / SPICE / physics (G1,G5,X3) | `vd-senior-eda-physics` + `kicad-happy` | context7 (atopile/Z3/SymPy/Pint/python-control/ngspice), kicad-cli (subprocess), uv/pytest | — | Antigravity | 3-channel KiCad bridge (S-expr/NNG IPC/kicad-cli); GPL isolated Ring-2; golden-fixture parity |
-| MCP gateway / ACP / Wasmtime / hw-dlp / WorkerContract (G3,X3) | `vd-frontier-agent-harness` + `mcp-builder` | context7 (wasmtime 50/MCP SDK), cargo | Harness MCP v2 (12-verb dispatch, defer_loading, Wasmtime Code Mode) | Antigravity | wasm fuel/epoch/memory negatives; zero-egress probe; 12-verb only (never 300+ tools) |
-| React / Dockview / WebGPU / MCP Apps ui:// (G6/U0–U6,P2) | `vd-silicon-darkroom-ui` + `impeccable` + `vercel-react-best-practices` + `hallmark` + `antislop-ui` + `antislop-human` | context7 (react 19.3.1/dockview-react/wgpu/elkjs/uPlot/zustand/Playwright), node/pnpm/vite, Hallmark `theme.mjs`/`sloplint.mjs`/`capture.mjs` | **browser-use** (navigate_page, take_screenshot, evaluate_script, list_console_messages, click, fill) | Antigravity + browser | Hallmark redesign full/app/brand-kept; real DOM gates; sloplint --render Floor 0; <16ms CrossProbeBus measured |
+| MCP gateway / ACP / Wasmtime / hw-dlp / WorkerContract (G3,X3) | `vd-frontier-agent-harness` + `mcp-builder` | context7 (wasmtime ≥51/MCP SDK), cargo | Harness MCP v2 (12-verb dispatch, defer_loading, Wasmtime Code Mode) | Antigravity | wasm fuel/epoch/memory negatives; zero-egress probe; 12-verb only (never 300+ tools) |
+| React / Dockview / WebGPU / MCP Apps ui:// (G6A–G6D,P2) | `vd-silicon-darkroom-ui` + `impeccable` + `vercel-react-best-practices` + `hallmark` + `antislop-ui` + `antislop-human` | context7 (react 19.3.1/dockview-react/wgpu/elkjs/uPlot/zustand/Playwright), node/pnpm/vite, Hallmark `theme.mjs`/`sloplint.mjs`/`capture.mjs` | **browser-use** (navigate_page, take_screenshot, evaluate_script, list_console_messages, click, fill) | Antigravity + browser | Hallmark redesign full/app/brand-kept; real DOM gates; sloplint --render Floor 0; <16ms CrossProbeBus measured |
 | Security / CI / release / threat (G0,G3,G8,P5) | `vd-enterprise-devsecops` + `security-audit` + `owasp-security` + `vd-github-launch` | gh CLI, actionlint, `check-actions-lock.mjs`, `check-spdx-firewall.mjs`, jsonschema | — | Antigravity | SHA-pin enforcement; SPDX deny-list+exceptions; injected-AGPL fixture exit 1; offline $0 CI; honest startup_failure UNKNOWN+admin checklist |
 | Claims / docs / copy (G7) | `antislop-copywriting` + `vd-github-launch` (anti-vaporware audit) | grep, git | — | Antigravity | dated evidence per claim; software-only 0/3 fabrication; RE provenance internal |
 | Fresh review (every security/geometry/compiler merge) | `doubt-driven-development` + `security-audit` | git, fresh context | — | Orchestrator subagent | zero solver history; re-run crux commands; verdict APPROVE/APPROVE_WITH_NOTES/REJECT |
@@ -64,26 +64,26 @@ Class: R1=Ring-1 permissive direct dep · R2=Ring-2 subprocess/OCI (GPL isolated
 | App | License/class | Target package | Phase | Connection method |
 |---|---|---|---|---|
 | atopile | MIT R1 | cubo-engine / hw-ir compiler | G1/G5 | uv dep, sole primary compiler |
-| KiCad 10.0.8 | GPL R2 | kicad bridge | G5 | 3-channel: S-expr / NNG PCB IPC / kicad-cli subprocess; never fork |
+| KiCad 10.0.8 | GPL R2 | kicad bridge | G5A | 3-channel: S-expr (own pure-MIT parser in cad-transcoder; `serde_kicad_sexpr` dropped) / NNG PCB IPC / kicad-cli subprocess; never fork |
 | ngspice | BSD R2/WASM | vd-spice-compat / virtual-lab | X3 | ngspice-wasm Tier-0 + Pack-2B worker |
 | Xyce | GPL R2 | worker-sdk | X3 | Pack-2B OCI subprocess |
 | Z3 / SymPy / Pint / python-control | MIT/BSD R1 | symbolic-verifier | G1/G2 | uv deps |
-| DuckDB | MIT R1 | library-bom | G6 | uv dep |
-| pypdfium2 / pdfplumber | BSD/MIT R1 | datasheet center | G6 | replaces FORBID PyMuPDF |
-| jlcparts / JLC2KiCad_lib | MIT R1 | bom-analytics / library | X4/G6 | uv dep |
-| KiKit | MIT R1 | panelizer | G5.5 | real invoke (kill vapor) |
-| 2581check / iBOM(InteractiveHtmlBom) / PcbDraw | MIT R1 | mfg / assembly-bom | G6 | real generators |
-| rstar / i_overlay / i_triangle / cavalier_contours | MIT/Apache R1 | cad-geom | G2/G5/P1 | cargo crates; i_triangle integrate-or-remove |
-| wasmtime ≥50 | Apache R1 | mcp-gateway / worker-sdk | G3 | cargo crate; Code Mode sandbox |
-| wgpu | MIT/Apache R1 | webgpu-cad-engine | G6/U2/P2 | real WebGPU+WebGL2 pipeline |
-| elkjs | EPL-2.0 gray | schematic-beautifier | G6 | Option A unmodified npm dep + exception register (or Option B MIT dagre) |
-| uPlot | MIT R1 | virtual-lab scope | X3/P2 | npm dep; 60FPS/166k/25ms |
-| zustand | MIT R1 | crossprobe-bus | X2/P2 | npm dep; <16ms + BroadcastChannel |
-| dockview-react | MIT R1 | prototype-gui/desktop | G6/U1 | npm dep; REPLACE mock |
-| three.js / occt-import-js | MIT R1 | mcad_3d | G5.7/G6 | npm dep; STEP AP242 import |
+| DuckDB | MIT R1 | library-bom | G6C | uv dep |
+| pypdfium2 / pdfplumber | BSD/MIT R1 | datasheet center | G6C | replaces FORBID PyMuPDF |
+| jlcparts / JLC2KiCad_lib | MIT R1 | bom-analytics / library | X1 / X4 | uv dep |
+| KiKit | MIT (Ring-2 subprocess via KiCad env) | panelizer | G5A | Ring-2 `kikit panelize` subprocess (never import GPL `pcbnew` in Ring 1); fallback to MIT `vd-panelizer` |
+| 2581check / iBOM(InteractiveHtmlBom) / PcbDraw | MIT R1 | mfg / assembly-bom | G6C | real generators |
+| rstar / i_overlay / i_triangle / cavalier_contours | MIT/Apache-2.0 R1 | cad-geom | G2/G5B/P1 | cargo crates; `i_triangle` (`MIT OR Apache-2.0`) using native `i64` integer API (`i_triangle::int::*`) |
+| wasmtime ≥ 51.0.0 | Apache R1 | mcp-gateway / worker-sdk | G3 | cargo crate; Code Mode sandbox (replaces EOL-imminent 50.0.0) |
+| wgpu | MIT/Apache R1 | webgpu-cad-engine | G6B/P2 | real WebGPU+WebGL2 pipeline + Canvas2D fallback |
+| elkjs | EPL-2.0 (exception) | schematic-beautifier | G6B | Option A unmodified npm dep in `docs/LICENSE_EXCEPTIONS.md` |
+| uPlot | MIT R1 | virtual-lab scope | G6C/P2/X3 | npm dep; 60FPS/166k/25ms + pure-MIT digital VCD/FST track |
+| zustand | MIT R1 | crossprobe-bus | G6B/P2 | npm dep; <16ms + BroadcastChannel |
+| dockview-react | MIT 8.9.x (NEVER `dockview-enterprise`) | `apps/workstation` | G6A | npm dep; consolidates prototype-gui + desktop |
+| three.js / occt-import-js | MIT / LGPL-2.1-OCCT-exc | mcad_3d | G5B/G6C | `three.js` (MIT npm); `occt-import-js` (LGPL-2.1-with-OCCT-exception) isolated unmodified runtime WASM Web Worker in `docs/LICENSE_EXCEPTIONS.md` |
 | tracespace | MIT R1 | gerber viewer | X4 | npm dep; Gerber preview |
 | ngspice-wasm | BSD WASM | virtual-lab | X3 | wasm in-browser SPICE |
-| Surfer | EUPL-1.2 gray | waveform | X3 | Option A exception OR Option B MIT replacement (user ruling) |
+| Surfer | EUPL-1.2 FORBID/REMOVED | waveform | X3 | Option B: replaced by pure-MIT VCD/FST digital track on `uPlot`/Canvas |
 | yjs / automerge | MIT R1 | collab | X2 | CRDT on HW-IR projections |
 | InvenTree | MIT R1 | bom-analytics | X1 | replaces FORBID Part-DB |
 | PyPSA | MIT R1 | power sim | X3 | replaces FORBID pypsa-app |
@@ -91,13 +91,13 @@ Class: R1=Ring-1 permissive direct dep · R2=Ring-2 subprocess/OCI (GPL isolated
 | Renode | MIT R2 | digital-twin | X3 | lockstep ngspice co-sim worker |
 | openEMS/ElmerFEM/CalculiX/Palace | GPL R2 | field-solver workers | X3 | CadQuery→Gmsh + WorkerContract gVisor OCI |
 | Gmsh / CadQuery | GPL R2 / MIT | mesh / geometry | X3 | subprocess boundary |
-| ollama | MIT R2 | agent airgap | G6/U1 | local model NDA_AIRGAPPED |
-| WireViz | GPL RW | wire-harness | G5.2 | clean-room MIT rewrite to schema parity |
-| kiri / KiCad-Diff | GPL RW | pcb-diff | G5.3 | clean-room MIT rewrite |
-| KiBot | AGPL RW/FORBID | mfg checks | G5.4 | NEVER import; own MIT checks + kicad-cli |
+| ollama | MIT R2 | agent airgap | G6C | local model NDA_AIRGAPPED (`agent_routes.py`) |
+| WireViz | GPL RW | wire-harness | G5B | clean-room MIT rewrite to schema parity |
+| kiri / KiCad-Diff | GPL RW | pcb-diff | G5B | clean-room MIT rewrite |
+| KiBot | AGPL RW/FORBID | mfg checks | G5A | NEVER import; own MIT checks + kicad-cli |
 | freerouting / KLayout / Magic/xschem/netgen | GPL R2 | routing/VLSI | X4 | subprocess quarantine, never linked |
-| Horizon / LibrePCB / eSim | GPL STUDY | — | — | study-only (UUID graph / self-contained libs / NgVeri); never build on |
-| kicanvas | STUDY | layer-visibility UX | G6/U1 | study UX only |
+| Horizon / LibrePCB / eSim | GPL STUDY | — | — | study-only in `vendor/quarantine/` (UUID graph / self-contained libs / NgVeri); never build on |
+| kicanvas | STUDY | layer-visibility UX | G6A | study UX only |
 | SKiDL | MIT optional | netlist importer | X4 | optional M2+ importer |
 | Konnect / Part-DB / pypsa-app / OpenModelica / PyMuPDF | FORBID | — | — | NEVER download; MIT replacements above |
 

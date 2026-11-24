@@ -23,7 +23,7 @@ Here is the **complete, exhaustive Master Tech Stack & Repository Inventory** fo
 | `modelcontextprotocol/ext-apps` | MIT | SEP-1865 (`2026-01-26`) portable `ui://` sandboxed MCP Apps | Ring 1 (npm) |
 | `gfx-rs/wgpu` `[NEW]` | MIT / Apache-2.0 | WebGPU primary + WebGL2 fallback CAD graphics abstraction | Ring 1 (cargo) |
 | `mrdoob/three.js` `[NEW]` | MIT | 3D PBR PCB / Rigid-Flex / Enclosure renderer (r187 WebGPU + WebGL) | Ring 1 (npm) |
-| `kovacsv/occt-import-js` `[NEW]` | MIT | Browser WASM OpenCascade STEP / IGES / BREP importer | Ring 1 (npm) |
+| `kovacsv/occt-import-js` `[NEW]` | LGPL-2.1-with-OCCT-exception | Browser WASM OpenCascade STEP / IGES / BREP importer (unmodified runtime Web Worker in `docs/LICENSE_EXCEPTIONS.md`) | Runtime WASM Worker (Exception) |
 | `kovacsv/Online3DViewer` `[NEW]` | MIT | Browser 3D CAD viewer reference & loader architecture | Ring 1 (git ref) |
 | `theacodes/kicanvas` | MIT | Interactive browser KiCad schematic/PCB viewer baseline | Ring 1 (git ref) |
 | `tracespace/tracespace` `[NEW]` | MIT | Client-side Gerber RS-274X & Excellon drill parser/renderer | Ring 1 (npm / git ref) |
@@ -41,7 +41,7 @@ Here is the **complete, exhaustive Master Tech Stack & Repository Inventory** fo
 | `iShape-Rust/iTriangle` | MIT / Apache-2.0 | High-speed 2D polygon triangulation for GPU copper fill | Ring 1 (cargo) |
 | `jbuckmccready/cavalier_contours` | MIT / Apache-2.0 | Arc-preserving offsets for curved traces, teardrops & clearance halos | Ring 1 (cargo) |
 | `elalish/manifold` (`manifold-csg`) | Apache-2.0 | Watertight 3D CSG booleans, drill holes & live 3D cross-section slicing | Ring 1 (cargo) |
-| `bytecodealliance/wasmtime` (`>=50.0.0`) | Apache-2.0 | Zero-FS WASI Code Mode sandbox (patches `CVE-2026-115889`) | Ring 1 (cargo) |
+| `bytecodealliance/wasmtime` (`>=51.0.0`) | Apache-2.0 | Zero-FS WASI Code Mode sandbox (user ruling `>=51.0.0`, replaces EOL-imminent `50.0.0`) | Ring 1 (cargo) |
 | `sqlite/sqlite` (`rusqlite`) | Public Domain / MIT | Canonical `HW-IR` SQLite WAL kernel + human-lock triggers | Ring 1 (cargo) |
 | `duckdb/duckdb` | MIT | Analytical Component Knowledge Graph (DC-bias, $I_{\text{sat}}$, errata) | Ring 1 (uv / cargo) |
 | `open-telemetry/opentelemetry-rust` `[NEW]` | Apache-2.0 | Local structured OTel execution traces & deterministic worker replay | Ring 1 (cargo) |
@@ -97,7 +97,7 @@ Here is the **complete, exhaustive Master Tech Stack & Repository Inventory** fo
 | `yaqwsx/jlcparts` | MIT | Fast local SQLite JLCPCB SMT catalog & Basic/Extended pricing | Ring 1 (git / uv) |
 | `uPesy/easyeda2kicad.py` | MIT | LCSC / EasyEDA → KiCad symbol, footprint & 3D model bridge | Ring 1 (uv) |
 | `TousstNicolas/JLC2KiCad_lib` | MIT | KLC-tested LCSC → KiCad + STEP library synthesizer | Ring 1 (uv) |
-| `kicad-rs/serde_kicad_sexpr` `[NEW]` | Apache-2.0 / LGPL | Rust serde S-expression serializer/deserializer for KiCad files | Ring 1 (cargo) |
+| `kicad-rs/serde_kicad_sexpr` `[DROPPED]` | Apache-2.0 / LGPL-3.0 | **Dropped** (targets KiCad v6); own pure-MIT KiCad 10 S-expr parser in `packages/cad-transcoder` | Dropped (Pure-MIT Native) |
 | `adom-inc/kicad_lib` `[NEW]` | MIT / Apache-2.0 | Rust KiCad S-expression AST reference | Ring 1 (git ref) |
 | `Atlantix-EDA/KiParse` `[NEW]` | Open Source | High-speed Rust KiCad PCB/symbol lexer/parser reference | Ring 1 (git ref) |
 | `2AMLogic/kicad-tools` `[NEW]` | MIT | Standalone Python KiCad schematic/PCB manipulation tools | Ring 1 (git ref) |
@@ -106,13 +106,13 @@ Here is the **complete, exhaustive Master Tech Stack & Repository Inventory** fo
 | `parisxmas/fastroute` | Open Source | Rust parallel multi-start Specctra DSN/SES router (zero JVM risk) | Ring 1 (git / bin) |
 | `mikwielgus/topola` | MIT | Rust topological Specctra autorouter | Ring 1 (git ref) |
 | `bbenchoff/OrthoRoute` | Open Source | Niche GPU PathFinder Manhattan router (massive backplanes only) | Pack 2A (optional) |
-| `yaqwsx/KiKit` | MIT | Automated panelization, mouse-bites, V-cuts, stencils, fab presets | Ring 1 (uv) |
+| `yaqwsx/KiKit` | MIT (invokes GPL `pcbnew`) | Automated panelization, mouse-bites, V-cuts, stencils, fab presets (fallback: MIT `vd-panelizer`) | Ring 2 (subprocess via KiCad env) |
 | `cisco-open/2581check` | Apache-2.0 | High-scale IPC-2581C XML schema validator | Ring 1 (uv / git) |
 | `openscopeproject/InteractiveHtmlBom` | MIT | Offline interactive HTML assembly & cross-probing BOM | Ring 1 (uv / git) |
 | `yaqwsx/PcbDraw` | MIT | Automated 2D SVG pinout diagrams & Populate assembly manuals | Ring 1 (uv / git) |
 | `wokwi/ngspice-wasm` | BSD / MIT | Browser WASM transient/AC SPICE engine for Tier 0 Virtual Lab | Ring 1 (npm / git) |
 | `nunobrum/spicelib` `[NEW]` | GPL-3.0 | LTspice/ngspice/QSPICE/Xyce batch runner & RAW waveform parser | Pack 2B (isolated) |
-| `gitlab.com/surfer-project/surfer` | EUPL-1.2 | Blazing-fast Rust/WASM VCD/FST digital waveform viewer | Ring 1 (WASM / git) |
+| `gitlab.com/surfer-project/surfer` `[REMOVED]` | EUPL-1.2 | **Removed from Ring 1** (EUPL risk); replaced in X3 by pure-MIT VCD/FST track on `uPlot`/Canvas | Excluded (MIT `uPlot` track) |
 | `bitbucket.org/jpcgt/flatcam` *(+ FlatCAM Evo)* | MIT | Gerber/Excellon → desktop CNC isolation-milling G-code | Ring 1 / Pack 2B |
 
 ### Layer 6: Ring 2 — Pack 2A (KiCad 10, Power Integrity, 3D EM/RF, Magnetics, Battery, MCAD & FEM)
@@ -211,7 +211,7 @@ Here is the **complete, exhaustive Master Tech Stack & Repository Inventory** fo
 | `inventree/InvenTree` | MIT | Self-hosted physical lab inventory, barcodes & factory PLM |
 | `strictdoc-project/strictdoc` | Apache-2.0 | V-Model HLR ↔ LLR ↔ Schematic ↔ Test compliance traceability |
 | `google/gvisor` (`runsc`) | Apache-2.0 | Hardened userspace kernel isolating Ring 2 containers |
-| `horizon-eda/horizon` | GPL-3.0 | Reference for immutable-UUID EDA architecture & opt-in CERN PNS sidecar |
+| `horizon-eda/horizon` | GPL-3.0 | Study-only reference for immutable-UUID EDA architecture & CERN PNS (`vendor/quarantine/`) |
 | `digailab/PCB-Bench` | Research | ICLR 2026 3,700-question multimodal PCB engineering EvalOps benchmark |
 | `LGAI-Research/PCBWorld` *(env/scorer ONLY)* | BSD-3 / GPLv3 | 99 real open-source boards + KiCad DRC scorer *(NO NC checkpoints!)* |
 | `Koppar-AI/autorouter-bench` | Open Source | Clean-room autorouter evaluation & commercial-safe RL harness |
@@ -225,6 +225,8 @@ Here is the **complete, exhaustive Master Tech Stack & Repository Inventory** fo
 | `Part-DB/Part-DB-server` | **AGPL-3.0** | `inventree/InvenTree` (`MIT`) |
 | `PyPSA/pypsa-app` | **AGPL-3.0** | `PyPSA/PyPSA` (`MIT`) |
 | `OpenModelica/OpenModelica` | **OSMC-PL / AGPL-3.0** | User-installed external opt-in plugin ONLY |
+| `gitlab.com/surfer-project/surfer` | **EUPL-1.2** | Pure-MIT VCD/FST digital waveform track on `uPlot`/Canvas (X3) |
+| `kicad-rs/serde_kicad_sexpr` | **Apache-2.0 / LGPL-3.0** (KiCad v6) | Own pure-MIT KiCad 10 S-expression parser in `packages/cad-transcoder` |
 | `PCBWorld` pretrained checkpoints | **Non-Commercial weights** | Train commercial-safe weights via `autorouter-bench` + Rust SA `vd-placer` |
 | *All GitHub Skill Repositories* | Explicitly excluded by request | Managed separately via `.agents/skills/` |
 
@@ -234,13 +236,13 @@ Here is the **complete, exhaustive Master Tech Stack & Repository Inventory** fo
 
 ## Automated License-Safe Importer Script (`scripts/import-upstream-stack.sh`)
 
-> **Engineering Safety Warning:** Never blindly merge 140+ upstream repos directly into your main Git history or link GPL repositories into Ring 1! This script imports them **the right way**:
+> **Engineering Safety Warning:** Never blindly merge 140+ upstream repos directly into your main Git history or link GPL repositories into Ring 1! Use the canonical script at [`scripts/import-upstream-stack.sh`](../scripts/import-upstream-stack.sh) (`--dry-run` supported):
 > 1. **Ring 1 Libraries:** Installed natively via `cargo`, `pnpm`, and `uv` (100% MIT/Apache-2.0/BSD).
 > 2. **Ring 1 Source References:** Shallow-cloned (`--depth 1`) into `vendor/ring1-refs/` (gitignored).
-> 3. **Ring 2 GPL/Mixed Solvers:** Strictly quarantined inside `workers/sources/pack-*/` for isolated `gVisor` OCI container builds—**never touched by Ring 1 compilers**.
-> 4. **Ring 3 Plugins, Ring 4 EvalOps & Free Local MCPs:** Staged cleanly in separate folders. Zero skill repos and zero AGPL repos imported.
+> 3. **Ring 2 GPL/Study/Exception Mirrors:** Strictly quarantined inside `vendor/quarantine/` (study/rewrite/LGPL runtime refs like `occt-import-js`, `KiKit`, `horizon`) and `workers/sources/pack-*/` (isolated `gVisor` OCI container builds)—**never linked into Ring 1 compilers**.
+> 4. **Ring 3 Plugins, Ring 4 EvalOps & Free Local MCPs:** Staged cleanly in separate gitignored folders. Zero skill repos, zero AGPL repos, zero EUPL `surfer`, and zero `serde_kicad_sexpr` imported (enforced by `FORBIDDEN_PATTERN` inside `clone_shallow()`).
 
-Save as `scripts/import-upstream-stack.sh`, run `chmod +x scripts/import-upstream-stack.sh`, and invoke with `--ring 1`, `--ring 2`, `--ring 3`, `--ring 4`, `--mcp`, or `--all`:
+Invoke [`scripts/import-upstream-stack.sh`](../scripts/import-upstream-stack.sh) with `--dry-run`, `--ring1`, `--ring2`, `--ring3`, `--ring4`, `--mcp`, or `--all` (canonical source in `scripts/import-upstream-stack.sh` — do not duplicate an inline copy here).
 
 ```bash
 #!/usr/bin/env bash

@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Revision | 1.0 (2026-11-24) |
-| Authority | Orchestrator. Executes as the detailed content of VD-MASTER-001 **PHASE G6**. |
+| Authority | Orchestrator. Executes across **G6A (`U0+U1 Shell`) → G6B (`U2 Engine`) → G6C (`U1-Agent+U3 Workspaces`) → G6D (`U4–U6 Proof`)**. |
 | Owner | WORKER-GEMINI (sole worker), Antigravity, `D:\project-gemini`. |
 | Method | **Hallmark** `redesign` verb, **full depth**, **app-screen scope**, **brand kept** (Silicon Darkroom). User named Hallmark explicitly → permitted on the existing design. |
-| Vision | Blender + Adobe + VS Code + simulation tester lab + chatbot agent that does the work + interactive/manual designing like Flux.ai / Protoflow. Every feature easy to navigate and use. Professional, finished, unslopped. |
-| Dependencies | G2 (cad truth), G3 (gate hardening), G5 (real engines: elkjs/ngspice-wasm/iBOM/STEP) MUST precede. U-track IS G6. |
+| Vision | Blender + Adobe + VS Code + simulation tester lab + chatbot agent that does the work + interactive/manual designing like Flux.ai / Protoflow. Consolidated into **`apps/workstation`**, launched via **`vd studio`** (`127.0.0.1:41900`, optional Tauri v2 shell in v0.2.0). |
+| Dependencies | G2 (cad truth), G3 (gate hardening), G5A–G5C (real engines, transactional Undo/Redo, `vd studio` static serving) MUST precede. |
 
 > **Skills to load at U0:** `hallmark` (read `SKILL.md`, `references/redesign.md`, `references/flow.md` § App screens, `references/gates.md` §1–§5, `references/craft.md` §9, `references/interaction-and-states.md`), `vd-silicon-darkroom-ui`, `antislop`, `antislop-ui`, `antislop-human`. Hallmark scripts live at `C:\Users\D.Solanki\.agents\skills\hallmark\scripts\` (`theme.mjs`, `sloplint.mjs`, `capture.mjs`) — run via `node`.
 
@@ -33,6 +33,10 @@ Defects that make the current GUI read as generated / vapor:
 **Genre:** modern-minimal (developer tool). **Brand:** silicon-darkroom (kept, named tokens). Brand palette wins over genre defaults; genre governs composition discipline.
 
 ---
+
+## G6A · U0 + U1 Shell Consolidation (`apps/workstation`)
+1. **Consolidate split-brain frontends:** Promote `apps/prototype-gui` → canonical **`apps/workstation`**, absorbing `apps/desktop`'s real **`dockview-react` `8.9.x` (MIT ONLY — `dockview-enterprise` STRICTLY FORBIDDEN)** layout wiring, retiring the duplicate frontend so only one UI is maintained.
+2. **Project Lifecycle & Error Boundaries:** Startup launcher / `File` menu (*New from Template*: `Blank 2-Layer`, `Buck PD Reference`, `MCU Devboard`; *Open Project*; *Recent Projects*; *Dirty-State `•` indicator*; *Export Bundle*; *Crash-Recovery Banner* on newer `.vd.autosave.jsonl`), **Per-Panel React Error Boundaries** (`PcbCanvas`, `SchematicCanvas`, `Mcad3D`, `SimLab`, `AgentDock`) with *"Reset Panel / Copy Diagnostics"*, and contextual `?`/`F1` shortcut overlay auto-generated from the 18+ `EdaCommand` registry. Wire `Ctrl+Z`/`Ctrl+Shift+Z` to G5C's transactional HW-IR Undo/Redo stack.
 
 ## U0 · Design system lock (Hallmark scaffold + Floor)
 
@@ -62,7 +66,11 @@ Recompose the shell inside the existing app; keep routes/IDs/logic. Navigation r
 - **Blender layer:** contextual **workspace switcher** (the 7 tabs, per-workspace saved layouts); top **tool modes** Select/Route/Place/Inspect (`toolMode App.tsx:41,106-116`); **N-panel** context-sensitive properties sidebar; **viewport overlays** toggles (layers, ratsnest, DRC markers, lock rings); axis gizmo; **region quad-split** via REAL dockview-react (replace the mock `DockviewWorkbench`).
 - **Adobe layer:** **dockable floating panels** (dockview-react popout groups → multi-monitor); tabbed panel groups; right **inspector stack** (properties/layers/stackup/DRC); simulation **scrubber/timeline** in sim_lab; **library/asset browser** (LibraryBomCenter as a library panel with preview thumbnails).
 - **Simulation tester lab layer:** VirtualLabWorkbench → **instrument rack**: scope (uPlot 60FPS/166k/25ms, X3 feed), Bode plotter, PDN IR-drop heatmap, instrument palette, run/stop/trigger, probe cross-link to canvas (CrossProbeBus <16ms, X2 feed). Four states on every instrument region.
-- **Chatbot agent layer (REAL, replaces static text):** AI Worker Dock rebuilt — chat **input box**, mode switch OFF/COPILOT/AUTONOMOUS (keep `:34`), **streaming thought stream** from ACP/daemon (replace `App.tsx:622-627` static text), agent proposals render as **diff cards with Accept/Reject**. **Fail-closed:** agent never mutates `locked=1`; acceptance requires a human actor (`_tx_actor_ctx`); autonomous mode still human-gates locked writes. Agent emits `EdaCommand`s through the bus (Same-Hands `requiresAi` semantics). **NDA airgap indicator** (hw-dlp zero-egress); offline local model via ollama (critic L101-105 NDA_AIRGAPPED). Optional monaco/xterm/node-pty terminal dock (L79 override).
+- **Chatbot agent layer (`G6C · packages/vd-daemon/src/agent_routes.py`, additive only):** Leave T-01 locked core routes in `daemon.py` untouched. Implement deterministic SSE contract:
+  - `POST /api/v1/agent/chat` → `text/event-stream` emitting `thought_delta`, `tool_call`/`tool_result` (12-verb Harness MCP v2 only), `proposal_card` (`{proposal_id, summary, affected_uuids, lock_violations[], patch_preview_diff, eda_commands[]}`), `done`/`error`.
+  - `POST /api/v1/agent/proposals/{id}/accept|reject` → applies patch with `_tx_actor_ctx = human` ONLY after explicit human click; `locked=1` entities fail closed at SQLite trigger layer and render an amber lock-conflict banner.
+  - Providers: `VD_LLM_PROVIDER=deterministic_offline` ($0 CI/Playwright default) and `VD_LLM_PROVIDER=ollama` (`http://127.0.0.1:11434`, `NDA_AIRGAPPED`).
+  - Built-in side-drawer physics calculators backed by Rust crates (`pdn-solver`, `cad-geom`, `control-loop`, `component-kg`): Trace Width/Temp Rise, Via Current, Diff Impedance, MLCC DC-Bias Derating, SMPS Phase Margin. Optional `monaco`/`xterm`/`node-pty` terminal dock (L79 override).
 - **Flux.ai / Protoflow interactive canvas layer:** schematic+PCB **direct manipulation** — click-place, drag-route with 45°/snap (`cad-geom`), **inline parametric editing** (click component → floating mini-inspector), **AI autocomplete ghost suggestions** (copilot mode), **cross-probe highlight** schematic↔PCB↔sim↔BOM, **amber lock rings** on human-locked entities, real-time cursor presence (X2). kicanvas layer-visibility UX study (critic L117).
 
 **Acceptance U1:** real dockview-react drag/dock/float/popout works; activity bar + palette + breadcrumbs + status bar present; agent dock sends→streams→proposes→accept/reject with fail-closed lock; every destination ≤3 clicks; URL carries state.
@@ -90,11 +98,13 @@ Recompose each screen inside the shell; keep routes/destinations/component logic
 
 ## U4 · Behavioral UI gates (replace source-text asserts)
 
-New offline, $0, zero-credential, 127.0.0.1-only browser gates (Playwright/puppeteer-core):
-- palette opens + executes a command; workspace switch persists in URL; dock popout/float works.
-- agent chat: send → stream → proposal → **accept (human actor)** / reject; **agent write to locked=1 refused** (fail-closed negative).
-- lock ring renders on locked entity; cross-probe highlight schematic↔PCB↔sim↔BOM **<16ms measured**.
-- FPS meter reads real rAF delta; four states render; `:focus-visible` present; `prefers-reduced-motion` honored; contrast passes (antislop-human checker).
+New offline, $0, zero-credential, 127.0.0.1-only Playwright browser gates against cold-booted **`vd studio`** covering **5 Golden End-to-End User Journeys**:
+1. **Zero-to-Schematic:** cold boot `vd studio` → load `board-1-buck-pd` → run real `elkjs` auto-layout → inline-edit resistor value → verify SQLite/JSONL patch + live BOM update → `Ctrl+Z` restores original value.
+2. **Interactive PCB + Fail-Closed Human Lock:** pan/zoom canvas → move unlocked component → drop via (real geometry op, not `SET_LOCK`) → lock voltage regulator (amber lock ring + icon) → instruct AI Agent to relocate it → verify proposal shows lock violation + backend rejects mutation → accept proposal on unlocked trace → verify canvas updates.
+3. **Cross-Probed Virtual Lab:** click net in Schematic → assert PCB highlight + Sim Lab probe selection in `<16 ms` → run SPICE transient sweep → render real waveform in `uPlot` → scrub timeline.
+4. **Manufacturing & Visual Diff Studio:** edit trace → open `mfg_diff` → verify real `pcb-diff` layer SVG highlights delta → run 2×2 Panelizer wizard → verify valid `.kicad_pcb` + `iBOM` + Wire Harness SVG/BOM → inject 1 un-waived DRC error → verify Gate 8 refuses bundle generation (fail-closed).
+5. **Resilience & Semantic Merge:** kill `vd-daemon` mid-edit → reboot → verify `.vd.autosave.jsonl` recovery prompt restores state; run 3-way `.vd-ir.jsonl` conflict → `hw-merge` resolves non-overlapping UUID edits and flags courtyard collisions.
+- Plus structural/UX gates: palette opens + executes command; workspace switch persists in URL; dock popout/float works; four states render; `:focus-visible` present; `prefers-reduced-motion` honored; WCAG AA contrast passes; measured rAF FPS meter.
 - Hallmark sweep: `node <hallmark>/scripts/sloplint.mjs apps/prototype-gui --genre modern-minimal --render --scope app --kept --url http://127.0.0.1:5173` until **Floor 0 FAIL**; restore anything dropped or record it in the stamp; `.hallmark/compare.html` before/after.
 - Retire the old source-text UI asserts via G3 classification (do NOT edit a test to make the redesign pass — keep `data-testid` hooks so behavioral gates target them).
 
@@ -118,7 +128,7 @@ WCAG AA contrast on the dark palette (verify #E6EDF7 on #0B0E14, accent on panel
 - Handoff `.ai-sync/handoffs/G-06-gemini.md`: Hallmark **Picks block** (Redesign full · Before/After Floor counts · Keeps · Files · Screen rows · Signature · Sweep outcome), `compare.html` path, material ask, kept-wiring list, measured FPS/perf numbers, zero vapor labels.
 - **STOP → READY_FOR_REVIEW.** Orchestrator dual-context audit (fresh browser re-run + sloplint) before merge.
 
-**WRITE_SCOPE:** `apps/prototype-gui/**`, `apps/desktop/**` (palette unify), `packages/ui-core/**`, `packages/webgpu-cad-engine/**`, `packages/crossprobe-bus/**`, `packages/schematic-beautifier/**`, `packages/command-bus/**` (additive only), `apps/prototype-gui/src/tokens.css` + new `base.css`, root `design.md`, new UI gate scripts, `package.json`/`pnpm-lock.yaml` (new deps only: dockview-react, lucide-react, uPlot, fonts), `.gitignore` (`.hallmark/`), `.ai-sync/handoffs/G-06-gemini.md`. **NO `daemon.py` edits** (T-01 merged/locked), **NO AGENTS.md**.
+**WRITE_SCOPE (across G6A–G6D):** `apps/workstation/**`, `apps/prototype-gui/**` & `apps/desktop/**` (consolidation/shims only), `packages/ui-core/**`, `packages/webgpu-cad-engine/**`, `packages/crossprobe-bus/**`, `packages/schematic-beautifier/**`, `packages/command-bus/**` (additive only), `packages/vd-daemon/src/agent_routes.py` (additive SSE/proposal module ONLY in G6C — `daemon.py` T-01 locked routes UNTOUCHED), root `design.md`, Playwright E2E/UI gate scripts, `package.json`/`pnpm-lock.yaml` (MIT `dockview-react` 8.9.x, `lucide-react`, `uPlot`, `elkjs`, `zustand`, fonts — NEVER `dockview-enterprise`), `.gitignore` (`.hallmark/`), `.ai-sync/handoffs/G-06*-gemini.md`, `.ai-sync/handoffs/G6*-receipt.json`. **NO `AGENTS.md` edits.**
 
 **VERIFY_CMD:** `pnpm install --frozen-lockfile` · `pnpm -r exec tsc --noEmit` · `node <hallmark>/scripts/sloplint.mjs apps/prototype-gui --genre modern-minimal --render --scope app --kept --url http://127.0.0.1:5173` · new browser gates · `node scripts/verify-all.mjs`.
 
