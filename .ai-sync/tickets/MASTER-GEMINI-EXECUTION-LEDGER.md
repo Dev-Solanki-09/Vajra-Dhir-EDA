@@ -6,6 +6,8 @@
 | Authority | Orchestrator. Binds WORKER-GEMINI (sole worker, Antigravity, `D:\project-gemini`). |
 | Refines | VD-MASTER-001 (G0–G8), VD-MASTER-002 (privacy + X-track), VD-UI-001 (G6=U0–U6). This ledger is the SMALL-CHUNK execution layer. |
 | Companion | `INCOMPLETE-WORK-AND-CLEANUP.md` (full inventory of unfinished work + files). |
+| Toolkit (BINDING) | `EXECUTION-TOOLKIT-AND-GUARDRAILS.md` (VD-TOOL-001) — anti-hallucination protocol, spoon-fed skills/tools/MCP/harness per domain, techstack connection map, RE carefulness, testing ways. Applies to EVERY sub-step below. |
+| Optimization | `MASTER-GEMINI-OPTIMIZATION.md` (VD-PERF-001) — P-track (P0–P5) after G8, measure-first, zero-regression. |
 
 ## GLOBAL EXECUTION LAWS (every sub-step)
 1. **context7 FIRST.** Before touching any unfamiliar API/library, consult `context7` for the CURRENT docs (record lib + version + doc date in the step log). If context7 unavailable, fetch latest official docs via web and record the URL+date. Never code from memory against a stale API. Load the routed `vd-*` skill (AGENTS.md routing table) for the domain.
@@ -129,7 +131,9 @@ You are WORKER-GEMINI, sole worker on Vajra-Dhir EDA. Work carefully in SMALL, p
    .ai-sync/tickets/MASTER-GEMINI-ENDGAME.md (VD-MASTER-001),
    .ai-sync/tickets/MASTER-GEMINI-EXPANSION.md (VD-MASTER-002, binding privacy policy),
    .ai-sync/tickets/MASTER-GEMINI-UI-REDESIGN.md (VD-UI-001),
+   .ai-sync/tickets/EXECUTION-TOOLKIT-AND-GUARDRAILS.md (VD-TOOL-001 — binding every sub-step),
    .ai-sync/tickets/MASTER-GEMINI-EXECUTION-LEDGER.md (VD-EXEC-001, your step-by-step),
+   .ai-sync/tickets/MASTER-GEMINI-OPTIMIZATION.md (VD-PERF-001, P-track after G8),
    .ai-sync/tickets/INCOMPLETE-WORK-AND-CLEANUP.md (what is unfinished),
    .ai-sync/tickets/T-02c-gemini.md (your FIRST task).
 3. Execute G0 (T-02c) EXACTLY: pin toolchain 1.100.0 + truthful handoff §4. Nothing else.

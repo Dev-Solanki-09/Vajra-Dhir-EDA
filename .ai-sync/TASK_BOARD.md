@@ -5,6 +5,8 @@ Master plan: `.ai-sync/tickets/MASTER-GEMINI-ENDGAME.md` (VD-MASTER-001, G0–G8
 Binding addendum: `.ai-sync/tickets/MASTER-GEMINI-EXPANSION.md` (VD-MASTER-002 — privacy policy + full registry/critic coverage + X-track)
 UI redesign: `.ai-sync/tickets/MASTER-GEMINI-UI-REDESIGN.md` (VD-UI-001 — Hallmark, executes as G6)
 Execution ledger: `.ai-sync/tickets/MASTER-GEMINI-EXECUTION-LEDGER.md` (VD-EXEC-001 — granular phases→sub-phases→steps→sub-steps, context7-first mandate, KICKOFF prompt)
+Toolkit: `.ai-sync/tickets/EXECUTION-TOOLKIT-AND-GUARDRAILS.md` (VD-TOOL-001 — anti-hallucination/evidence-integrity, spoon-fed skills/tools/MCP/harness, techstack connection map, RE carefulness, testing)
+Optimization: `.ai-sync/tickets/MASTER-GEMINI-OPTIMIZATION.md` (VD-PERF-001 — P-track P0–P5, measure-first zero-regression, after G8 before X)
 Inventory: `.ai-sync/tickets/INCOMPLETE-WORK-AND-CLEANUP.md` (all unfinished tickets/vapor + cleanup manifest)
 
 ## Active program
@@ -19,7 +21,8 @@ Inventory: `.ai-sync/tickets/INCOMPLETE-WORK-AND-CLEANUP.md` (all unfinished tic
 | G6 | **= VD-UI-001 (U0–U6)** Hallmark UI/UX redesign + manifest-gap closure (iBOM/elkjs/ngspice-wasm real), browser-verified | GEMINI | QUEUED |
 | G7 | T-06 claims truth + F-19 real hashes + vapor sweep + doc reconciliation (RE doc stays INTERNAL) | GEMINI | QUEUED |
 | G8 | T-15 SPDX lockfile firewall + user-approved push/CI proof + v0.1.0 release packet (human-gated) | GEMINI + USER | QUEUED |
-| X1 | Constraint mgr + variants + BOM analytics + DFM/DFA/PI | GEMINI | QUEUED (post-G8) |
+| P-track | VD-PERF-001 P0–P5: baseline budgets → Rust hot paths → GUI/engine → daemon → build/bundle → zero-regression proof (harness 64/64) | GEMINI | QUEUED (post-G8) |
+| X1 | Constraint mgr + variants + BOM analytics + DFM/DFA/PI | GEMINI | QUEUED (post-P-track) |
 | X2 | Real-time collab CRDT + project digest + <16ms CrossProbeBus | GEMINI | QUEUED |
 | X3 | Sim/field-solver bridges (ngspice-wasm/Xyce/openEMS/Renode/uPlot/Surfer), Ring-2 OCI never fork | GEMINI | QUEUED |
 | X4 | Silicon/FPGA LibreLane + MCAD STEP co-design + supply chain + tracespace | GEMINI | QUEUED |
