@@ -1,5 +1,5 @@
 {
-  "actions/checkout@v4": "eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871",
-  "actions/setup-node@v4": "1e60f639196014664a7e1a67761462a56eadd818",
-  "dtolnay/rust-toolchain@1.100.0": "d2f447f52554e565ea285f5e93344d9f67a6d8cf"
+  "actions/checkout@v4": "11bd71901bbe5b1630ceea73d27597364c9af683",
+  "actions/setup-node@v4": "39370e3970a6d050c480ffad4ff0ed4d3fdee5af",
+  "dtolnay/rust-toolchain@master": "683b588c487a69d01f6c6ddf40f036ff682cc2c8"
 }

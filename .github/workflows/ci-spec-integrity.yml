@@ -59,7 +59,8 @@ jobs:
           import json, pathlib
           for jf in list(pathlib.Path("schemas").glob("*.json")) + [pathlib.Path("budget.json")]:
               if jf.exists():
-                  json.loads(jf.read_text(encoding="utf-8"))
+                  data = json.loads(jf.read_text(encoding="utf-8"))
+                  assert isinstance(data, dict), f"{jf} is not a valid JSON object"
                   print(f"VALID JSON: {jf}")
           EOF
 
@@ -76,7 +77,5 @@ jobs:
           print("PASS: Zero unauthorized PDFs in repository")
           EOF
 
-      - name: 5. Secret Leak Scan (Gitleaks)
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 5. Secret Leak & Path Privacy Audit
+        run: python3 scripts/audit-secrets-and-paths.py

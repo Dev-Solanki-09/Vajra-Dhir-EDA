@@ -298,6 +298,7 @@ export const App: React.FC = () => {
       {/* 2. TOP TELEMETRY & GOVERNANCE BAR */}
       <header style={{ height: 44, background: "var(--vd-bg-panel)", borderBottom: "1px solid var(--vd-border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 12px", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <img src="/logo-white.png" alt="Vajra-Dhīr Logo" style={{ height: 22, width: 22, display: "block", objectFit: "contain" }} />
           <strong style={{ letterSpacing: 0.4 }}>VAJRA-DHĪR EDA</strong>
           <span className="vd-metric" style={{ fontSize: 11, padding: "2px 6px", background: "#1E293B", borderRadius: 4 }}>v0.0.1</span>
           <span className="vd-metric" style={{ fontSize: 11, color: "var(--vd-dlp-airgap)", border: "1px solid var(--vd-dlp-airgap)", padding: "2px 6px", borderRadius: 4 }}>

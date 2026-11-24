@@ -1371,8 +1371,8 @@ def run_server(port: int = PORT):
     DaemonHandler.con = con
     DaemonHandler.budget = budget
 
+    socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer((HOST, port), DaemonHandler) as httpd:
-        httpd.allow_reuse_address = True
         print(f"Vajra-Dhīr EDA v0.0.1 daemon listening strictly on http://{HOST}:{port}")
         print(f"SQLite WAL HW-IR database: {DB_PATH.resolve()}")
         try:
