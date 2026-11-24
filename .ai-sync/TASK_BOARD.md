@@ -1,38 +1,38 @@
 # TASK BOARD (orchestrator-only)
 
-Updated: 2026-11-24 (post T-01 merge) · Wave 2 · Baseline main @ 5964a8f (T-01 merged; harness 64/64 exit 0, orchestrator-verified)
+Updated: 2026-11-24 · **SOLE-WORKER MODE: WORKER-GEMINI (Antigravity) only** · Master plan: `.ai-sync/tickets/MASTER-GEMINI-ENDGAME.md` (phases G0–G8, ultra-detailed, supersedes individual ticket dispatch)
 
-| Ticket | Wave | Owner | Worktree / Branch | Status | Depends on |
-|---|---|---|---|---|---|
-| T-01 daemon+lockfiles | 1 | WORKER-DEEPSEEK (OpenCode) | D:\project-deepseek · feat/worker-deepseek | **MERGED** (5964a8f; audit: fresh 64/64 + frozen install exit 0 + dual-context APPROVE_WITH_NOTES → F-19/F-20) | — |
-| T-07 M1 gap audit (read-only) | 1 | WORKER-GEMINI (Antigravity) | D:\project-gemini · feat/worker-gemini | **MERGED** (cherry-pick 1639a03; root-cause claim corrected by findings F-17) | — |
-| T-02 CI repair | 2 | WORKER-GEMINI | same | **REJECTED → T-02b** (false root cause, missing Node/Python jobs, pseudo schema validation, unauthorized Node 22 downgrade) | — |
-| T-02b CI remediation | 2 | WORKER-GEMINI (Antigravity) | same (rebased; keep your `[T-02]` commit as base — identify by message, hashes renumber on rebase) | **READY** | — |
-| T-03 kernel parity | 2 | WORKER-DEEPSEEK (OpenCode) | same (rebased onto 4924b57) | **READY** | — |
-| T-04 CAD defects | 3 | WORKER-DEEPSEEK | same | QUEUED — **ticket written** (F-08 via FSM, F-09 w_cong + IPC-2152/2221 relabel-or-implement, F-20 UUIDv7, cavalier_contours activate-or-remove) | T-03 merged |
-| T-05 behavioral gates | 3 | WORKER-GEMINI | same | QUEUED (ticket pending; seeds: T-07 §3 static-gate list, wasm-sandbox negative-test depth, G4→G8 DRC-refuses-release path, Gate-8 validator hardening per F-19) | T-03, T-04, T-02b |
-| T-06 claims truth | 5 | WORKER-GEMINI | same | QUEUED (ticket pending; ADD F-19 fabricated evidence hashes + vapor-label sweep: iTriangle daemon.py:1339, elkjs SchematicCanvas.tsx:169, "3D STEP" cli main.rs:200, WireViz, kiri + REVERSE_ENGINEERED_ENGINES.md corrections: KiKit is MIT not GPL-3; gate-semantics truth) | T-05, T-10 |
-| T-15 SPDX lockfile firewall | 3 | WORKER-GEMINI | same | QUEUED (ticket pending): extend check-spdx-firewall.mjs to scan pnpm-lock/uv.lock/Cargo.lock with AGPL/GPL/EUPL deny-list + elkjs EPL exception register (pending USER ruling, task_plan §9.5) + injected-AGPL negative fixture | T-02b merged |
-| T-16 manifest-gap closure | 4 | WORKER-DEEPSEEK | same | QUEUED (ticket pending): registry-mandated missing deps (i_triangle, wgpu, manifold, occt-import-js, InteractiveHtmlBom, PcbDraw…) — integrate with real usage+test OR register honest deferral; coordinate T-10/T-11 | T-08 |
-| T-12 vendor-mirror bootstrap | 5 | WORKER-DEEPSEEK | same | QUEUED (ticket pending): reconcile import-upstream-stack.sh with techstack.md (gitignore preamble, dedupe), dry-run ring1/mcp modes | T-11 |
-| T-14 rewrite depth-to-parity | 6 | WORKER-DEEPSEEK | same | QUEUED (ticket pending): panelizer → real .kicad_pcb panel output; wire-harness → SVG diagram + wiring-table BOM; pcb-diff → layer SVG renderer; golden-file tests | T-11 |
-| T-08 toolchain floors | 3 | WORKER-DEEPSEEK | same | QUEUED (ticket pending): TS→7.0.2 EVERYWHERE incl. apps/desktop ^5.8.2 (floor violation found by ledger), engines node>=26.13.1, **commit Cargo.lock** (missing at root — reproducibility hole); host Node upgrade = USER | T-03 merged |
-| T-09 CAS & supervision | 4 | WORKER-DEEPSEEK | same | QUEUED (ticket pending): zstd CAS blobs, SQLite WAL compaction ladder (PASSIVE/250, TRUNCATE idle), `.vd.autosave.jsonl` shadow, Windows Job Objects + Linux PDEATHSIG zombie supervision (T-07 §2.5/2.6) | T-08 |
-| T-10 UI honesty & real deps | 4 | WORKER-GEMINI | same | QUEUED (ticket pending): elkjs as REAL schematic-layout dependency (or honest relabel), iBOM generator wiring behind PanelizerDiffCenter tab, GUI-side vapor-label removal | T-02b, T-05 |
-| T-11 tool interop | 5 | WORKER-DEEPSEEK | same | QUEUED (ticket pending): KiKit actually invoked/tested in panelizer path, WireViz YAML import/export in wire-harness, minimal real STEP AP242 export + RS-274X plotter OR honest relabel, iTriangle integrate-or-drop, hw-dlp deterministic egress probe, solver-recovery unit tests | T-09 |
-| Wave 6+ gap tickets | 6+ | TBD | — | Remaining T-07 §4 seeds not covered above: KiCad golden round-trip, hw-merge negative collision tests (folded into T-03 verify), static→behavioral conversions (folded into T-05) | T-05/T-11 |
-| FINAL release packet | final | ORCHESTRATOR + HUMAN | main | BLOCKED (human gate) | all |
+## Active program
+| Phase | Content (old ticket IDs folded in) | Owner | Status |
+|---|---|---|---|
+| G0 | T-02b close-out + toolchain provisioning | GEMINI | **READY** (a039258 + handoff committed; orchestrator audit pending) |
+| G1 | T-03 takeover (DeepSeek WIP ab2ec71) + T-08 floors + Cargo.lock | GEMINI | QUEUED |
+| G2 | T-04 CAD/geometry truth | GEMINI | QUEUED |
+| G3 | T-05 verification hardening (static→behavioral, wasm negatives, G4→G8, F-19 validator) | GEMINI | QUEUED |
+| G4 | T-12 upstream import/mirror program + vendor MANIFEST + golden fixtures + license exceptions | GEMINI | QUEUED |
+| G5 | T-14/T-11/T-09 clean-room rewrites to parity (panel/harness/diff/KiKit/iTriangle/STEP/RS-274X/CAS/supervision) | GEMINI | QUEUED |
+| G6 | T-16/T-10 manifest gaps + UI ultra-polish, browser-verified (iBOM/elkjs/ngspice-wasm real) | GEMINI | QUEUED |
+| G7 | T-06 claims truth + F-19 real hashes + vapor sweep + doc reconciliation | GEMINI | QUEUED |
+| G8 | T-15 SPDX lockfile firewall + user-approved push/CI proof + FINAL release packet (human-gated) | GEMINI + USER | QUEUED |
 
-## Anti-vapor law (applies to every ticket, Waves 3–6)
-Every technology named in code, labels, CLI output, gates, or docs must be EITHER (a) really integrated with a behavioral test, (b) truthfully relabeled to what the code actually does, or (c) removed. Ledger evidence: `prompt-and-skills` scan 2026-11-24 (task_plan.md §7).
+**Dispatch prompt (Antigravity, fresh session in D:\project-gemini):**
+`Run "git rebase main" first. Then read .ai-sync/tickets/MASTER-GEMINI-ENDGAME.md completely and execute PHASE G0 exactly. Follow .ai-sync/README.md rules. You are the sole worker. After each phase: commit -s, write the phase handoff with raw evidence, STOP and signal READY_FOR_REVIEW — do not start the next phase before the orchestrator flips it READY.`
 
-## Quarantine notice (findings F-18) — RESOLVED TO STASH
-The unattributed v0.0.5 main-tree work was evacuated to `stash@{0}` (labeled) so T-01 could merge. Provenance: pre-bus partial work of a stopped Qoder subagent (timestamp evidence in T-01 handoff §5). Do NOT merge; if revived, reconcile daemon.py against f4caaf2 first. Workers: never write to `D:\Vajra-Dhir-EDA`.
-
-## Dispatch prompts (Wave 2 — both READY now)
-- **OpenCode (DeepSeek):** open project `D:\project-deepseek`, fresh session, prompt: `Run "git rebase main" first. Then read .ai-sync/tickets/T-03-deepseek.md and execute it exactly. Follow .ai-sync/README.md rules. T-01 is merged; harness ground truth at main is 64/64.`
-- **Antigravity (Gemini):** open project `D:\project-gemini`, fresh session, prompt: `Run "git rebase main" first. Then read .ai-sync/tickets/T-02b-gemini.md and execute it exactly. Follow .ai-sync/README.md rules. Your T-02 was audited and RETURNED — keep your old [T-02] commit as base and fix every audit finding in the ticket. pnpm-lock.yaml and uv.lock now exist on main.`
-- After each handoff: orchestrator audits (scope diff + fresh VERIFY_CMD + dual-context review where required), merges --no-ff, rebases worktrees, flips next QUEUED ticket to READY here.
+## History (merged/closed)
+| Ticket | Outcome |
+|---|---|
+| T-01 daemon+lockfiles | MERGED 5964a8f (64/64 fresh, dual-context APPROVE_WITH_NOTES → F-19/F-20) |
+| T-07 gap audit | MERGED 1639a03 (root-cause claim corrected, F-17) |
+| T-02 CI | REJECTED → T-02b (false root cause, missing jobs, Node 22 downgrade) |
+| T-02b CI remediation | Committed a039258 + handoff on worker branch — audit pending (G0) |
+| T-03 (DeepSeek) | RETIRED mid-flight; WIP preserved ab2ec71 on feat/worker-deepseek → Gemini adopts in G1 |
+| T-04/T-05/T-06/T-08..T-16 | FOLDED into master plan phases G1–G8 |
 
 ## Ground truth
-Harness at main 5964a8f: **64 PASS / 0 FAIL, exit 0** (orchestrator-run fresh in worker worktree post-rebase; F-13/F-14/F-16 closed). Host: Node 24.19.0 (floor 26.13.1 — user upgrade pending), Python 3.14.7, uv 0.12.5, pnpm 10.6.0; cargo/rustc still absent (T-03 provisions or BLOCKERs). No push to GitHub without explicit user approval.
+Harness at main: **64 PASS / 0 FAIL exit 0** (orchestrator-verified at T-01 merge). Lockfiles: pnpm ✓ uv ✓ Cargo.lock pending G1. Host: Node 24.19.0 (user upgrade to 26.13.1 pending), Python 3.14.7, uv 0.12.5, pnpm 10.6.0; rustup provisioning in G0/G1.
+
+## Quarantine & rulings pending
+- F-18: `stash@{0}` in main checkout = superseded pre-bus v0.0.5 partial work. DO NOT apply (daemon.py conflicts with T-01). User ruling: drop or mine.
+- License gray zones (task_plan §9.5): working default Option A (elkjs EPL exception register, surfer deferred); user may override to Option B (MIT replacements) — affects G4/G6.
+- Host Node 24.19.0 → 26.13.1 upgrade = USER action (CI pins 26.13.1 regardless).
+- Push to GitHub: only via G8 explicit user approval.
