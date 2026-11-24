@@ -1,0 +1,25 @@
+{
+  "job_id": "018f6738-9cb2-78d1-b51c-81bf0528ef31",
+  "pack_id": "pack-2a",
+  "image_digest_sha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "network_mode": "none",
+  "timeout_sec": 300,
+  "resource_limits": {
+    "max_memory_mib": 4096,
+    "max_cpus": 2.0
+  },
+  "inputs": {
+    "board_id": "b1_board",
+    "input_files": [
+      "board.kicad_pcb",
+      "netlist.ipc"
+    ],
+    "parameters": {
+      "layer_count": 4
+    }
+  },
+  "expected_outputs": [
+    "gerbers.zip",
+    "drc_report.json"
+  ]
+}

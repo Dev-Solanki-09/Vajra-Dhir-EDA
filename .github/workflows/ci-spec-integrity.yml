@@ -4,19 +4,28 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  verify-architecture-and-security:
+  verify-spec-and-security:
     name: SQLite DDL, Schemas, DCO & License Firewall
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
+
+      - name: Verify GitHub Action Pins against actions.lock
+        run: node scripts/check-actions-lock.mjs
 
       - name: 1. Enforce DCO Signed-off-by on Pull Requests
         if: github.event_name == 'pull_request'
@@ -53,15 +62,47 @@ jobs:
               print(f"PASS: Kernel lock trigger blocked agent mutation -> {e}")
           EOF
 
-      - name: 3. Validate JSON Schemas & Single-Source Budget File
+      - name: 3. Real JSON Schema Validation & Budget Integrity Guard
         run: |
+          pip install jsonschema
           python3 - <<'EOF'
-          import json, pathlib
-          for jf in list(pathlib.Path("schemas").glob("*.json")) + [pathlib.Path("budget.json")]:
-              if jf.exists():
-                  data = json.loads(jf.read_text(encoding="utf-8"))
-                  assert isinstance(data, dict), f"{jf} is not a valid JSON object"
-                  print(f"VALID JSON: {jf}")
+          import json, pathlib, sys
+          import jsonschema
+
+          # 1. Validate meta-schemas: each schemas/*.json is a valid JSON schema definition
+          schema_paths = list(pathlib.Path("schemas").glob("*.json"))
+          assert len(schema_paths) > 0, "No JSON schemas found in schemas/"
+          for sp in schema_paths:
+              schema = json.loads(sp.read_text(encoding="utf-8"))
+              validator_cls = jsonschema.validators.validator_for(schema)
+              validator_cls.check_schema(schema)
+              print(f"PASS [META-SCHEMA]: {sp.name} is a valid {validator_cls.__name__}")
+
+          # 2. Validate budget.json syntax and single-source invariant
+          budget_path = pathlib.Path("budget.json")
+          assert budget_path.exists(), "budget.json missing!"
+          budget_data = json.loads(budget_path.read_text(encoding="utf-8"))
+          assert isinstance(budget_data, dict) and len(budget_data) > 0, "budget.json empty"
+          print("PASS [BUDGET]: budget.json valid single source of pricing")
+
+          # 3. Validate valid test fixture against schemas/worker_contract.v1.json
+          worker_schema = json.loads(pathlib.Path("schemas/worker_contract.v1.json").read_text(encoding="utf-8"))
+          valid_fixture = json.loads(pathlib.Path("schemas/fixtures/valid_worker_contract.json").read_text(encoding="utf-8"))
+          jsonschema.validate(instance=valid_fixture, schema=worker_schema)
+          print("PASS [FIXTURE VALID]: valid_worker_contract.json passes worker_contract.v1.json")
+
+          # 4. Prove negative fixture FAILS validation and raises jsonschema.ValidationError
+          invalid_fixture = json.loads(pathlib.Path("schemas/fixtures/invalid_project.json").read_text(encoding="utf-8"))
+          raised = False
+          try:
+              jsonschema.validate(instance=invalid_fixture, schema=worker_schema)
+          except jsonschema.ValidationError as err:
+              raised = True
+              print(f"PASS [NEGATIVE TEST]: jsonschema.ValidationError successfully raised -> {err.message}")
+
+          if not raised:
+              print("FAIL: schemas/fixtures/invalid_project.json did not raise jsonschema.ValidationError!")
+              sys.exit(1)
           EOF
 
       - name: 4. Copyright PDF, Forbidden AGPL/NC & CVE Floor Guard

@@ -1,37 +1,113 @@
 name: Vajra-Dhir License Firewall & Hardware EvalOps
+
 on:
-  pull_request:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   schedule:
     - cron: "0 2 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   license-and-supply-chain-firewall:
+    name: SPDX License Firewall & Hook Guard
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js (v26.13.1 LTS Lithium)
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
-          node-version: 26.13.1
+          node-version: '26.13.1'
+
+      - name: Verify GitHub Action Pins against actions.lock
+        run: node scripts/check-actions-lock.mjs
+
       - name: Run SPDX & Package Deny-List Check
         run: node scripts/check-spdx-firewall.mjs
+
       - name: Check Shell Hook Invariants
         run: |
           chmod +x scripts/hooks/vd-guard.sh
           ./scripts/hooks/vd-guard.sh
 
-  cargo-workspace-tests:
+  node-build-test:
+    name: Node.js TypeCheck, Build & Tests (v26.13.1)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust Toolchain
-        uses: dtolnay/rust-toolchain@master
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js (v26.13.1 LTS Lithium)
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
-          toolchain: stable
+          node-version: '26.13.1'
+
+      - name: Enable Corepack & pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.6.0 --activate
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript typecheck
+        run: pnpm -r --if-present exec tsc --noEmit
+
+      - name: Build packages & apps
+        run: pnpm build
+
+      - name: Run Package Tests
+        run: pnpm test
+
+  python-tests:
+    name: Python 3.14 Neuro-Symbolic & Verifier Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python 3.14
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: '3.14'
+
+      - name: Install pinned uv
+        run: |
+          pip install uv==0.6.5
+
+      - name: Sync dependencies (frozen lockfile)
+        run: |
+          uv sync --frozen
+
+      - name: Run offline pytest suites
+        run: |
+          uv run pytest packages -q
+
+  cargo-workspace-tests:
+    name: Cargo Clippy & Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master
+        with:
+          toolchain: 1.100.0
           components: clippy, rustfmt
+
       - name: Cargo Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
+
       - name: Cargo Test
         run: cargo test --workspace
