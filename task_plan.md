@@ -190,3 +190,26 @@ Wave 0 (now) ──► T-01 ──► T-02 (needs lockfiles) ──► GitHub PR
 | Workers drift out of scope | MODE B `git diff --name-only` allowlist check; auto-reject |
 | Harness gates masked by structural checks | Wave 3 reclassification; claims audit Wave 4 |
 | Windows vs Linux CI differences (netns, pipes, paths) | Fixture-based deterministic substitutes labeled as such; physical/Linux-only proofs deferred honestly |
+## 9. Tech-Stack Integration Ledger & Endgame Program (2026-11-24)
+
+### 9.1 Ledger (full scan of `prompt-and-skills`, 24 files / ~845 KB, cross-checked against manifests + source + tests)
+- **INTEGRATED with evidence (25+):** SQLite WAL + lock triggers, UUIDv7 (hw-ir store; autorouter violation = F-20), rstar/i_overlay, wasmtime 50 (runner + sandbox_limits_test), Z3/SymPy/Pint, DuckDB KG, atopile bridge, Ed25519, KiCad 10 sexpr, Specctra DSN/SES, SPICE dialect transpiler, IPC-7351B synth, IPC-2221 creepage, DFM/DFA/DFT, PnP/stencil, Zephyr DTS co-sync, MCP 12 verbs/ACP/checkpoints, CrossProbeBus, WebGPU→WebGL2, Dockview/React 19.3.1, PDN IR-drop, EMC bands, fab registry, OCI compose (declared), budget.json enforcement.
+- **PARTIAL:** cavalier_contours (dead dep), Gerber X2 (attr reconstructor only, no RS-274X plotter), wasm-sandbox negative depth (unverified), iBOM (GUI label only), panelization (own engine tested; `kikit` declared never invoked), Rayon SA (missing w_cong = F-09), hw-merge (F-06, in T-03), CI jobs (T-02b), TS floor (5 apps at 7.0.2; **apps/desktop ^5.8.2 violates**), Cargo.lock absent at root.
+- **MISSING:** iTriangle, STEP AP242 parser/exporter, kiri git-diff, WireViz interop, elkjs (label only), zstd CAS + WAL ladder + autosave shadow.
+- **BANNED-list check: CLEAN** — no AGPL/NC libs in any manifest; SPDX firewall script enforces.
+- **Vapor labels in shipped code (anti-vapor law targets):** "iTriangle" (daemon.py:1339), "elkjs" (SchematicCanvas.tsx:169), "3D STEP" (cli/main.rs:200), "WireViz"/"kiri" (GUI labels).
+
+### 9.2 Anti-vapor law (all Waves 3–6 tickets)
+Every technology named in code/labels/CLI/gates/docs must be (a) really integrated + behaviorally tested, (b) truthfully relabeled, or (c) removed. No exceptions; T-06 audits the sweep.
+
+### 9.3 Endgame sequence (live view on .ai-sync/TASK_BOARD.md)
+Wave 2: T-03 (kernel parity) ∥ T-02b (CI remediation). Wave 3: T-04 (CAD defects) → T-08 (floors + Cargo.lock) ∥ T-05 (behavioral gates). Wave 4: T-09 (CAS/supervision) ∥ T-10 (UI honesty/elkjs/iBOM). Wave 5: T-11 (tool interop: KiKit/WireViz/STEP/RS-274X/iTriangle/DLP/solver-recovery) → T-06 (claims truth + F-19 real hashes + vapor sweep). FINAL: release evidence packet; CI-green proof requires one user-approved push; physical fabrication (0/3 boards) stays out of scope and honestly labeled.
+
+### 9.4 Definition of ultra-finished (exit criteria, all evidence-backed)
+1. Harness 64+/64 with T-05 behavioral reclassification — every gate either executes real code or is labeled STRUCTURAL.
+2. GitHub Actions green on a user-approved push (T-02b jobs: license firewall, cargo, Node 26.13.1 frozen build/test, Python 3.14 uv/pytest).
+3. All lockfiles committed and frozen-installable: pnpm ✓, uv ✓, Cargo.lock (T-08).
+4. Zero fabricated evidence: Gate-8 fail-closed ✓, F-19 real hashes (T-06), no vapor labels (T-06 sweep).
+5. All AGENTS.md invariants enforced by tests: UUIDv7 everywhere (T-04), TS/Node/Rust floors (T-08), human-lock fail-closed ✓.
+6. CLAIMS_REGISTER reconciled; software-only claims labeled; 0/3 fabrication stated plainly.
+7. Release packet assembled for human signoff — token issued ONLY by the user.

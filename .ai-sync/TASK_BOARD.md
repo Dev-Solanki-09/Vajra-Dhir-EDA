@@ -9,12 +9,18 @@ Updated: 2026-11-24 (post T-01 merge) · Wave 2 · Baseline main @ 5964a8f (T-01
 | T-02 CI repair | 2 | WORKER-GEMINI | same | **REJECTED → T-02b** (false root cause, missing Node/Python jobs, pseudo schema validation, unauthorized Node 22 downgrade) | — |
 | T-02b CI remediation | 2 | WORKER-GEMINI (Antigravity) | same (rebased; keep your `[T-02]` commit as base — identify by message, hashes renumber on rebase) | **READY** | — |
 | T-03 kernel parity | 2 | WORKER-DEEPSEEK (OpenCode) | same (rebased onto 4924b57) | **READY** | — |
-| T-04 CAD defects | 2→3 | WORKER-DEEPSEEK | same | QUEUED (ticket pending; ADD F-20 UUIDv7 fix in autorouter) | T-03 merged |
-| T-05 behavioral gates | 3 | TBD | — | QUEUED (ticket pending; seeds: T-07 §3 static-gate list + F-19 gate hardening) | T-03, T-04 |
-| T-06 claims truth | 4 | WORKER-GEMINI | same | QUEUED (ticket pending; ADD F-19 fabricated evidence hashes) | T-02b, T-05 |
-| T-08 toolchain floors | 3 | WORKER-DEEPSEEK | same | QUEUED (ticket pending): TS 5.9.3→7.0.2 (npm latest, verified), engines node>=26.13.1; host Node upgrade = USER | T-03 merged |
-| Wave 6+ gap tickets | 6+ | TBD | — | SEED LIST from T-07 §4: wasm-sandbox impl+negative tests, hw-merge driver registration, cas-store zstd/WAL/zombie supervision, solver-recovery tests, KiCad golden round-trip, hw-dlp egress probe, G4→G8 negative path, static→behavioral conversions | T-03/T-05 |
+| T-04 CAD defects | 3 | WORKER-DEEPSEEK | same | QUEUED — **ticket written** (F-08 via FSM, F-09 w_cong + IPC-2152/2221 relabel-or-implement, F-20 UUIDv7, cavalier_contours activate-or-remove) | T-03 merged |
+| T-05 behavioral gates | 3 | WORKER-GEMINI | same | QUEUED (ticket pending; seeds: T-07 §3 static-gate list, wasm-sandbox negative-test depth, G4→G8 DRC-refuses-release path, Gate-8 validator hardening per F-19) | T-03, T-04, T-02b |
+| T-06 claims truth | 5 | WORKER-GEMINI | same | QUEUED (ticket pending; ADD F-19 fabricated evidence hashes + vapor-label sweep: iTriangle in daemon.py:1339, elkjs label in SchematicCanvas.tsx:169, "3D STEP" in cli main.rs:200, WireViz, kiri) | T-05, T-10 |
+| T-08 toolchain floors | 3 | WORKER-DEEPSEEK | same | QUEUED (ticket pending): TS→7.0.2 EVERYWHERE incl. apps/desktop ^5.8.2 (floor violation found by ledger), engines node>=26.13.1, **commit Cargo.lock** (missing at root — reproducibility hole); host Node upgrade = USER | T-03 merged |
+| T-09 CAS & supervision | 4 | WORKER-DEEPSEEK | same | QUEUED (ticket pending): zstd CAS blobs, SQLite WAL compaction ladder (PASSIVE/250, TRUNCATE idle), `.vd.autosave.jsonl` shadow, Windows Job Objects + Linux PDEATHSIG zombie supervision (T-07 §2.5/2.6) | T-08 |
+| T-10 UI honesty & real deps | 4 | WORKER-GEMINI | same | QUEUED (ticket pending): elkjs as REAL schematic-layout dependency (or honest relabel), iBOM generator wiring behind PanelizerDiffCenter tab, GUI-side vapor-label removal | T-02b, T-05 |
+| T-11 tool interop | 5 | WORKER-DEEPSEEK | same | QUEUED (ticket pending): KiKit actually invoked/tested in panelizer path, WireViz YAML import/export in wire-harness, minimal real STEP AP242 export + RS-274X plotter OR honest relabel, iTriangle integrate-or-drop, hw-dlp deterministic egress probe, solver-recovery unit tests | T-09 |
+| Wave 6+ gap tickets | 6+ | TBD | — | Remaining T-07 §4 seeds not covered above: KiCad golden round-trip, hw-merge negative collision tests (folded into T-03 verify), static→behavioral conversions (folded into T-05) | T-05/T-11 |
 | FINAL release packet | final | ORCHESTRATOR + HUMAN | main | BLOCKED (human gate) | all |
+
+## Anti-vapor law (applies to every ticket, Waves 3–6)
+Every technology named in code, labels, CLI output, gates, or docs must be EITHER (a) really integrated with a behavioral test, (b) truthfully relabeled to what the code actually does, or (c) removed. Ledger evidence: `prompt-and-skills` scan 2026-11-24 (task_plan.md §7).
 
 ## Quarantine notice (findings F-18) — RESOLVED TO STASH
 The unattributed v0.0.5 main-tree work was evacuated to `stash@{0}` (labeled) so T-01 could merge. Provenance: pre-bus partial work of a stopped Qoder subagent (timestamp evidence in T-01 handoff §5). Do NOT merge; if revived, reconcile daemon.py against f4caaf2 first. Workers: never write to `D:\Vajra-Dhir-EDA`.
