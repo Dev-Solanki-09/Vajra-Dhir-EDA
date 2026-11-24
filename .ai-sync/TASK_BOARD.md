@@ -4,6 +4,8 @@ Updated: 2026-11-24 · **SOLE-WORKER MODE: WORKER-GEMINI (Antigravity) only**
 Master plan: `.ai-sync/tickets/MASTER-GEMINI-ENDGAME.md` (VD-MASTER-001, G0–G8)
 Binding addendum: `.ai-sync/tickets/MASTER-GEMINI-EXPANSION.md` (VD-MASTER-002 — privacy policy + full registry/critic coverage + X-track)
 UI redesign: `.ai-sync/tickets/MASTER-GEMINI-UI-REDESIGN.md` (VD-UI-001 — Hallmark, executes as G6)
+Execution ledger: `.ai-sync/tickets/MASTER-GEMINI-EXECUTION-LEDGER.md` (VD-EXEC-001 — granular phases→sub-phases→steps→sub-steps, context7-first mandate, KICKOFF prompt)
+Inventory: `.ai-sync/tickets/INCOMPLETE-WORK-AND-CLEANUP.md` (all unfinished tickets/vapor + cleanup manifest)
 
 ## Active program
 | Phase | Content | Owner | Status |
@@ -23,8 +25,8 @@ UI redesign: `.ai-sync/tickets/MASTER-GEMINI-UI-REDESIGN.md` (VD-UI-001 — Hall
 | X4 | Silicon/FPGA LibreLane + MCAD STEP co-design + supply chain + tracespace | GEMINI | QUEUED |
 | FINAL | v0.2.0 release packet (human-gated, L128: no Tier-4 claim until 3 bench-verified PCBs) | GEMINI + USER | QUEUED |
 
-**Dispatch prompt (Antigravity, fresh session in D:\project-gemini):**
-`Run "git rebase main" first. Read .ai-sync/tickets/T-02c-gemini.md and execute it exactly (narrow: pin toolchain 1.100.0 + truthful handoff §4 — do NOT re-do passing T-02b work). Then read MASTER-GEMINI-ENDGAME.md + MASTER-GEMINI-EXPANSION.md (binding privacy policy) completely. Follow .ai-sync/README.md rules. You are the sole worker. After each phase: commit -s, write the handoff with raw evidence, STOP and signal READY_FOR_REVIEW — do not start the next phase before the orchestrator flips it READY.`
+**Dispatch prompt (Antigravity, fresh session in D:\project-gemini):** use the full KICKOFF PROMPT in `MASTER-GEMINI-EXECUTION-LEDGER.md` §KICKOFF. Short form:
+`Run "git rebase main" first. Read AGENTS.md, task_plan.md, findings.md, then MASTER-GEMINI-ENDGAME + EXPANSION (privacy) + UI-REDESIGN + EXECUTION-LEDGER + INCOMPLETE-WORK-AND-CLEANUP, then T-02c-gemini.md. Execute G0 (T-02c) exactly: pin toolchain 1.100.0 + truthful handoff §4. Work in SMALL staged chunks; context7 latest docs BEFORE any unfamiliar API; failing test FIRST; exact offline VERIFY_CMD; commit -s per sub-phase; STOP + READY_FOR_REVIEW after each phase; never start the next phase before the READY flip. DeepSeek T-03 is yours in G1 (F-06 real; F-05/F-07 adopt-tests). Keep RE provenance internal. Never push/fabricate signoff/edit AGENTS.md.`
 
 ## History (merged/closed)
 | Ticket | Outcome |
