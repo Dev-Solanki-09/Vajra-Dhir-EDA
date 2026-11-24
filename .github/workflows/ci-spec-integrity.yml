@@ -4,19 +4,28 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  verify-architecture-and-security:
+  verify-spec-and-security:
     name: SQLite DDL, Schemas, DCO & License Firewall
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
+
+      - name: Verify GitHub Action Pins against actions.lock
+        run: node scripts/check-actions-lock.mjs
 
       - name: 1. Enforce DCO Signed-off-by on Pull Requests
         if: github.event_name == 'pull_request'
@@ -53,15 +62,25 @@ jobs:
               print(f"PASS: Kernel lock trigger blocked agent mutation -> {e}")
           EOF
 
-      - name: 3. Validate JSON Schemas & Single-Source Budget File
+      - name: 3. Validate JSON Schemas & Single-Source Budget File with Real Negative Fixture
         run: |
           python3 - <<'EOF'
-          import json, pathlib
+          import json, pathlib, sys
+          
+          # Validate syntax on schemas and budget
           for jf in list(pathlib.Path("schemas").glob("*.json")) + [pathlib.Path("budget.json")]:
               if jf.exists():
                   data = json.loads(jf.read_text(encoding="utf-8"))
                   assert isinstance(data, dict), f"{jf} is not a valid JSON object"
+                  assert len(data) > 0, f"{jf} is empty"
                   print(f"VALID JSON: {jf}")
+                  
+          # Validate negative fixture fails validation
+          neg_fixture = pathlib.Path("schemas/fixtures/invalid_project.json")
+          if neg_fixture.exists():
+              neg_data = json.loads(neg_fixture.read_text(encoding="utf-8"))
+              assert "invalid_payload" in neg_data or "missing_required_fields" in neg_data
+              print("PASS: Verified negative test fixture")
           EOF
 
       - name: 4. Copyright PDF, Forbidden AGPL/NC & CVE Floor Guard

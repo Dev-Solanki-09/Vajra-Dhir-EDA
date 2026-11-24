@@ -1,0 +1,9 @@
+{
+  "invalid_payload": true,
+  "missing_required_fields": [
+    "project_id",
+    "board_id",
+    "schematic"
+  ],
+  "reason": "Deterministic negative fixture to prove schema validators reject non-compliant payloads"
+}

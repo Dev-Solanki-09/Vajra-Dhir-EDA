@@ -1,5 +1,6 @@
 {
-  "actions/checkout@v4": "11bd71901bbe5b1630ceea73d27597364c9af683",
-  "actions/setup-node@v4": "39370e3970a6d050c480ffad4ff0ed4d3fdee5af",
-  "dtolnay/rust-toolchain@master": "683b588c487a69d01f6c6ddf40f036ff682cc2c8"
+  "actions/checkout@v4.2.2": "11bd71901bbe5b1630ceea73d27597364c9af683",
+  "actions/setup-node@v4.2.0": "1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a",
+  "actions/setup-python@v5.4.0": "42375524e23c412d93fb67b49958b491fce71c38",
+  "dtolnay/rust-toolchain@master": "df2a88e9fe4098bad09cb42c3dec7187f15861fc"
 }
