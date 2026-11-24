@@ -34,10 +34,16 @@ env/
 
 # Upstream mirrored source trees (managed by scripts/import-upstream-stack.sh)
 vendor/ring1-refs/
+vendor/quarantine/
 workers/sources/
 plugins/sources/
 evalops/sources/
 tools/local-mcps/
+
+# Internal-only provenance (VD-MASTER-002 Part A) — never committed
+.ai-sync/private/
+# Hallmark redesign records/screenshots
+.hallmark/
 
 # IDE and OS files
 .DS_Store
