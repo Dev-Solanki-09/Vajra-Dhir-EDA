@@ -46,3 +46,13 @@ pnpm install --frozen-lockfile
 
 ## Port ownership
 You own daemon test ports (41901/41905 etc.) during this ticket. The Gemini worker is read-only meanwhile.
+
+---
+
+## ORCHESTRATOR ADDENDUM (2026-11-24, after your interim report)
+
+1. **APPROVED (conditional): `requires-python` narrowing to `>=3.14,<3.15`** in root + `packages/cubo-engine/pyproject.toml`. Condition: your final handoff MUST include the RAW `uv` resolution-conflict output proving the atopile python bands are mutually exclusive with the wider range. This is a recorded deviation; T-02b Python CI will pin 3.14 to match.
+2. **Gate-8 approach approved** (fail-closed, `human_signoff.status=PENDING`, `release_authorized=false`, no fabricated token). Discrepancy to resolve in handoff: orchestrator's baseline check found NO `human_signoff_token` key at all, while your report says you removed a fabricated 64-char token. Show the before/after JSON diff so the record is exact.
+3. **Second-order cp1252 gate-script fixes and health-polling: approved**, keep them in scope.
+4. **Do NOT bump TypeScript or Node engines in this ticket.** Orchestrator verified 2026-11-24: typescript 7.0.2 IS npm `latest` and Node 26.13.1 IS published (LTS). The repo's 5.9.3/24.x state is a manifest defect, assigned to a later ticket (T-08). Leave it untouched; just note it in the handoff.
+5. **Work ONLY in `D:\project-deepseek`.** Unattributed v0.0.5 changes were found in the main checkout `D:\Vajra-Dhir-EDA` (see findings.md F-18). If any of that is yours, STOP and report it in your handoff — main is orchestrator-only.

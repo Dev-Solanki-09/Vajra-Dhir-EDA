@@ -69,8 +69,8 @@
 ## 4. Orchestration Protocol (adapted from attached wave protocol)
 
 ### 4.1 Roles
-- **Orchestrator (me, main branch):** owns this plan, `findings.md`, `progress.md`, ticket board; dispatches workers; audits diffs; merges; reports progress. Never writes product code. Never pushes to remote without user approval.
-- **Workers:** Qoder subagents (`general-purpose`), one per ticket, each in an **isolated git worktree** on branch `feat/<ticket-id>-<slug>`. Workers receive the full ticket (scope, contract, acceptance, verify command) and the AGENTS.md invariants. External-IDE workers (OpenCode/Antigravity per the attachment) may be substituted later; the `.ai-sync/` handoff format stays compatible.
+- **Orchestrator (me, main branch):** owns this plan, `findings.md`, `progress.md`, `.ai-sync/` bus; dispatches tickets; audits diffs; merges; reports progress. Never writes product code, never runs tests hands-on. Never pushes to remote without user approval.
+- **Workers (EXTERNAL, per user directive):** WORKER-DEEPSEEK = OpenCode desktop in `D:\project-deepseek` on `feat/worker-deepseek` (backend/logic/tests); WORKER-GEMINI = Antigravity IDE in `D:\project-gemini` on `feat/worker-gemini` (UI/adapters/security/browser verification + read-only research). Coordination via `.ai-sync/` tickets/handoffs (committed to main so worktrees inherit). Fresh session per ticket. My own Qoder subagents are used ONLY for independent dual-context audits (oversight), never for execution.
 - **Auditor:** for any geometry / security / hardware-compiler ticket, a **fresh zero-history reviewer subagent** (dual-context rule, AGENTS.md #6) reviews the diff before merge. The orchestrator's own audit does not replace it.
 
 ### 4.2 Ticket schema (every dispatch carries all fields)
