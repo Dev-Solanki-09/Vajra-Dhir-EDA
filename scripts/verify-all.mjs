@@ -550,6 +550,11 @@ step('[UI/G6B] Real WebGPU/Canvas2D Engine, elkjs & CrossProbeBus <16ms', () => 
   execSync('node scripts/test-g6b-engines.mjs', { stdio: 'pipe' });
 });
 
+// 75. G6C Agent SSE, Fail-Closed Proposal Diffs, 7 Workspaces, Calculators & uPlot
+step('[UI/G6C] Agent SSE, Fail-Closed Locks, 7 Workspaces & uPlot', () => {
+  execSync('python scripts/test-g6c-agent-and-workspaces.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');

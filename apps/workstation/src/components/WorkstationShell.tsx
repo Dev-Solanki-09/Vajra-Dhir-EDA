@@ -14,8 +14,9 @@ import {
 } from '../commandBus';
 import { WorkbenchIcon } from './Icons';
 import { PanelErrorBoundary } from './PanelErrorBoundary';
-import { PcbEngineCanvas } from './PcbEngineCanvas';
-import { SchematicElkCanvas } from './SchematicElkCanvas';
+import { AgentDockPanel } from './AgentDockPanel';
+import { CalculatorDrawer } from './CalculatorDrawer';
+import { ActiveWorkspaceView } from './Workspaces';
 
 export type ToolMode = 'select' | 'route' | 'place' | 'inspect';
 
@@ -88,15 +89,12 @@ const ViewportPanel: React.FC<IDockviewPanelProps> = () => {
           </span>
         </div>
 
-        {ctx.activeWorkspace === 'schematic' ? (
-          <SchematicElkCanvas />
-        ) : (
-          <PcbEngineCanvas
-            layersVisible={ctx.layersVisible}
-            ratsnestVisible={ctx.ratsnestVisible}
-            lockRingsVisible={ctx.lockRingsVisible}
-          />
-        )}
+        <ActiveWorkspaceView
+          workspace={ctx.activeWorkspace}
+          layersVisible={ctx.layersVisible}
+          ratsnestVisible={ctx.ratsnestVisible}
+          lockRingsVisible={ctx.lockRingsVisible}
+        />
       </div>
     </PanelErrorBoundary>
   );
@@ -173,14 +171,8 @@ const InspectorPanel: React.FC<IDockviewPanelProps> = () => {
           {probe.activeHighlight.netId ?? 'none'} ({probe.lastLatencyMs.toFixed(2)} ms)
         </p>
         <div style={{ marginTop: 12 }}>
-          <p style={{ margin: '0 0 6px', fontWeight: 600 }}>Thought stream</p>
-          <div className="vd-metric" style={{ fontSize: 12, color: 'var(--vd-text-secondary)' }}>
-            {ctx.thoughtLog.map((line, i) => (
-              <div key={i} style={{ marginBottom: 4 }}>
-                {line}
-              </div>
-            ))}
-          </div>
+          <p style={{ margin: '0 0 6px', fontWeight: 600 }}>Agent hardware assistant</p>
+          <AgentDockPanel />
         </div>
       </div>
     </PanelErrorBoundary>
@@ -205,6 +197,7 @@ export const WorkstationShell: React.FC = () => {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
+  const [showCalculators, setShowCalculators] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState('');
   const [fps, setFps] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState('Loopback 127.0.0.1:41900 ready');
@@ -384,6 +377,9 @@ export const WorkstationShell: React.FC = () => {
             <button type="button" className="vd-btn" onClick={() => setShowTemplates(true)}>
               New template
             </button>
+            <button type="button" className="vd-btn" onClick={() => setShowCalculators((v) => !v)} aria-pressed={showCalculators}>
+              Calculators
+            </button>
             <button type="button" className="vd-btn" onClick={() => setShowPalette(true)}>
               Palette (Ctrl+Shift+P)
             </button>
@@ -561,6 +557,7 @@ export const WorkstationShell: React.FC = () => {
             </div>
           </div>
         )}
+        <CalculatorDrawer open={showCalculators} onClose={() => setShowCalculators(false)} />
       </div>
     </ShellContext.Provider>
   );

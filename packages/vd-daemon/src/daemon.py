@@ -20,6 +20,11 @@ import time
 import urllib.parse
 import uuid
 
+try:
+    from .agent_routes import handle_agent_post
+except ImportError:
+    from agent_routes import handle_agent_post
+
 PORT = 41900
 HOST = "127.0.0.1"
 
@@ -721,6 +726,23 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                 "rev_lamport": snap["project"]["rev_lamport"],
                 "dlp_class": snap["project"]["dlp_class"],
                 "budget": self.budget
+            }
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors()
+            self.end_headers()
+            self.wfile.write(json.dumps(res).encode("utf-8"))
+
+        elif path in ("/api/v1/project", "/api/project"):
+            cur = self.con.cursor()
+            proj = cur.execute("SELECT id, name, rev_lamport FROM projects LIMIT 1").fetchone()
+            autosave_entries = load_autosave_shadow(str(DB_DIR / "board.vd.autosave.jsonl"))
+            res = {
+                "project_id": proj["id"] if proj else "",
+                "name": proj["name"] if proj else "board-1-buck-pd",
+                "rev_lamport": int(proj["rev_lamport"]) if proj else 0,
+                "autosave_present": len(autosave_entries) > 0,
+                "autosave_ops_count": len(autosave_entries),
             }
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -1572,6 +1594,9 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self._send_cors()
             self.end_headers()
             self.wfile.write(json.dumps(res).encode("utf-8"))
+
+        elif handle_agent_post(self, path, req, DB_DIR, write_autosave_shadow, maybe_checkpoint_wal):
+            return
 
         else:
             self.send_response(404)
