@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "type": "module",
   "private": true,
+  "engines": {
+    "node": ">=26.13.1"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -19,7 +22,7 @@
   "devDependencies": {
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.8.2",
+    "typescript": "7.0.2",
     "vite": "^6.2.0"
   }
 }
