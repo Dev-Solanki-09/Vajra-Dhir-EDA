@@ -265,11 +265,19 @@ def load_autosave_shadow(shadow_path: str) -> list[dict]:
 
 STUDIO_CSP = (
     "default-src 'self'; "
-    "script-src 'self'; "
+    "script-src 'self' 'wasm-unsafe-eval'; "
+    "worker-src 'self' blob:; "
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: blob:; "
     "connect-src 'self' http://127.0.0.1:41900 ws://127.0.0.1:41900 ws://127.0.0.1:5173; "
     "frame-ancestors 'none'"
+)
+
+# Emscripten embind in isolated LGPL-2.1 occt-import-js Web Worker requires 'unsafe-eval' in worker scope only.
+STEP_WORKER_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'; "
+    "connect-src 'self'"
 )
 
 
@@ -295,10 +303,11 @@ def resolve_studio_static_asset(req_path: str) -> dict:
             target = (root_resolved / rel).resolve()
             if target.is_relative_to(root_resolved) and target.is_file():
                 ctype, _ = mimetypes.guess_type(str(target))
+                is_occt_worker = rel.startswith("assets/stepWorker.worker") and rel.endswith(".js")
                 return {
                     "status": 200,
                     "content_type": ctype or "application/octet-stream",
-                    "csp": STUDIO_CSP,
+                    "csp": STEP_WORKER_CSP if is_occt_worker else STUDIO_CSP,
                     "body": target.read_bytes(),
                 }
 

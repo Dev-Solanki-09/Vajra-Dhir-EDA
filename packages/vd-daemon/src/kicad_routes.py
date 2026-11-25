@@ -12,6 +12,7 @@ import threading
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 try:
+    from .board_3d import build_board_3d_payload, lookup_step_file
     from .kicad_bridge import (
         KiCad10Bridge,
         ensure_external_id_map,
@@ -22,6 +23,7 @@ try:
         sync_kicad_sch_to_hwir,
     )
 except ImportError:
+    from board_3d import build_board_3d_payload, lookup_step_file
     from kicad_bridge import (
         KiCad10Bridge,
         ensure_external_id_map,
@@ -319,6 +321,35 @@ def handle_kicad_get(handler: Any, path: str, full_path: str = "", con: Optional
             sch_path_override=q.get("sch_path"),
         )
         _send_json(handler, 200, ev)
+        return True
+
+    if path in ("/api/v1/3d/board-mesh", "/api/3d/board-mesh"):
+        q = _parse_query(full_path or getattr(handler, "path", path))
+        pcb_override = q.get("pcb_path")
+        if pcb_override:
+            pcb_p = pathlib.Path(pcb_override)
+            pcb_txt = pcb_p.read_text(encoding="utf-8") if pcb_p.is_file() else ""
+        else:
+            snap = get_active_project_snapshot()
+            pcb_p = pathlib.Path(snap["pcb_path"])
+            pcb_txt = snap["kicad_pcb"]
+        payload = build_board_3d_payload(pcb_txt, pcb_path=pcb_p, con=con)
+        _send_json(handler, 200, payload)
+        return True
+
+    if path.startswith("/api/v1/3d/step/") or path.startswith("/api/3d/step/"):
+        sha = path.rsplit("/", 1)[-1].lower()
+        step_file = lookup_step_file(sha)
+        if step_file is None:
+            _send_json(handler, 404, {"error": "STEP_MODEL_NOT_FOUND", "sha256": sha})
+            return True
+        data = step_file.read_bytes()
+        handler.send_response(200)
+        handler.send_header("Content-Type", "application/step")
+        handler.send_header("Cache-Control", "public, max-age=31536000, immutable")
+        handler._send_cors()
+        handler.end_headers()
+        handler.wfile.write(data)
         return True
 
     return False

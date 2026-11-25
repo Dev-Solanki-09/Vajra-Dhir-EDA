@@ -203,6 +203,19 @@ const LazyPcb2DPanel = React.lazy(() =>
 const LazySchematic2DPanel = React.lazy(() =>
   import('./Schematic2DPanel').then((m) => ({ default: m.Schematic2DPanel }))
 );
+const LazyViewport3DPanel = React.lazy(() =>
+  import('./Viewport3DPanel').then((m) => ({ default: m.Viewport3DPanel }))
+);
+
+const DockViewport3DPanel: React.FC<IDockviewPanelProps> = () => (
+  <PanelErrorBoundary panelTitle="Viewport 3D (STEP)">
+    <div style={{ padding: 12, height: '100%', backgroundColor: 'var(--vd-bg-canvas)' }}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading Three.js + OCCT 3D engine...</div>}>
+        <LazyViewport3DPanel />
+      </Suspense>
+    </div>
+  </PanelErrorBoundary>
+);
 
 const DockPcb2DPanel: React.FC<IDockviewPanelProps> = () => {
   const ctx = React.useContext(ShellContext);
@@ -236,6 +249,7 @@ const DOCK_COMPONENTS = {
   viewport: ViewportPanel,
   pcb2d: DockPcb2DPanel,
   schematic2d: DockSchematic2DPanel,
+  viewport3d: DockViewport3DPanel,
   explorer: ExplorerPanel,
   inspector: InspectorPanel,
 };
@@ -399,6 +413,12 @@ export const WorkstationShell: React.FC = () => {
       id: 'schematic2d_panel',
       component: 'schematic2d',
       title: 'Schematic 2D (.kicad_sch)',
+      position: { referencePanel: center, direction: 'within' },
+    });
+    event.api.addPanel({
+      id: 'viewport3d_panel',
+      component: 'viewport3d',
+      title: '3D STEP (.kicad_pcb)',
       position: { referencePanel: center, direction: 'within' },
     });
     center.api.setActive();

@@ -17,6 +17,9 @@ const Pcb2DPanel = React.lazy(() =>
 const Schematic2DPanel = React.lazy(() =>
   import('./Schematic2DPanel').then((m) => ({ default: m.Schematic2DPanel }))
 );
+const Viewport3DPanel = React.lazy(() =>
+  import('./Viewport3DPanel').then((m) => ({ default: m.Viewport3DPanel }))
+);
 const UplotScope = React.lazy(() =>
   import('./UplotScope').then((m) => ({ default: m.UplotScope }))
 );
@@ -779,9 +782,9 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
       )}
 
       {workspace === 'mcad_3d' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-            <span className="vd-metric" style={{ fontSize: 12 }}>{stepStatus}</span>
+            <span className="vd-metric" style={{ fontSize: 12 }}>{stepStatus} · {stackupInfo}</span>
             <div style={{ display: 'flex', gap: 6 }}>
               <button
                 type="button"
@@ -812,12 +815,9 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
               </button>
             </div>
           </div>
-          <svg viewBox="0 0 420 150" style={{ width: '100%', maxHeight: 160, backgroundColor: 'var(--vd-bg-panel)', borderRadius: 6, border: '1px solid var(--vd-border-subtle)' }} aria-label="4-layer FR4 and STEP extrusion stackup">
-            <rect x="40" y="36" width="340" height="14" fill="var(--vd-layer-f-cu)" />
-            <rect x="40" y="54" width="340" height="22" fill="var(--vd-bg-elevated)" />
-            <rect x="40" y="80" width="340" height="14" fill="var(--vd-layer-b-cu)" />
-            <text x="44" y="26" fill="var(--vd-text-primary)" fontSize="11" fontFamily="var(--vd-font-mono)">{stackupInfo}</text>
-          </svg>
+          <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading Three.js + OCCT STEP 3D Viewport...</div>}>
+            <Viewport3DPanel />
+          </Suspense>
         </div>
       )}
 
