@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   DockviewReact,
   DockviewReadyEvent,
@@ -197,8 +197,45 @@ const InspectorPanel: React.FC<IDockviewPanelProps> = () => {
   );
 };
 
+const LazyPcb2DPanel = React.lazy(() =>
+  import('./Pcb2DPanel').then((m) => ({ default: m.Pcb2DPanel }))
+);
+const LazySchematic2DPanel = React.lazy(() =>
+  import('./Schematic2DPanel').then((m) => ({ default: m.Schematic2DPanel }))
+);
+
+const DockPcb2DPanel: React.FC<IDockviewPanelProps> = () => {
+  const ctx = React.useContext(ShellContext);
+  return (
+    <PanelErrorBoundary panelTitle="PCB 2D (.kicad_pcb)">
+      <div style={{ padding: 12, height: '100%', backgroundColor: 'var(--vd-bg-canvas)' }}>
+        <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading KiCanvas PCB engine...</div>}>
+          <LazyPcb2DPanel
+            layersVisible={ctx.layersVisible}
+            ratsnestVisible={ctx.ratsnestVisible}
+            lockRingsVisible={ctx.lockRingsVisible}
+            useLegacyCanvasTestId={false}
+          />
+        </Suspense>
+      </div>
+    </PanelErrorBoundary>
+  );
+};
+
+const DockSchematic2DPanel: React.FC<IDockviewPanelProps> = () => (
+  <PanelErrorBoundary panelTitle="Schematic 2D (.kicad_sch)">
+    <div style={{ padding: 12, height: '100%', backgroundColor: 'var(--vd-bg-canvas)' }}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading KiCanvas Schematic engine...</div>}>
+        <LazySchematic2DPanel useLegacySvgTestId={false} />
+      </Suspense>
+    </div>
+  </PanelErrorBoundary>
+);
+
 const DOCK_COMPONENTS = {
   viewport: ViewportPanel,
+  pcb2d: DockPcb2DPanel,
+  schematic2d: DockSchematic2DPanel,
   explorer: ExplorerPanel,
   inspector: InspectorPanel,
 };
@@ -352,6 +389,19 @@ export const WorkstationShell: React.FC = () => {
       component: 'viewport',
       title: 'Silicon Darkroom Viewport',
     });
+    event.api.addPanel({
+      id: 'pcb2d_panel',
+      component: 'pcb2d',
+      title: 'PCB 2D (.kicad_pcb)',
+      position: { referencePanel: center, direction: 'within' },
+    });
+    event.api.addPanel({
+      id: 'schematic2d_panel',
+      component: 'schematic2d',
+      title: 'Schematic 2D (.kicad_sch)',
+      position: { referencePanel: center, direction: 'within' },
+    });
+    center.api.setActive();
     event.api.addPanel({
       id: 'explorer_panel',
       component: 'explorer',

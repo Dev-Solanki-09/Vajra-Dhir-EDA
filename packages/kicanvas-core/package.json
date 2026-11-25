@@ -1,0 +1,23 @@
+{
+  "name": "@vajradhir/kicanvas-core",
+  "version": "0.0.5",
+  "type": "module",
+  "license": "MIT",
+  "description": "Extracted MIT-licensed KiCanvas TypeScript/WebGL2+Canvas2D schematic and PCB rendering engine for Vajra-Dhir EDA",
+  "main": "dist/index.js",
+  "types": "types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "test": "tsc --noEmit && vite build && node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vite": "^6.2.0"
+  }
+}

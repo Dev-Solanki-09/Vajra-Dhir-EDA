@@ -11,6 +11,12 @@ import { PcbEngineCanvas } from './PcbEngineCanvas';
 const SchematicElkCanvas = React.lazy(() =>
   import('./SchematicElkCanvas').then((m) => ({ default: m.SchematicElkCanvas }))
 );
+const Pcb2DPanel = React.lazy(() =>
+  import('./Pcb2DPanel').then((m) => ({ default: m.Pcb2DPanel }))
+);
+const Schematic2DPanel = React.lazy(() =>
+  import('./Schematic2DPanel').then((m) => ({ default: m.Schematic2DPanel }))
+);
 const UplotScope = React.lazy(() =>
   import('./UplotScope').then((m) => ({ default: m.UplotScope }))
 );
@@ -253,6 +259,8 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
   const [datasheetInfo, setDatasheetInfo] = useState<string>('Select a part row to inspect PDFium datasheet metadata.');
 
   const [mfgSubTab, setMfgSubTab] = useState<'panel' | 'diff' | 'harness' | 'ibom'>('panel');
+  const [pcbEngineMode, setPcbEngineMode] = useState<'kicanvas' | 'webgpu'>('kicanvas');
+  const [schEngineMode, setSchEngineMode] = useState<'kicanvas' | 'elkjs'>('kicanvas');
   const [panelPreview, setPanelPreview] = useState<string>(
     `(kicad_pcb (version 20240108) (generator "vd-panelizer-mit")\n  (layers (0 "F.Cu" signal) (31 "B.Cu" signal) (44 "Edge.Cuts" user))\n  ;; 2x2 Matrix · 5.0 mm breakaway rails · 8 mouse-bites · 3 tooling holes\n)`
   );
@@ -467,21 +475,77 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
     >
       {workspace === 'pcb_layout' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%' }}>
-          <div className="vd-metric" style={{ fontSize: 11, color: 'var(--vd-text-secondary)', padding: '2px 4px' }}>
-            {constraintSummary}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            <div className="vd-metric" style={{ fontSize: 11, color: 'var(--vd-text-secondary)', padding: '2px 4px' }}>
+              {constraintSummary}
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button
+                type="button"
+                className={`vd-btn ${pcbEngineMode === 'kicanvas' ? 'vd-btn-primary' : ''}`}
+                style={{ minHeight: 22, padding: '2px 7px', fontSize: 11 }}
+                onClick={() => setPcbEngineMode('kicanvas')}
+              >
+                KiCanvas 2D
+              </button>
+              <button
+                type="button"
+                className={`vd-btn ${pcbEngineMode === 'webgpu' ? 'vd-btn-primary' : ''}`}
+                style={{ minHeight: 22, padding: '2px 7px', fontSize: 11 }}
+                onClick={() => setPcbEngineMode('webgpu')}
+              >
+                WebGPU Preview
+              </button>
+            </div>
           </div>
-          <PcbEngineCanvas
-            layersVisible={layersVisible}
-            ratsnestVisible={ratsnestVisible}
-            lockRingsVisible={lockRingsVisible}
-          />
+          {pcbEngineMode === 'kicanvas' ? (
+            <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading KiCanvas PCB engine...</div>}>
+              <Pcb2DPanel
+                layersVisible={layersVisible}
+                ratsnestVisible={ratsnestVisible}
+                lockRingsVisible={lockRingsVisible}
+              />
+            </Suspense>
+          ) : (
+            <PcbEngineCanvas
+              layersVisible={layersVisible}
+              ratsnestVisible={ratsnestVisible}
+              lockRingsVisible={lockRingsVisible}
+            />
+          )}
         </div>
       )}
 
       {workspace === 'schematic' && (
-        <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading elkjs schematic layout...</div>}>
-          <SchematicElkCanvas />
-        </Suspense>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
+            <button
+              type="button"
+              className={`vd-btn ${schEngineMode === 'kicanvas' ? 'vd-btn-primary' : ''}`}
+              style={{ minHeight: 22, padding: '2px 7px', fontSize: 11 }}
+              onClick={() => setSchEngineMode('kicanvas')}
+            >
+              KiCanvas Schematic
+            </button>
+            <button
+              type="button"
+              className={`vd-btn ${schEngineMode === 'elkjs' ? 'vd-btn-primary' : ''}`}
+              style={{ minHeight: 22, padding: '2px 7px', fontSize: 11 }}
+              onClick={() => setSchEngineMode('elkjs')}
+            >
+              ELK Flow
+            </button>
+          </div>
+          {schEngineMode === 'kicanvas' ? (
+            <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading KiCanvas schematic renderer...</div>}>
+              <Schematic2DPanel />
+            </Suspense>
+          ) : (
+            <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading elkjs schematic layout...</div>}>
+              <SchematicElkCanvas />
+            </Suspense>
+          )}
+        </div>
       )}
 
       {workspace === 'sim_lab' && (

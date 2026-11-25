@@ -15,7 +15,9 @@
   },
   "dependencies": {
     "@vajradhir/collab": "workspace:*",
+    "@vajradhir/command-bus": "workspace:*",
     "@vajradhir/crossprobe-bus": "workspace:*",
+    "@vajradhir/kicanvas-core": "workspace:*",
     "@vajradhir/webgpu-cad-engine": "workspace:*",
     "dockview-react": "^8.9.0",
     "elkjs": "^0.10.0",

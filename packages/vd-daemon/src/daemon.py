@@ -3,6 +3,8 @@ Vajra-Dhīr EDA v0.0.1 — Local Loopback Daemon Service (Pure Python / SQLite W
 Implements all 11 REST API endpoints on 127.0.0.1:41900 with exact i64 nm & UUIDv7 semantics.
 """
 
+import base64
+import hashlib
 import http.server
 import json
 import math
@@ -13,9 +15,11 @@ import re
 import shutil
 import socketserver
 import sqlite3
+import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.parse
 import uuid
@@ -23,7 +27,14 @@ import uuid
 try:
     from .agent_routes import handle_agent_post
     from .kicad_bridge import ensure_external_id_map
-    from .kicad_routes import handle_kicad_get, handle_kicad_post
+    from .kicad_routes import (
+        handle_kicad_get,
+        handle_kicad_post,
+        poll_external_changes,
+        register_ws_client,
+        sync_after_patch,
+        unregister_ws_client,
+    )
     from .x1_routes import handle_x1_post
     from .x3_routes import handle_x3_post
     from .x4_routes import handle_x4_post
@@ -33,10 +44,19 @@ except ImportError:
         sys.path.insert(0, _DAEMON_SRC_DIR)
     from agent_routes import handle_agent_post
     from kicad_bridge import ensure_external_id_map
-    from kicad_routes import handle_kicad_get, handle_kicad_post
+    from kicad_routes import (
+        handle_kicad_get,
+        handle_kicad_post,
+        poll_external_changes,
+        register_ws_client,
+        sync_after_patch,
+        unregister_ws_client,
+    )
     from x1_routes import handle_x1_post
     from x3_routes import handle_x3_post
     from x4_routes import handle_x4_post
+
+DB_LOCK = threading.RLock()
 
 PORT = 41900
 HOST = "127.0.0.1"
@@ -248,7 +268,7 @@ STUDIO_CSP = (
     "script-src 'self'; "
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: blob:; "
-    "connect-src 'self' http://127.0.0.1:41900; "
+    "connect-src 'self' http://127.0.0.1:41900 ws://127.0.0.1:41900 ws://127.0.0.1:5173; "
     "frame-ancestors 'none'"
 )
 
@@ -915,9 +935,66 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(preview).encode("utf-8"))
 
-        else:
-            if handle_kicad_get(self, path):
+        elif path in ("/api/v1/ws", "/api/ws"):
+            ws_key = self.headers.get("Sec-WebSocket-Key")
+            if not ws_key:
+                self.send_response(400)
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(b"Missing Sec-WebSocket-Key")
                 return
+            accept_raw = hashlib.sha1((ws_key.strip() + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode("utf-8")).digest()
+            accept_b64 = base64.b64encode(accept_raw).decode("ascii")
+            self.send_response(101, "Switching Protocols")
+            self.send_header("Upgrade", "websocket")
+            self.send_header("Connection", "Upgrade")
+            self.send_header("Sec-WebSocket-Accept", accept_b64)
+            self.end_headers()
+            sock = self.connection
+            register_ws_client(sock)
+            try:
+                hello = json.dumps({"type": "hello", "bind_addr": f"{HOST}:{PORT}"}).encode("utf-8")
+                hdr = bytearray([0x81, len(hello)]) if len(hello) < 126 else bytearray([0x81, 126]) + struct.pack("!H", len(hello))
+                sock.sendall(bytes(hdr) + hello)
+                sock.settimeout(30.0)
+                while True:
+                    try:
+                        chunk = sock.recv(2)
+                        if not chunk or len(chunk) < 2:
+                            break
+                        opcode = chunk[0] & 0x0F
+                        if opcode == 0x8:  # Close
+                            break
+                        masked = bool(chunk[1] & 0x80)
+                        plen = chunk[1] & 0x7F
+                        if plen == 126:
+                            plen = struct.unpack("!H", sock.recv(2))[0]
+                        elif plen == 127:
+                            plen = struct.unpack("!Q", sock.recv(8))[0]
+                        mask_key = sock.recv(4) if masked else b""
+                        payload = bytearray()
+                        while len(payload) < plen:
+                            more = sock.recv(plen - len(payload))
+                            if not more:
+                                break
+                            payload.extend(more)
+                        if opcode == 0x9:  # Ping -> Pong
+                            if masked and len(mask_key) == 4:
+                                payload = bytearray(b ^ mask_key[i % 4] for i, b in enumerate(payload))
+                            pong = bytes([0x8A, len(payload)]) + bytes(payload)
+                            sock.sendall(pong)
+                    except TimeoutError:
+                        continue
+            except Exception:
+                pass
+            finally:
+                unregister_ws_client(sock)
+            return
+
+        else:
+            with DB_LOCK:
+                if handle_kicad_get(self, path, full_path=self.path, con=self.con):
+                    return
             if not path.startswith("/api/") and not path.startswith("/stitch/"):
                 asset = resolve_studio_static_asset(path)
                 if asset["status"] == 200:
@@ -1020,57 +1097,157 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             actor_id = req.get("actor_id", "ui-session")
             ops = req.get("ops", [])
             summary = req.get("summary", "Patch update")
+            sync_kicad = bool(req.get("sync_kicad", True))
+            explicit_pcb = req.get("pcb_path")
 
             try:
-                cur = self.con.cursor()
-                cur.execute("UPDATE _tx_actor_ctx SET actor_kind = ?, allow_lock_override = 0 WHERE singleton = 1", (actor_kind,))
+                with DB_LOCK:
+                    cur = self.con.cursor()
+                    cur.execute("UPDATE _tx_actor_ctx SET actor_kind = ?, allow_lock_override = 0 WHERE singleton = 1", (actor_kind,))
 
-                # Apply ops
-                inv_ops = []
-                for op in ops:
-                    tag = op.get("op", "")
-                    if tag == "MOVE_COMPONENT":
-                        cid = op["component_id"]
-                        old = cur.execute("SELECT x_nm, y_nm, rot_mdeg, side FROM components WHERE id = ?", (cid,)).fetchone()
-                        if old:
-                            inv_ops.append({
-                                "op": "MOVE_COMPONENT",
-                                "component_id": cid,
-                                "x_nm": old[0],
-                                "y_nm": old[1],
-                                "rot_mdeg": old[2],
-                                "side": old[3]
-                            })
-                        cur.execute("""
-                            UPDATE components SET x_nm = ?, y_nm = ?, rot_mdeg = ?, side = ? WHERE id = ?
-                        """, (op["x_nm"], op["y_nm"], op.get("rot_mdeg", 0), op.get("side", "top"), cid))
+                    board_row = cur.execute("SELECT id FROM boards LIMIT 1").fetchone()
+                    board_id = str(board_row[0]) if board_row else ""
 
-                    elif tag == "SET_LOCK":
-                        eid = op["entity_id"]
-                        locked = 1 if op["locked"] else 0
-                        reason = op.get("reason")
-                        cur.execute("UPDATE components SET locked = ?, lock_reason = ? WHERE id = ?", (locked, reason, eid))
+                    def _resolve_component(key_or_ref: str):
+                        row = cur.execute(
+                            "SELECT id, refdes, x_nm, y_nm, rot_mdeg, side, locked FROM components WHERE id = ? OR refdes = ? LIMIT 1",
+                            (key_or_ref, key_or_ref),
+                        ).fetchone()
+                        return row
 
-                patch_id = now_v7()
-                cur.execute("UPDATE projects SET rev_lamport = rev_lamport + 1")
-                lamport = cur.execute("SELECT rev_lamport, id FROM projects LIMIT 1").fetchone()
+                    def _resolve_net_id(net_name_or_id: str) -> str:
+                        r = cur.execute("SELECT id FROM nets WHERE id = ? OR name = ? LIMIT 1", (net_name_or_id, net_name_or_id)).fetchone()
+                        if r:
+                            return str(r[0])
+                        r_any = cur.execute("SELECT id FROM nets LIMIT 1").fetchone()
+                        if r_any:
+                            return str(r_any[0])
+                        nid = now_v7()
+                        nc = cur.execute("SELECT id FROM net_classes LIMIT 1").fetchone()
+                        nc_id = str(nc[0]) if nc else now_v7()
+                        cur.execute(
+                            "INSERT INTO nets (id, board_id, name, net_class_id, signal_role, nominal_voltage_v, is_high_speed, provenance, locked, rev_lamport) VALUES (?, ?, ?, ?, 'generic', 0.0, 0, 'human', 0, 1)",
+                            (nid, board_id, net_name_or_id or "NET_UI", nc_id),
+                        )
+                        return nid
 
-                cur.execute("""
-                    DELETE FROM hardware_patches WHERE project_id = ? AND undone = 1
-                """, (lamport[1],))
+                    inv_ops = []
+                    for op in ops:
+                        tag = op.get("op", "")
+                        if tag == "MOVE_COMPONENT":
+                            key = str(op.get("component_id") or op.get("refdes") or "")
+                            old = _resolve_component(key)
+                            if old:
+                                cid = str(old[0])
+                                new_x = int(op.get("x_nm", old[2]))
+                                new_y = int(op.get("y_nm", old[3]))
+                                new_rot = int(op.get("rot_mdeg", old[4]))
+                                new_side = str(op.get("side", old[5]))
+                                inv_ops.append({
+                                    "op": "MOVE_COMPONENT",
+                                    "component_id": cid,
+                                    "x_nm": int(old[2]),
+                                    "y_nm": int(old[3]),
+                                    "rot_mdeg": int(old[4]),
+                                    "side": str(old[5]),
+                                })
+                                cur.execute(
+                                    "UPDATE components SET x_nm = ?, y_nm = ?, rot_mdeg = ?, side = ? WHERE id = ?",
+                                    (new_x, new_y, new_rot, new_side, cid),
+                                )
+                        elif tag == "ROTATE_COMPONENT":
+                            key = str(op.get("component_id") or op.get("refdes") or "")
+                            old = _resolve_component(key)
+                            if old:
+                                cid = str(old[0])
+                                old_rot = int(old[4])
+                                new_rot = int(op["rot_mdeg"]) if "rot_mdeg" in op else (old_rot + int(op.get("delta_mdeg", 90000))) % 360000
+                                inv_ops.append({
+                                    "op": "ROTATE_COMPONENT",
+                                    "component_id": cid,
+                                    "rot_mdeg": old_rot,
+                                })
+                                cur.execute("UPDATE components SET rot_mdeg = ? WHERE id = ?", (new_rot, cid))
+                        elif tag == "SET_LOCK":
+                            key = str(op.get("entity_id") or op.get("component_id") or op.get("refdes") or "")
+                            old = _resolve_component(key)
+                            eid = str(old[0]) if old else key
+                            locked = 1 if op["locked"] else 0
+                            reason = op.get("reason")
+                            if old:
+                                inv_ops.append({
+                                    "op": "SET_LOCK",
+                                    "entity_id": eid,
+                                    "locked": bool(old[6]),
+                                })
+                            cur.execute("UPDATE components SET locked = ?, lock_reason = ? WHERE id = ?", (locked, reason, eid))
+                        elif tag == "ADD_TRACE_SEGMENT":
+                            tid = str(op.get("id") or now_v7())
+                            nid = _resolve_net_id(str(op.get("net_id") or op.get("net_name") or "SW_NODE"))
+                            layer_name = str(op.get("layer_name") or "F.Cu")
+                            x1_nm = int(op.get("x1_nm", 0))
+                            y1_nm = int(op.get("y1_nm", 0))
+                            x2_nm = int(op.get("x2_nm", 0))
+                            y2_nm = int(op.get("y2_nm", 0))
+                            width_nm = max(int(op.get("width_nm", 250000)), 50000)
+                            cur.execute(
+                                """
+                                INSERT INTO traces (id, board_id, net_id, layer_name, x1_nm, y1_nm, x2_nm, y2_nm, width_nm, provenance, locked, rev_lamport)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)
+                                """,
+                                (tid, board_id, nid, layer_name, x1_nm, y1_nm, x2_nm, y2_nm, width_nm, "agent" if actor_kind == "agent" else "human"),
+                            )
+                            inv_ops.append({"op": "DELETE_TRACE_SEGMENT", "trace_id": tid})
+                        elif tag == "ADD_VIA":
+                            vid = str(op.get("id") or now_v7())
+                            nid = _resolve_net_id(str(op.get("net_id") or op.get("net_name") or "GND"))
+                            x_nm = int(op.get("x_nm", 0))
+                            y_nm = int(op.get("y_nm", 0))
+                            dia_nm = int(op.get("diameter_nm", 600000))
+                            drill_nm = int(op.get("drill_nm", 300000))
+                            s_layer = str(op.get("start_layer") or "F.Cu")
+                            e_layer = str(op.get("end_layer") or "B.Cu")
+                            cur.execute(
+                                """
+                                INSERT INTO vias (id, board_id, net_id, x_nm, y_nm, drill_nm, diameter_nm, start_layer, end_layer, via_kind, provenance, locked, rev_lamport)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'through', ?, 0, 1)
+                                """,
+                                (vid, board_id, nid, x_nm, y_nm, drill_nm, dia_nm, s_layer, e_layer, "agent" if actor_kind == "agent" else "human"),
+                            )
+                            inv_ops.append({"op": "DELETE_VIA", "via_id": vid})
 
-                cur.execute("""
-                    INSERT INTO hardware_patches (patch_id, project_id, actor_kind, actor_id, lamport_ts, summary, forward_ops_json, inverse_ops_json, undone, applied_at_utc)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
-                """, (patch_id, lamport[1], actor_kind, actor_id, lamport[0], summary, json.dumps(ops), json.dumps(inv_ops), "2026-11-24T00:00:00Z"))
+                    patch_id = now_v7()
+                    cur.execute("UPDATE projects SET rev_lamport = rev_lamport + 1")
+                    lamport = cur.execute("SELECT rev_lamport, id FROM projects LIMIT 1").fetchone()
 
-                self.con.commit()
-                maybe_checkpoint_wal(self.con, lamport[0], idle=False)
-                write_autosave_shadow(str(DB_DIR / "board.vd.autosave.jsonl"), ops)
+                    cur.execute("""
+                        DELETE FROM hardware_patches WHERE project_id = ? AND undone = 1
+                    """, (lamport[1],))
+
+                    cur.execute("""
+                        INSERT INTO hardware_patches (patch_id, project_id, actor_kind, actor_id, lamport_ts, summary, forward_ops_json, inverse_ops_json, undone, applied_at_utc)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+                    """, (patch_id, lamport[1], actor_kind, actor_id, lamport[0], summary, json.dumps(ops), json.dumps(inv_ops), "2026-11-24T00:00:00Z"))
+
+                    cur.execute("UPDATE _tx_actor_ctx SET actor_kind = 'human', allow_lock_override = 0 WHERE singleton = 1")
+                    self.con.commit()
+                    maybe_checkpoint_wal(self.con, lamport[0], idle=False)
+                    write_autosave_shadow(str(DB_DIR / "board.vd.autosave.jsonl"), ops)
+
+                    sync_meta: Dict[str, Any] = {}
+                    if sync_kicad:
+                        try:
+                            sync_meta = sync_after_patch(self.con, explicit_pcb_path=explicit_pcb, ops=ops, patch_id=patch_id)
+                        except Exception:
+                            sync_meta = {}
+
                 res = {
                     "applied": True,
                     "patch_id": patch_id,
                     "new_lamport": lamport[0],
+                    "revision": sync_meta.get("revision", lamport[0]),
+                    "pcb_path": sync_meta.get("pcb_path", ""),
+                    "pcb_sha256": sync_meta.get("pcb_sha256", ""),
                     "message": "Patch applied successfully"
                 }
                 self.send_response(200)
@@ -1080,7 +1257,10 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(res).encode("utf-8"))
 
             except sqlite3.IntegrityError as e:
-                self.con.rollback()
+                with DB_LOCK:
+                    self.con.rollback()
+                    self.con.execute("UPDATE _tx_actor_ctx SET actor_kind = 'human', allow_lock_override = 0 WHERE singleton = 1")
+                    self.con.commit()
                 err_msg = str(e)
                 code = "KERNEL_LOCK_VIOLATION" if "KERNEL_LOCK_VIOLATION" in err_msg else "DB_INTEGRITY_ERROR"
                 res = {
@@ -1147,13 +1327,26 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             inv_ops = json.loads(inv_json)
             cur.execute("UPDATE _tx_actor_ctx SET actor_kind = 'human', allow_lock_override = 1 WHERE singleton = 1")
             for op in inv_ops:
-                if op.get("op") == "MOVE_COMPONENT":
+                t = op.get("op")
+                if t == "MOVE_COMPONENT":
                     cur.execute("UPDATE components SET x_nm = ?, y_nm = ?, rot_mdeg = ?, side = ? WHERE id = ?",
                                 (op["x_nm"], op["y_nm"], op.get("rot_mdeg", 0), op.get("side", "top"), op["component_id"]))
+                elif t == "ROTATE_COMPONENT":
+                    cur.execute("UPDATE components SET rot_mdeg = ? WHERE id = ?", (op["rot_mdeg"], op["component_id"]))
+                elif t == "SET_LOCK":
+                    cur.execute("UPDATE components SET locked = ? WHERE id = ?", (1 if op["locked"] else 0, op["entity_id"]))
+                elif t == "DELETE_TRACE_SEGMENT":
+                    cur.execute("UPDATE traces SET deleted = 1 WHERE id = ?", (op["trace_id"],))
+                elif t == "DELETE_VIA":
+                    cur.execute("UPDATE vias SET deleted = 1 WHERE id = ?", (op["via_id"],))
             cur.execute("UPDATE hardware_patches SET undone = 1 WHERE seq_id = ?", (seq_id,))
             cur.execute("UPDATE projects SET rev_lamport = rev_lamport + 1")
             lamport = cur.execute("SELECT rev_lamport FROM projects LIMIT 1").fetchone()[0]
             self.con.commit()
+            try:
+                sync_after_patch(self.con, ops=inv_ops, patch_id=f"undo:{seq_id}")
+            except Exception:
+                pass
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -1655,14 +1848,32 @@ def run_server(port: int = PORT):
     DaemonHandler.con = con
     DaemonHandler.budget = budget
 
-    socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer((HOST, port), DaemonHandler) as httpd:
+    stop_watch = threading.Event()
+
+    def _watch_external_files():
+        while not stop_watch.wait(1.5):
+            try:
+                with DB_LOCK:
+                    poll_external_changes(con)
+            except Exception:
+                pass
+
+    watcher = threading.Thread(target=_watch_external_files, daemon=True)
+    watcher.start()
+
+    class _ThreadingDaemonServer(socketserver.ThreadingTCPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+        request_queue_size = 64
+
+    with _ThreadingDaemonServer((HOST, port), DaemonHandler) as httpd:
         print(f"Vajra-Dhīr EDA v0.0.1 daemon listening strictly on http://{HOST}:{port}")
         print(f"SQLite WAL HW-IR database: {DB_PATH.resolve()}")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
             print("\nShutting down daemon cleanly...")
+            stop_watch.set()
             httpd.shutdown()
         finally:
             try:
