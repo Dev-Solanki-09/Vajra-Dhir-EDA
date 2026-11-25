@@ -2399,7 +2399,7 @@ requires-dist = [
 
 [[package]]
 name = "vajra-dhir-eda-py"
-version = "0.0.1"
+version = "0.0.5"
 source = { virtual = "." }
 dependencies = [
     { name = "atopile" },

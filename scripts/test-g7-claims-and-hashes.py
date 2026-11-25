@@ -51,13 +51,13 @@ def run() -> None:
 
     # Docs truth & zero stale references
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    chk = (ROOT / "docs" / "CHECKPOINT_PROGRESS.md").read_text(encoding="utf-8")
+    ver_doc = (ROOT / "docs" / "VERIFICATION.md").read_text(encoding="utf-8")
     claims = (ROOT / "docs" / "CLAIMS_REGISTER.md").read_text(encoding="utf-8")
 
-    assert "Wasmtime 50" not in readme and "Wasmtime 50" not in chk
+    assert "Wasmtime 50" not in readme and "Wasmtime 50" not in ver_doc
     assert "/ Surfer /" not in readme
-    assert "COMPLETE — All 3 Physical Boards" not in chk
-    assert "0/3 Physically Fabricated" in chk
+    assert "COMPLETE — All 3 Physical Boards" not in ver_doc
+    assert "0/3 Physically Fabricated" in ver_doc
     assert "0/3 physically fabricated" in readme.lower()
     assert "Wasmtime" in claims and "51.0.0" in claims
 

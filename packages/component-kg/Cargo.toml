@@ -1,6 +1,6 @@
 [package]
 name = "vd-component-kg"
-version = "0.0.1"
+version = "0.0.5"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Analytical Component Knowledge Graph: MLCC DC-Bias Derating, Inductor Saturation & JLCPCB Catalog Optimizer"

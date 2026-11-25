@@ -1,6 +1,6 @@
 {
   "name": "vajra-dhir-eda",
-  "version": "0.2.0",
+  "version": "0.0.5",
   "private": true,
   "license": "Apache-2.0 OR MIT",
   "packageManager": "pnpm@10.6.0",

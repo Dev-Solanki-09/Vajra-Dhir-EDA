@@ -7,8 +7,8 @@
     <img src="https://github.com/Dev-Solanki-09/vajra-dhir-eda/actions/workflows/ci-spec-integrity.yml/badge.svg" alt="Spec & Security CI">
   </a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0%20(%2B%20MIT%20Ring--1)-10B981.svg" alt="License: Apache-2.0"></a>
-  <a href="docs/VD-SAD-001.md"><img src="https://img.shields.io/badge/Spec-VD--SAD--001%20Rev%202.0-3B82F6.svg" alt="Architecture Spec"></a>
-  <a href="#project-status--radical-transparency"><img src="https://img.shields.io/badge/Stage-Architecture%20Frozen%20%C2%B7%20Milestone%201-F59E0B.svg" alt="Stage: Milestone 1"></a>
+  <a href="docs/ARCHITECTURE.md"><img src="https://img.shields.io/badge/Architecture-v0.0.5-3B82F6.svg" alt="Architecture Overview"></a>
+  <a href="#project-status--radical-transparency"><img src="https://img.shields.io/badge/Stage-v0.0.5%20Software%20Baseline-F59E0B.svg" alt="Stage: v0.0.5"></a>
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/DCO-Signed--off--by-8B5CF6.svg" alt="DCO Required"></a>
 </p>
 
@@ -26,10 +26,10 @@ We publish our complete, frozen industrial architecture and executable contracts
 
 | Layer | Current Status | Verifiable Artifacts in This Repo |
 |---|---|---|
-| **Master Architecture & ADRs** | **Frozen (`VD-SAD-001 Rev 2.0`)** | [`docs/VD-SAD-001.md`](docs/VD-SAD-001.md), [`docs/ADDENDUM_01_PRODUCTION_ESSENTIALS.md`](docs/ADDENDUM_01_PRODUCTION_ESSENTIALS.md) |
-| **Canonical `HW-IR` Schema** | **Frozen & CI-Tested** | [`packages/hw-ir/schema/001_v001_init.sql`](packages/hw-ir/schema/001_v001_init.sql), [`packages/hw-ir/schema/002_manual_perfection.sql`](packages/hw-ir/schema/002_manual_perfection.sql) |
-| **Protocols & Security Model** | **Frozen & Schema-Validated** | [`schemas/mcp-v2-12verbs.json`](schemas/mcp-v2-12verbs.json), [`schemas/worker_contract.v1.json`](schemas/worker_contract.v1.json), [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) |
-| **Release Readiness (`v0.1.0` & `v0.2.0`)** | **Software Reference Blueprints (0/3 Physically Fabricated · Human Signoff Pending)** | [`docs/RELEASE_PACKET_v0.1.0.md`](docs/RELEASE_PACKET_v0.1.0.md), [`docs/RELEASE_PACKET_v0.2.0.md`](docs/RELEASE_PACKET_v0.2.0.md), [`docs/CLAIMS_REGISTER.md`](docs/CLAIMS_REGISTER.md) |
+| **Architecture Overview (`v0.0.5`)** | **Active (`Ring 1 / Ring 2`)** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| **Canonical `HW-IR` Schema** | **Schema-Verified (`SQLite WAL`)** | [`packages/hw-ir/schema/001_v001_init.sql`](packages/hw-ir/schema/001_v001_init.sql), [`packages/hw-ir/schema/002_manual_perfection.sql`](packages/hw-ir/schema/002_manual_perfection.sql) |
+| **Protocols & Security Model** | **Schema-Validated** | [`schemas/mcp-v2-12verbs.json`](schemas/mcp-v2-12verbs.json), [`schemas/worker_contract.v1.json`](schemas/worker_contract.v1.json), [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) |
+| **Release Readiness (`v0.0.5`)** | **Software Reference Blueprints (0/3 Physically Fabricated · Human Signoff Pending)** | [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md), [`docs/VERIFICATION.md`](docs/VERIFICATION.md), [`docs/CLAIMS_REGISTER.md`](docs/CLAIMS_REGISTER.md) |
 | **Rings 2–4 (Multi-Physics / IC / Power)** | **Subprocess / Container Boundary (`WorkerContract`)** | Isolated behind `network_mode: none` OCI / `gVisor` boundaries ([`docs/LICENSE_EXCEPTIONS.md`](docs/LICENSE_EXCEPTIONS.md)) |
 
 ---
@@ -99,7 +99,7 @@ Before expanding into Ring 2 containers or `Code-OSS` packaging, **Milestone 1 (
 
 ```text
 vajra-dhir-eda/
-├── docs/                                   # Frozen Industrial Baseline (VD-SAD-001, Threat Model, Techstack)
+├── docs/                                   # Public Architecture, Security, Verification & Claims Docs
 ├── schemas/                                # MCP v2 12-verb, WorkerContract & Plugin JSON Schemas
 ├── packages/
 │   ├── hw-ir/                              # Canonical SQLite WAL Kernel, UUIDv7, i64 nm, Lock Triggers

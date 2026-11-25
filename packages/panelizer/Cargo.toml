@@ -1,6 +1,6 @@
 [package]
 name = "vd-panelizer"
-version = "0.0.1"
+version = "0.0.5"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Pure-MIT Automated PCB Panelization, Mouse-Bite Perforations & Rail Fiducial Generator for Vajra-Dhīr EDA"
