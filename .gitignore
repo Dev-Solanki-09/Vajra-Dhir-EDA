@@ -48,6 +48,7 @@ tools/local-mcps/
 .mcp.json
 progress.md
 findings.md
+design.md
 task_plan.md
 scripts/verify-handoff.mjs
 docs/REVERSE_ENGINEERED_ENGINES.md

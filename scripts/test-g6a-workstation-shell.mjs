@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 function main() {
-  assert.ok(fs.existsSync('design.md'), 'Missing root design.md Silicon Darkroom spec');
+  assert.ok(fs.existsSync('apps/workstation/src/tokens.css'), 'Missing apps/workstation Silicon Darkroom tokens.css');
   assert.ok(fs.existsSync('apps/workstation/package.json'), 'Missing canonical apps/workstation/package.json');
 
   const pkg = JSON.parse(fs.readFileSync('apps/workstation/package.json', 'utf8'));
