@@ -80,6 +80,11 @@ def validate_signoff(rep: dict, *, strict_hashes: bool = False) -> list[str]:
             ev = gate.get("evidence_hash")
             if is_known_fabricated_hash(ev):
                 errors.append(f"gate {gate.get('gate')} carries known fabricated evidence_hash")
+        verdicts = rep.get("gate_verdicts") or {}
+        if isinstance(verdicts, dict):
+            for gate_name, gate_obj in verdicts.items():
+                if isinstance(gate_obj, dict) and is_known_fabricated_hash(gate_obj.get("evidence_hash")):
+                    errors.append(f"gate_verdicts.{gate_name} carries known fabricated evidence_hash")
     return errors
 
 
@@ -88,13 +93,17 @@ def test_gate8_bundle_structure() -> None:
         p = os.path.join(B1_DIR, rf)
         _require(os.path.exists(p), f"Missing release artifact: {rf} in {B1_DIR}")
 
-    with open(os.path.join(B1_DIR, "verification_report.json"), "r", encoding="utf-8") as f:
-        rep = json.load(f)
-
-    _require(rep["board_id"] == "VD-BRD-001", f"Unexpected board_id: {rep.get('board_id')}")
-    errors = validate_signoff(rep)
-    _require(not errors, "Gate 8 fail-closed violations: " + "; ".join(errors))
-    print("PASS: Gate 8 release bundle present; human signoff explicitly PENDING (fail-closed).")
+    for bdir, expected_id in (
+        ("designs/board-1-buck-pd", "VD-BRD-001"),
+        ("designs/board-2-esp32s3-node", "VD-BRD-002"),
+        ("designs/board-3-stm32g4-motor", "VD-BRD-003"),
+    ):
+        with open(os.path.join(bdir, "verification_report.json"), "r", encoding="utf-8") as f:
+            rep = json.load(f)
+        _require(rep["board_id"] == expected_id, f"Unexpected board_id: {rep.get('board_id')}")
+        errors = validate_signoff(rep, strict_hashes=True)
+        _require(not errors, f"Gate 8 fail-closed violations ({bdir}): " + "; ".join(errors))
+    print("PASS: Gate 8 release bundles present across boards 1-3; real artifact hashes verified & signoff PENDING.")
 
 
 def test_gate8_rejects_fabricated_signoff() -> None:
@@ -130,6 +139,13 @@ def test_gate8_rejects_fabricated_signoff() -> None:
         "gates": [{"gate": "G2", "evidence_hash": EMPTY_SHA256}],
     }
     _require(bool(validate_signoff(fabricated_hashes, strict_hashes=True)), "fabricated empty SHA-256 hash must be rejected")
+
+    fabricated_verdicts = {
+        "release_authorized": False,
+        "human_signoff": {"status": "PENDING", "token": None},
+        "gate_verdicts": {"G2_SCHEMATIC_FORMAL": {"evidence_hash": "a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0"}},
+    }
+    _require(bool(validate_signoff(fabricated_verdicts, strict_hashes=True)), "fabricated gate_verdicts placeholder hash must be rejected")
 
     short_token = {"human_signoff": {"status": "PENDING", "token": "deadbeef"}}
     _require(bool(validate_signoff(short_token)), "token shorter than 32 chars must be rejected")

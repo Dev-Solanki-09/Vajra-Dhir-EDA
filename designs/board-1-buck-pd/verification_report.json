@@ -17,27 +17,31 @@
   "gate_verdicts": {
     "G1_SPEC_LOCK": {
       "passed": true,
-      "evidence_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "evidence_hash": "953f736ce36157a465dc22f470c0eb307319a45cf269540d001489b55bf512ff",
       "metrics": {
         "target_budget_usd": 4.85,
         "max_allowed_budget_usd": 5.0,
         "layer_count": 2,
         "board_width_mm": 45.0,
         "board_height_mm": 25.0
-      }
+      },
+      "evidence_artifact": "designs/board-1-buck-pd/README.md",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G2_SCHEMATIC_FORMAL": {
       "passed": true,
-      "evidence_hash": "a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0",
+      "evidence_hash": "b5b5eaead9fa9961d2c4ed29ef116fb5e9913cf6031af96cf8dc992d0e48672c",
       "metrics": {
         "unconnected_nets": 0,
         "multi_driver_contentions": 0,
         "power_short_detected": false
-      }
+      },
+      "evidence_artifact": "designs/board-1-buck-pd/board.kicad_sch",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G3_PHYSICS_SANITY": {
       "passed": true,
-      "evidence_hash": "b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef01",
+      "evidence_hash": "02df3dd4e590e34233960485806dddf06b8734216dc6207a62c891114c68daa5",
       "metrics": {
         "inductor_isat_margin_pct": 15.3,
         "inductor_peak_current_a": 3.64,
@@ -48,54 +52,67 @@
         "max_junction_temp_ceiling_c": 75.0,
         "fatal_footguns_count": 0,
         "error_footguns_count": 0
-      }
+      },
+      "evidence_artifact": "designs/board-1-buck-pd/board.vd-ir.jsonl",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G4_PLACEMENT_SOLVED": {
       "passed": true,
-      "evidence_hash": "c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef012",
+      "evidence_hash": "8deb223e6c26052b720f0e51ec89d75f685149ca5aff02b843a1b80a869fa35b",
       "metrics": {
         "overlap_violations": 0,
         "max_decoupling_distance_mm": 1.2,
         "thermal_hotspots_detected": 0
-      }
+      },
+      "evidence_artifact": "designs/board-1-buck-pd/pnp_centroids.csv",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G5_ROUTING_COMPLETE": {
       "passed": true,
-      "evidence_hash": "d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0123",
+      "evidence_hash": "c66b56112654b823d21172f6f72031c7f491dc5464d1a5f3aaaea31a2ec57ae9",
       "metrics": {
         "unrouted_airwires": 0,
         "min_trace_width_mm": 0.25,
         "max_power_trace_width_mm": 1.2,
         "split_plane_crossings": 0
-      }
+      },
+      "evidence_artifact": "designs/board-1-buck-pd/board.kicad_pcb",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G6_PHYSICAL_DRC": {
       "passed": true,
-      "evidence_hash": "e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef01234",
+      "evidence_hash": "c66b56112654b823d21172f6f72031c7f491dc5464d1a5f3aaaea31a2ec57ae9",
       "metrics": {
         "clearance_violations": 0,
         "min_width_violations": 0,
         "annular_ring_breakouts": 0
-      }
+      },
+      "evidence_artifact": "designs/board-1-buck-pd/board.kicad_pcb",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G7_SIGNAL_POWER_INTEGRITY": {
       "passed": true,
-      "evidence_hash": "f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef012345",
+      "evidence_hash": "02df3dd4e590e34233960485806dddf06b8734216dc6207a62c891114c68daa5",
       "metrics": {
         "max_dc_ir_drop_pct": 1.12,
         "max_allowed_ir_drop_pct": 3.0,
         "calculated_vdrop_mv": 37.0
-      }
+      },
+      "evidence_artifact": "designs/board-1-buck-pd/board.vd-ir.jsonl",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G8_MANUFACTURING_CAM": {
       "passed": true,
-      "evidence_hash": "0718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0123456",
+      "evidence_hash": "ccd19c3ad34dfbf36d085c9e54c8fa30e650cfc7abac15d45a6f75d9d7bbd292",
       "metrics": {
         "gerber_layers_count": 8,
         "ipc_7525b_stencil_dfm_passed": true,
         "pnp_feeder_slots_count": 3,
         "drill_table_synchronized": true
-      }
+      },
+      "evidence_artifact": "designs/board-1-buck-pd/bom.csv",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     }
-  }
+  },
+  "physical_fabrication_status": "NOT_FABRICATED_0_OF_3"
 }

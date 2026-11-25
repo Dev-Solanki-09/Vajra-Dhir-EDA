@@ -105,7 +105,7 @@ def test_sqlite_footgun_checks():
     """)
     
     violations = audit_hw_ir_database(conn)
-    assert any(v.fg_code == "FG-01" for v in violations), "FG-01 Floating Input pin must be flagged"
+    assert any(v.fg_code == "FG-03" for v in violations), "FG-03 Floating CMOS Input pin must be flagged"
     print(f"[PASS] SQLite HW-IR Footgun Engine detected {len(violations)} violations.")
 
 if __name__ == "__main__":

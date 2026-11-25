@@ -4,7 +4,6 @@
   "revision": "1.0",
   "verification_date": "2026-11-24T00:58:00Z",
   "auditor_id": "vajra-dhir-milestone1-harness",
-  "all_gates_passed": true,
   "highest_passed_gate": "G8_MANUFACTURING_CAM",
   "human_lock_enforcement": {
     "locked_components_count": 6,
@@ -15,79 +14,93 @@
   "gate_verdicts": {
     "G1_SPEC_LOCK": {
       "passed": true,
-      "evidence_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "evidence_hash": "2098b668bc8269e1ef48d9765bfae5d384c75d7168778aaeb3ede1d5f07e0280",
       "metrics": {
-        "target_budget_usd": 9.40,
+        "target_budget_usd": 9.4,
         "max_allowed_budget_usd": 12.0,
         "layer_count": 4,
         "board_width_mm": 60.0,
         "board_height_mm": 40.0
-      }
+      },
+      "evidence_artifact": "designs/board-3-stm32g4-motor/README.md",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G2_SCHEMATIC_FORMAL": {
       "passed": true,
-      "evidence_hash": "c1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef2",
+      "evidence_hash": "0454624d1792352a2064ba0377c74408faf543fcb4e44ae08210a83ff6e115c5",
       "metrics": {
         "unconnected_nets": 0,
         "multi_driver_contentions": 0,
         "power_short_detected": false,
         "pinmux_conflicts": 0
-      }
+      },
+      "evidence_artifact": "designs/board-3-stm32g4-motor/board.kicad_sch",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G3_PHYSICS_SANITY": {
       "passed": true,
-      "evidence_hash": "d2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef23",
+      "evidence_hash": "fdbfbed475cd5889fab72355b15b1b4fe44abc20e7839bdc3520c243cb1e4f18",
       "metrics": {
         "motor_peak_current_a": 2.0,
         "power_trace_width_mm": 2.0,
         "power_trace_min_req_mm": 1.4,
-        "shunt_power_dissipation_w": 0.20,
-        "shunt_rated_power_w": 0.50,
+        "shunt_power_dissipation_w": 0.2,
+        "shunt_rated_power_w": 0.5,
         "can_split_filter_cutoff_mhz": 1.12,
         "fatal_footguns_count": 0,
         "error_footguns_count": 0
-      }
+      },
+      "evidence_artifact": "designs/board-3-stm32g4-motor/board.vd-ir.jsonl",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G4_PLACEMENT_SOLVED": {
       "passed": true,
-      "evidence_hash": "e3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef234",
+      "evidence_hash": "8da6fe10d17e75140ee42e3e456d3dab212992cea6aa53db01d052d22c3befc4",
       "metrics": {
         "overlap_violations": 0,
         "human_locked_components_preserved": 6,
         "thermal_hotspots_detected": 0
-      }
+      },
+      "evidence_artifact": "designs/board-3-stm32g4-motor/pnp_centroids.csv",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G5_ROUTING_COMPLETE": {
       "passed": true,
-      "evidence_hash": "f4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef2345",
+      "evidence_hash": "5f43b7f39ab246427c57c28d529bdcd6837d35cd12537644e273b33457d724b3",
       "metrics": {
         "unrouted_airwires": 0,
         "can_diff_impedance_ohms": 118.6,
         "motor_power_traces_locked": 2,
         "drc_clearance_violations": 0
-      }
+      },
+      "evidence_artifact": "designs/board-3-stm32g4-motor/board.kicad_pcb",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G6_MULTIFIELD_SOLVER": {
       "passed": true,
-      "evidence_hash": "05e6f708293a4b5c6d7e8f90123456789abcdef0123456789abcdef23456",
+      "evidence_hash": "fdbfbed475cd5889fab72355b15b1b4fe44abc20e7839bdc3520c243cb1e4f18",
       "metrics": {
         "vm_max_ir_drop_mv": 14.2,
         "vm_allowable_drop_mv": 120.0,
         "max_temperature_rise_c": 8.4
-      }
+      },
+      "evidence_artifact": "designs/board-3-stm32g4-motor/board.vd-ir.jsonl",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G7_FIRMWARE_BIND": {
       "passed": true,
-      "evidence_hash": "16e7f809293a4b5c6d7e8f90123456789abcdef0123456789abcdef234567",
+      "evidence_hash": "216ba3ed7915b82f3a85cbef799213a57d2aae72aef3cbfa9ad92db25669ea4d",
       "metrics": {
         "board_pins_header_synced": true,
         "tim1_pinmux_valid": true,
         "fdcan1_pinmux_valid": true
-      }
+      },
+      "evidence_artifact": "designs/board-3-stm32g4-motor/firmware/include/board_pins.h",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G8_MANUFACTURING_CAM": {
       "passed": true,
-      "evidence_hash": "27e8f90a293a4b5c6d7e8f90123456789abcdef0123456789abcdef2345678",
+      "evidence_hash": "909e08db9a5de5cb53bfde6cfba610c3121abbc42f7b834e9c0d66c4dada3342",
       "metrics": {
         "gerber_layer_count": 10,
         "drill_holes_count": 64,
@@ -95,7 +108,18 @@
         "min_annular_ring_mm": 0.15,
         "stencil_apertures_compliant": true,
         "pnp_components_count": 23
-      }
+      },
+      "evidence_artifact": "designs/board-3-stm32g4-motor/bom.csv",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     }
-  }
+  },
+  "physical_fabrication_status": "NOT_FABRICATED_0_OF_3",
+  "release_authorized": false,
+  "release_status": "NOT_RELEASED_PENDING_HUMAN_SIGNOFF",
+  "human_signoff": {
+    "status": "PENDING",
+    "actor": null,
+    "token": null
+  },
+  "all_software_gates_passed": true
 }
