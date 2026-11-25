@@ -570,6 +570,11 @@ step('[SECURITY/G8] Lockfile SPDX Firewall (pnpm/uv/Cargo/apps) & Negatives', ()
   execSync('node scripts/test-g8-lockfile-spdx.mjs', { stdio: 'pipe' });
 });
 
+// 79. P0 Performance Baseline & Budget Regression Gate
+step('[PERF/P0] Sequential Perf Baselines & CrossProbe <16ms Budget', () => {
+  execSync('python scripts/test-p0-perf-budgets.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
