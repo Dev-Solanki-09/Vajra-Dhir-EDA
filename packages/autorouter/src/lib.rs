@@ -212,7 +212,7 @@ impl AutorouterOrchestrator {
                     .collect();
 
                 // Format: path <layer> <width_um> <x1_um> <y1_um> <x2_um> <y2_um>
-                if parts.len() >= 6 && parts[0] == "path" {
+                if parts.len() >= 7 && parts[0] == "path" {
                     let layer = parts[1].to_string();
                     let width_um: i64 = parts[2].parse().unwrap_or(250);
                     let x1_um: i64 = parts[3].parse().unwrap_or(0);
@@ -221,7 +221,7 @@ impl AutorouterOrchestrator {
                     let y2_um: i64 = parts[6].parse().unwrap_or(0);
 
                     routed_entities.push(CopperEntity {
-                        id: uuid::Uuid::new_v4().to_string(),
+                        id: uuid::Uuid::now_v7().to_string(),
                         net_name: current_net.clone(),
                         layer,
                         start_nm: (x1_um * 1000, y1_um * 1000),
@@ -236,5 +236,19 @@ impl AutorouterOrchestrator {
         }
 
         Ok(routed_entities)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_import_specctra_ses_generates_uuidv7_entities() {
+        let ses = "(session board.ses\n  (routes\n    (network_out\n      (net \"+3V3\"\n        (wire\n          (path F.Cu 250 1000 1000 5000 1000)\n        )\n      )\n    )\n  )\n)";
+        let entities = AutorouterOrchestrator::import_specctra_ses(ses).expect("SES parse failed");
+        assert_eq!(entities.len(), 1);
+        let parsed = uuid::Uuid::parse_str(&entities[0].id).expect("valid UUID");
+        assert_eq!(parsed.get_version_num(), 7, "F-20: entity IDs must be UUIDv7");
     }
 }

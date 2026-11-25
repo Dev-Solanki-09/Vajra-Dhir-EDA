@@ -116,3 +116,57 @@ fn test_placer_resolves_overlapping_components() {
     let metrics = placer.place(&mut components, &[], &[]);
     assert_eq!(metrics.overlap_count, 0, "Placer should resolve overlap");
 }
+
+#[test]
+fn test_placer_w_cong_increases_congested_cost() {
+    let base_components = vec![
+        PlacerComponent {
+            id: "u1".into(),
+            refdes: "U1".into(),
+            x_nm: 20_000_000,
+            y_nm: 20_000_000,
+            width_nm: 4_000_000,
+            height_nm: 4_000_000,
+            rot_mdeg: 0,
+            power_diss_mw: 0.0,
+            locked: false,
+        },
+        PlacerComponent {
+            id: "u2".into(),
+            refdes: "U2".into(),
+            x_nm: 26_000_000,
+            y_nm: 20_000_000,
+            width_nm: 4_000_000,
+            height_nm: 4_000_000,
+            rot_mdeg: 0,
+            power_diss_mw: 0.0,
+            locked: false,
+        },
+    ];
+    let nets: Vec<PlacerNet> = (0..4)
+        .map(|i| PlacerNet {
+            id: format!("n-{i}"),
+            pins: vec![
+                PlacerPin { comp_id: "u1".into(), offset_x_nm: 0, offset_y_nm: 0 },
+                PlacerPin { comp_id: "u2".into(), offset_x_nm: 0, offset_y_nm: 0 },
+            ],
+            weight: 1.0,
+        })
+        .collect();
+
+    let placer_zero = SimulatedAnnealingPlacer::new(PlacerConfig {
+        w_cong: 0.0,
+        ..Default::default()
+    });
+    let placer_cong = SimulatedAnnealingPlacer::new(PlacerConfig {
+        w_cong: 10.0,
+        ..Default::default()
+    });
+
+    let cost_zero = placer_zero.evaluate_cost(&base_components, &nets, &[]);
+    let cost_cong = placer_cong.evaluate_cost(&base_components, &nets, &[]);
+    assert!(
+        cost_cong > cost_zero,
+        "w_cong > 0 must raise cost for congested net cluster: {cost_cong} <= {cost_zero}"
+    );
+}

@@ -11,6 +11,7 @@ pub mod diff_pair;
 pub mod drc_waiver_guard;
 pub mod interactive_router;
 pub mod length_tuning;
+pub mod offset;
 pub mod room_replication;
 pub mod spatial;
 pub mod teardrops;
@@ -23,6 +24,7 @@ pub use interactive_router::{
     GeomKind, InteractiveSpatialKernel, LiveDrcHit, SnapResult, SpatialItem,
 };
 pub use length_tuning::{LengthTuningEngine, MeanderParams, MeanderStyle, TunedTraceResult};
+pub use offset::{ArcVertexNm, OffsetContourEngine, OffsetError};
 pub use room_replication::{
     ReplicatedComponent, ReplicatedRoomResult, ReplicatedTrace, RoomReplicationEngine,
 };

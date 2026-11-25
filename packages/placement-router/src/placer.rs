@@ -54,6 +54,12 @@ pub struct PlacerConfig {
     pub beta_overlap: f64,
     pub gamma_thermal: f64,
     pub delta_keepout: f64,
+    #[serde(default = "default_w_cong")]
+    pub w_cong: f64,
+}
+
+fn default_w_cong() -> f64 {
+    10.0
 }
 
 impl Default for PlacerConfig {
@@ -70,6 +76,7 @@ impl Default for PlacerConfig {
             beta_overlap: 50.0,
             gamma_thermal: 0.05,
             delta_keepout: 100.0,
+            w_cong: default_w_cong(),
         }
     }
 }
@@ -213,11 +220,13 @@ impl SimulatedAnnealingPlacer {
         let overlap_penalty = self.calculate_overlap_penalty(components);
         let thermal_penalty = self.calculate_thermal_penalty(components);
         let keepout_penalty = self.calculate_keepout_penalty(components, keepouts);
+        let congestion_penalty = self.calculate_congestion_penalty(components, nets);
 
         self.config.alpha_hpwl * hpwl
             + self.config.beta_overlap * overlap_penalty
             + self.config.gamma_thermal * thermal_penalty
             + self.config.delta_keepout * keepout_penalty
+            + self.config.w_cong * congestion_penalty
     }
 
     fn calculate_hpwl(&self, components: &[PlacerComponent], nets: &[PlacerNet]) -> u64 {
@@ -351,5 +360,56 @@ impl SimulatedAnnealingPlacer {
             }
         }
         penalty
+    }
+
+    /// Estimate routing congestion on an 8x8 coarse grid using net bounding-box demand.
+    pub fn calculate_congestion_penalty(
+        &self,
+        components: &[PlacerComponent],
+        nets: &[PlacerNet],
+    ) -> f64 {
+        const GRID_N: usize = 8;
+        let mut grid = [0.0_f64; GRID_N * GRID_N];
+        let bw = self.config.board_width_nm.max(1) as f64;
+        let bh = self.config.board_height_nm.max(1) as f64;
+
+        for net in nets {
+            if net.pins.len() < 2 {
+                continue;
+            }
+            let mut min_x = i64::MAX;
+            let mut max_x = i64::MIN;
+            let mut min_y = i64::MAX;
+            let mut max_y = i64::MIN;
+            for pin in &net.pins {
+                if let Some(comp) = components.iter().find(|c| c.id == pin.comp_id) {
+                    let px = comp.x_nm + pin.offset_x_nm;
+                    let py = comp.y_nm + pin.offset_y_nm;
+                    min_x = min_x.min(px);
+                    max_x = max_x.max(px);
+                    min_y = min_y.min(py);
+                    max_y = max_y.max(py);
+                }
+            }
+            if min_x <= max_x && min_y <= max_y {
+                let gx0 = (((min_x as f64 / bw) * GRID_N as f64).floor() as isize).clamp(0, GRID_N as isize - 1) as usize;
+                let gx1 = (((max_x as f64 / bw) * GRID_N as f64).floor() as isize).clamp(0, GRID_N as isize - 1) as usize;
+                let gy0 = (((min_y as f64 / bh) * GRID_N as f64).floor() as isize).clamp(0, GRID_N as isize - 1) as usize;
+                let gy1 = (((max_y as f64 / bh) * GRID_N as f64).floor() as isize).clamp(0, GRID_N as isize - 1) as usize;
+                let cells = ((gx1 - gx0 + 1) * (gy1 - gy0 + 1)) as f64;
+                let demand = net.weight / cells.sqrt();
+                for gx in gx0..=gx1 {
+                    for gy in gy0..=gy1 {
+                        grid[gy * GRID_N + gx] += demand;
+                    }
+                }
+            }
+        }
+
+        // Penalize cells where overlapping net demand exceeds 1.0
+        grid.iter()
+            .filter(|&&d| d > 1.0)
+            .map(|&d| (d - 1.0) * (d - 1.0))
+            .sum()
     }
 }

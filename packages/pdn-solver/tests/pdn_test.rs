@@ -60,3 +60,27 @@ fn test_ipc2152_thermal_rise() {
     );
     assert!(internal_report.delta_temp_c > report.delta_temp_c);
 }
+
+#[test]
+fn test_ipc2221_vs_ipc2152_distinction() {
+    let r2152 = Ipc2152ThermalEngine::calculate_temp_rise(
+        250_000,
+        35_000,
+        2.0,
+        25.0,
+        TraceLayerLocation::ExternalTopOrBottom,
+        130.0,
+    );
+    let r2221 = Ipc2221ThermalEngine::calculate_temp_rise(
+        250_000,
+        35_000,
+        2.0,
+        25.0,
+        TraceLayerLocation::ExternalTopOrBottom,
+        130.0,
+    );
+    assert!(
+        (r2152.delta_temp_c - r2221.delta_temp_c).abs() > 10.0,
+        "IPC-2152 universal curve must be distinct from IPC-2221 constants"
+    );
+}
