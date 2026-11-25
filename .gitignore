@@ -24,6 +24,7 @@ env/
 *.sqlite-wal
 *.sqlite-shm
 .vajradhir/
+.vd-dev/
 *.log
 
 # Sensitive environments & credentials
@@ -40,8 +41,11 @@ plugins/sources/
 evalops/sources/
 tools/local-mcps/
 
-# Internal-only provenance (VD-MASTER-002 Part A) — never committed
+# Internal orchestration & provenance — never committed
+.ai-sync/
 .ai-sync/private/
+docs/REVERSE_ENGINEERED_ENGINES.md
+
 # Hallmark redesign records/screenshots
 .hallmark/
 
@@ -53,20 +57,7 @@ Thumbs.db
 *.swp
 prompt-and-skills/
 prompt and skill/
-docs/REVERSE_ENGINEERED_ENGINES.md
-docs/superpowers/plans/2026-11-24-milestone1-spine-remediation.md
-docs/superpowers/plans/2026-11-24-milestone1-spine-remediation-1.md
-docs/superpowers/plans/2026-11-24-milestone1-spine-remediation-2.md
-docs/superpowers/plans/2026-11-24-milestone1-spine-remediation-3.md
-docs/superpowers/plans/2026-11-24-milestone1-spine-remediation-4.md
-docs/superpowers/plans/action-plan.md
-docs/superpowers/plans/2026-11-24-milestone1-spine-remediation.md
-.vd-dev/
-.qoder
-.ai-sync
+.qoder/
 docs/*
 !docs/LICENSE_EXCEPTIONS.md
 !docs/RELEASE_PACKET_v0.1.0.md
-.pnpm-store/
-docs/REVERSE_ENGINEERED_ENGINES.md
-
