@@ -238,7 +238,7 @@ fn main() {
         "asic" => {
             if args.len() >= 3 && args[2] == "c2p2b" {
                 println!("[*] vd asic: Chip-to-Package-to-Board (C2P2B) Co-Design Bridge");
-                println!("[DEFERRED] Pack-2C Ring-2 container integration deferred to X4 (see docs/CLAIMS_REGISTER.md).");
+                println!("[INFO] Pack-2C C2P2B contract active via vd-silicon-pack (X4); opt-in Ring-2 Pack-2C OCI containers run isolated with network_mode=none (see docs/CLAIMS_REGISTER.md).");
             } else {
                 eprintln!("Usage: vd asic c2p2b");
                 process::exit(1);

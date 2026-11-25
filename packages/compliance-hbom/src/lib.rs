@@ -146,7 +146,7 @@ impl HbomGenerator {
         let hbom = CycloneDxHbom {
             bom_format: "CycloneDX".into(),
             spec_version: "1.6".into(),
-            serial_number: format!("urn:uuid:{}", uuid::Uuid::new_v4()),
+            serial_number: format!("urn:uuid:{}", uuid::Uuid::now_v7()),
             version: 1,
             metadata: HbomMetadata {
                 timestamp: "2026-11-24T01:50:00Z".into(),

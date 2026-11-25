@@ -178,7 +178,7 @@ export const EDA_VERB_DEFINITIONS: EdaVerbDefinition[] = [
   },
   {
     name: 'eda_run_code_mode',
-    description: 'Execute a sandboxed Python/Wasm script inside Wasmtime 50 with fuel, 256 MiB memory, and 5s watchdog ceiling.',
+    description: 'Execute a sandboxed Python/Wasm script inside Wasmtime 51 with fuel, 256 MiB memory, and 5s watchdog ceiling.',
     parameters: {
       type: 'object',
       properties: {

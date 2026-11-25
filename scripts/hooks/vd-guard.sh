@@ -13,15 +13,17 @@ if git diff --cached -- Cargo.toml package.json pyproject.toml 'packages/*' 'app
   exit 1
 fi
 
-# 3. Enforce Nov 2026 Critical CVE Version Floors (Wasmtime >=50, React >=19.3.1)
-if [ -f Cargo.toml ] && grep -E 'wasmtime\s*=\s*"?(2[0-9]|3[0-9]|4[0-7])\.' Cargo.toml >/dev/null; then
-  echo "BLOCKED: Vulnerable Wasmtime (<50.0 / CVE-2026-115889). Pin wasmtime >= 50.0.0." >&2
+# 3. Enforce Nov 2026 Critical CVE Version Floors (Wasmtime >=51.0.0, React >=19.3.1)
+if [ -f Cargo.toml ] && grep -E 'wasmtime\s*=\s*(\{\s*version\s*=\s*)?"?([0-9]|[1-4][0-9]|50)\.' Cargo.toml >/dev/null; then
+  echo "BLOCKED: Vulnerable Wasmtime (<51.0.0 / CVE-2026-115889). Pin wasmtime >= 51.0.0." >&2
   exit 1
 fi
-if [ -f package.json ] && grep -E '"react"\s*:\s*"[\^~]?19\.[0-2]\.' package.json >/dev/null; then
-  echo "BLOCKED: Vulnerable React (<19.3.1 / CVE-2026-126187). Pin react >= 19.3.1." >&2
-  exit 1
-fi
+for pkg in package.json apps/*/package.json packages/*/package.json; do
+  if [ -f "$pkg" ] && grep -E '"react"\s*:\s*"[\^~]?(1[0-8]\.|19\.[0-2]\.|19\.3\.0")' "$pkg" >/dev/null; then
+    echo "BLOCKED: Vulnerable React (<19.3.1 / CVE-2026-126187) in $pkg. Pin react >= 19.3.1." >&2
+    exit 1
+  fi
+done
 
 # 4. Block new .unwrap() calls in Ring 1 Rust library crates
 if git diff --cached -- 'packages/*/src/*.rs' | grep -E '^\+.*\.unwrap\(\)' | grep -v 'test'; then
