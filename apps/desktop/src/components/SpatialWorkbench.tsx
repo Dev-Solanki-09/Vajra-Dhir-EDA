@@ -39,7 +39,7 @@ const TerminalWrapper: React.FC<IDockviewPanelProps> = () => (
       [22:00:03] vd-guard: Zero AGPL dependencies, zero PDF bytes in Git verified
     </div>
     <div style={{ color: THEME.colors.textDim }}>
-      [22:00:04] drc-engine: Clearance rule checked (200 um) -> 0 violations
+      [22:00:04] drc-engine: Clearance rule checked (200 um) -&gt; 0 violations
     </div>
     <div style={{ marginTop: 8, display: 'flex', gap: 6, alignItems: 'center' }}>
       <span style={{ color: THEME.colors.purple }}>vd-agent&gt;</span>

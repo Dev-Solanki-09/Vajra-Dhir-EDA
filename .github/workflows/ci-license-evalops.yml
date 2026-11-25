@@ -61,7 +61,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: TypeScript typecheck
-        run: pnpm -r --if-present exec tsc --noEmit
+        run: pnpm -r exec bash -c 'if [ -f tsconfig.json ]; then pnpm exec tsc --noEmit; fi'
 
       - name: Build packages & apps
         run: pnpm build
@@ -87,11 +87,11 @@ jobs:
 
       - name: Sync dependencies (frozen lockfile)
         run: |
-          uv sync --frozen
+          uv sync --frozen --extra dev
 
       - name: Run offline pytest suites
         run: |
-          uv run pytest packages -q
+          uv run --extra dev pytest packages -q
 
   cargo-workspace-tests:
     name: Cargo Clippy & Tests

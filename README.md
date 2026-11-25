@@ -42,8 +42,8 @@ We publish our complete, frozen industrial architecture and executable contracts
    → **Vajra-Dhīr Fix:** One canonical SQLite WAL `HW-IR` (`i64` integer nanometers, immutable UUIDv7), kernel-level `KERNEL_LOCK_VIOLATION` SQLite triggers protecting `locked=1` human edits, and a UUID 3-way Git merge driver (`hw-merge`) with rotated-courtyard collision detection.
 3. **Hardware–Firmware Disconnect:** Swapping a GPIO pin to untangle PCB routing silently breaks embedded firmware.  
    → **Vajra-Dhīr Fix:** Bidirectional pin-to-firmware co-sync (`board_pins.h` / Zephyr `.dts` / Rust `embassy` HAL) compiled and verified inside `Renode` + `ngspice` before fabrication, inside one hybrid Monaco + ACP (`vd-agent` / Claude Code / Codex / Ollama) IDE.
-4. **Heavy GPU / Cloud Lock-In & License Traps:** Proprietary SaaS tools lock up NDA IP; naive open-source stacks.
-   → **Vajra-Dhīr Fix:** **Ring 1** runs locally on CPU-only laptops (WebGPU with automatic WebGL2 fallback, zero Docker required, pure **MIT / Apache-2.0**); `NDA_AIRGAPPED` hard-blocks all outbound egress; GPLv2/v3 solvers run strictly inside zero-egress `gVisor` OCI containers.
+4. **Heavy GPU / Cloud Lock-In & License Traps:** Proprietary SaaS tools lock up NDA IP.
+   → **Vajra-Dhīr Fix:** **Ring 1** runs locally on CPU-only laptops (WebGPU with automatic WebGL2 fallback, zero Docker required, pure Apache-2.0); `NDA_AIRGAPPED` hard-blocks all outbound egress; GPLv2/v3 solvers run strictly inside zero-egress `gVisor` OCI containers.
 5. **Toy Manual Editors:** Engineers refuse tools that can't handle real layout craft.  
    → **Vajra-Dhīr Fix:** Pure-MIT Rust/WASM 120 FPS geometry kernel (`rstar`, `i_overlay`, `iTriangle`, `cavalier_contours`, `manifold-csg`) + 3-Channel KiCad 10 bridge (`.kicad_sch` S-expr + optional live NNG IPC + headless `kicad-cli`).
 
@@ -82,18 +82,6 @@ flowchart TB
 
 ### The 9-Gate Fail-Closed Pipeline
 `G1 Spec Lock` → `G2 Open-CUBO + Z3/SymPy/Footguns` → `G3 Isolated Datasheet Auditor` → `G4 Virtual Lab & Firmware Twin` → `G5 Multi-Candidate Place & Route (Pareto)` → `G6 Multi-Physics Signoff Loop` → `G7 Deep DFM/DFA/IPC-2221/MCAD/DFT` → **`G8 Mandatory Human Cryptographic Release Signoff`** → `G9 Post-Silicon Bench HIL & Offline Harness²`
-
----
-
-## Milestone 1 Hardware Exit Gates (No Ring 2 Until These 3 Real PCBs Work)
-
-Before expanding into Ring 2 containers or `Code-OSS` packaging, **Milestone 1 (Software Reference Blueprints: `0/3` Physically Fabricated)** is strictly gated on fabricated and physically bench-tested **three Revision-1 boards**:
-
-- [ ] **Board 1 — USB-C PD 12V→3.3V / 3A Synchronous Buck (2-Layer):** Negotiates 12 V on first plug-in, `3.30 V ± 2%` across `0–3 A`, ripple `< 40 mVpp`, peak IC `< 75 °C`.
-- [ ] **Board 2 — ESP32-S3 Sensor Node (4-Layer):** Flashes auto-synced `board_pins.h` firmware cleanly on Rev 1, reads BME280 over I²C, connects 2.4 GHz Wi-Fi `> -65 dBm` RSSI.
-- [ ] **Board 3 — STM32G4 CAN-FD + Motor Driver (4-Layer, Human Co-Edited):** Zero mutations on human-locked regions, `1 Mbps` CAN-FD loopback with 0 errors, drives 2 A inductive load cleanly, passes auto-generated Factory Self-Test FW.
-
----
 
 ## Repository Map
 
@@ -165,5 +153,5 @@ We welcome **Rust systems engineers, mixed-signal PCB designers, KiCad/atopile p
 
 ## License & Isolation Policy
 
-- **Repository License:** Apache License, Version 2.0 (see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)); individual Ring 1 Rust workspace crates under `packages/*` remain permissively dual-licensed `MIT OR Apache-2.0`.
+- **Repository License:** Apache License, Version 2.0 (see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)).
 - **Ring 2 External Engines:** GPLv2/GPLv3 tools (`KiCad`, `openEMS`, `ElmerFEM`, `CalculiX`, `IIC-OSIC-TOOLS`, etc.) execute strictly as isolated OS processes or OCI/`gVisor` containers—never linked into Ring 1 permissive code. AGPL dependencies, `EUPL-1.2` `surfer` in Ring 1, and non-commercial ML checkpoints are strictly excluded from core.
