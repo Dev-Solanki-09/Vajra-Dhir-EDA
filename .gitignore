@@ -46,7 +46,6 @@ tools/local-mcps/
 .ai-sync/private/
 .agents/
 .mcp.json
-AGENTS.md
 progress.md
 findings.md
 task_plan.md
@@ -68,14 +67,12 @@ prompt and skill/
 *prompt*.md
 .qoder/
 docs/*
+!docs/ACKNOWLEDGMENTS.md
 !docs/ARCHITECTURE.md
 !docs/CLAIMS_REGISTER.md
 !docs/LICENSE_EXCEPTIONS.md
 !docs/RELEASE_NOTES.md
 !docs/THREAT_MODEL.md
 !docs/VERIFICATION.md
-!docs/RELEASE_PACKET_v0.2.0.md
-!docs/RELEASE_PACKET_v0.1.0.md
-!docs/TECHSTACK.md
-!docs/LICENSE_EXCEPTIONS.md
+
 

@@ -30,7 +30,7 @@ We publish our complete, frozen industrial architecture and executable contracts
 | **Canonical `HW-IR` Schema** | **Schema-Verified (`SQLite WAL`)** | [`packages/hw-ir/schema/001_v001_init.sql`](packages/hw-ir/schema/001_v001_init.sql), [`packages/hw-ir/schema/002_manual_perfection.sql`](packages/hw-ir/schema/002_manual_perfection.sql) |
 | **Protocols & Security Model** | **Schema-Validated** | [`schemas/mcp-v2-12verbs.json`](schemas/mcp-v2-12verbs.json), [`schemas/worker_contract.v1.json`](schemas/worker_contract.v1.json), [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) |
 | **Release Readiness (`v0.0.5`)** | **Software Reference Blueprints (0/3 Physically Fabricated · Human Signoff Pending)** | [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md), [`docs/VERIFICATION.md`](docs/VERIFICATION.md), [`docs/CLAIMS_REGISTER.md`](docs/CLAIMS_REGISTER.md) |
-| **Rings 2–4 (Multi-Physics / IC / Power)** | **Subprocess / Container Boundary (`WorkerContract`)** | Isolated behind `network_mode: none` OCI / `gVisor` boundaries ([`docs/LICENSE_EXCEPTIONS.md`](docs/LICENSE_EXCEPTIONS.md)) |
+| **License & Acknowledgments** | **Apache-2.0 (+ Permissive Ring 1 Crates)** | [`LICENSE`](LICENSE), [`NOTICE`](NOTICE), [`docs/ACKNOWLEDGMENTS.md`](docs/ACKNOWLEDGMENTS.md), [`docs/LICENSE_EXCEPTIONS.md`](docs/LICENSE_EXCEPTIONS.md) |
 
 ---
 

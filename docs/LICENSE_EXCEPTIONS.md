@@ -17,7 +17,7 @@ Per architectural ruling (**2026-11-25**), any capability inspired by published 
 
 1. **`surfer` (`EUPL-1.2`, Rust) — REMOVED & REPLACED CROSS-LANGUAGE:**
    - Removed from all importer scripts, Ring-1 builds, and dependency graphs.
-   - Replaced in X3 with a pure-MIT **TypeScript** (`apps/workstation` + `uPlot` + HTML5 Canvas) digital VCD/FST waveform track compliant with IEEE 1364 VCD/FST specs.
+   - Replaced in v0.0.5 with a pure-MIT **TypeScript** (`apps/workstation` + `uPlot` + HTML5 Canvas) digital VCD/FST waveform track compliant with IEEE 1364 VCD/FST specs.
 2. **`serde_kicad_sexpr` — DROPPED:**
    - Replaced with our own pure-MIT **Rust** S-expression parser & emitter in `packages/cad-transcoder` conforming to documented KiCad 10 S-expression file formats.
 3. **`KiKit` (`MIT` wrapper over `GPL-3.0` KiCad `pcbnew` Python bindings) — RING-2 SUBPROCESS ONLY:**
