@@ -9,6 +9,7 @@ from z3_pinmux import solve_pinmux_smt, verify_i2c_bus_addresses
 from physics_derating import (
     calculate_mlcc_derated_capacitance,
     calculate_ipc2152_trace_temp_rise,
+    calculate_ipc2221_trace_temp_rise,
     verify_component_derating
 )
 from footgun_engine import audit_hw_ir_database
@@ -65,11 +66,13 @@ def test_physics_derating_calculations():
     assert c_eff < c_nom, "Capacitance must degrade under 75% rated voltage"
     assert c_eff > 2.0, "Capacitance should not completely vanish"
     
-    # IPC-2152 trace temperature rise
+    # IPC-2152 universal-chart trace temperature rise vs IPC-2221 empirical formula
     # 2A through 0.25mm (250,000 nm) 1oz copper (35,000 nm)
-    delta_t = calculate_ipc2152_trace_temp_rise(current_amps=2.0, width_nm=250000, thickness_nm=35000, is_external=True)
-    assert delta_t > 0.0
-    assert delta_t < 150.0 # Realistic rise
+    delta_t_2152 = calculate_ipc2152_trace_temp_rise(current_amps=2.0, width_nm=250000, thickness_nm=35000, is_external=True)
+    delta_t_2221 = calculate_ipc2221_trace_temp_rise(current_amps=2.0, width_nm=250000, thickness_nm=35000, is_external=True)
+    assert 0.0 < delta_t_2152 < 150.0
+    assert 0.0 < delta_t_2221 < 200.0
+    assert abs(delta_t_2152 - delta_t_2221) > 10.0, "IPC-2152 universal curve must not alias IPC-2221 k=0.048"
     
     # Derating check
     res = verify_component_derating(v_applied=12.0, v_rated=16.0, p_dissipated_w=0.1, p_rated_w=0.25, category="capacitor")
