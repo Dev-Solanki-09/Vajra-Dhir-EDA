@@ -76,3 +76,20 @@ fn test_sexpr_kicad_sch_transcoding() {
         panic!("Expected Component entity");
     }
 }
+
+#[test]
+fn test_kicad_sch_golden_round_trip_ast_equivalence() {
+    let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let sch_path = manifest_dir.join("../../designs/board-1-buck-pd/board.kicad_sch");
+    let raw = std::fs::read_to_string(&sch_path).expect("board-1-buck-pd/board.kicad_sch must exist");
+    let ast1 = SExpr::parse(&raw).expect("Initial parse of board.kicad_sch failed");
+    assert!(!ast1.is_empty(), "Expected non-empty SExpr AST");
+
+    let serialized: String = ast1
+        .iter()
+        .map(|node| node.to_string_formatted(0))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let ast2 = SExpr::parse(&serialized).expect("Re-parse after serialize failed");
+    assert_eq!(ast1, ast2, "AST must round-trip identically after serialize()");
+}

@@ -236,9 +236,7 @@ fn main() {
         "asic" => {
             if args.len() >= 3 && args[2] == "c2p2b" {
                 println!("[*] vd asic: Chip-to-Package-to-Board (C2P2B) Co-Design Bridge");
-                println!("[+] Extracted 64 die pad-ring coordinates from Silicon layout");
-                println!("[+] Synthesized parametric BGA-64 substrate ball-map with 50.0 ohm Z0");
-                println!("[+] Coupled PDN target impedance verified: 85.0 milliohms");
+                println!("[DEFERRED] Pack-2C Ring-2 container integration deferred to X4 (see docs/CLAIMS_REGISTER.md).");
             } else {
                 eprintln!("Usage: vd asic c2p2b");
                 process::exit(1);
@@ -425,18 +423,89 @@ fn main() {
         }
 
         "doctor" => {
+            use std::path::Path;
+            use std::process::Command;
+
             println!("=================================================================");
             println!("  Vajra-Dhīr EDA — Environment Preflight & Diagnostic Doctor");
             println!("=================================================================\n");
-            println!("[*] Checking Rust toolchain (1.100.0).................... [ PASS ]");
-            println!("[*] Checking Node.js runtime (v24.x)..................... [ PASS ]");
-            println!("[*] Checking Canonical HW-IR SQLite WAL engine........... [ PASS ]");
-            println!("[*] Checking Wasmtime 50 guest memory limits............. [ PASS ]");
-            println!("[*] Checking GPU Driver Stability Blocklist............. [ PASS ]");
-            println!("    (Integrated GPU check: WebGL2 fallback active for 100% stability)");
-            println!("[*] Checking Zero-Egress OCI Container Workers.......... [ PASS ]");
-            println!("[*] Checking KiCad 10 / kicad-cli binary path............ [ PASS ]");
-            println!("\n[+] System Health: 100% OPERATIONAL. Zero blocking issues found.");
+
+            let mut failures = 0usize;
+
+            let rust_ver = Command::new("rustc").arg("--version").output()
+                .ok()
+                .filter(|o| o.status.success())
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+            match rust_ver {
+                Some(ref v) => {
+                    let ver_token = v.split_whitespace().nth(1).unwrap_or("");
+                    let parts: Vec<u32> = ver_token.split('.').filter_map(|p| p.parse().ok()).collect();
+                    let ok = parts.len() >= 2 && (parts[0] > 1 || (parts[0] == 1 && parts[1] >= 100));
+                    if ok {
+                        println!("[ PASS ] Rust toolchain (>=1.100.0): {}", v);
+                    } else {
+                        println!("[ WARN ] Rust toolchain below floor (1.100.0): {}", v);
+                        failures += 1;
+                    }
+                }
+                None => { println!("[ FAIL ] Rust toolchain not found on PATH"); failures += 1; }
+            }
+
+            let node_ver = Command::new("node").arg("--version").output()
+                .ok()
+                .filter(|o| o.status.success())
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+            match node_ver {
+                Some(ref v) => {
+                    let trimmed = v.trim_start_matches('v');
+                    let parts: Vec<u32> = trimmed.split('.').filter_map(|p| p.parse().ok()).collect();
+                    let ok = parts.len() >= 3 && (parts[0] > 26 || (parts[0] == 26 && (parts[1] > 13 || (parts[1] == 13 && parts[2] >= 1))));
+                    if ok {
+                        println!("[ PASS ] Node.js runtime (>=26.13.1): {}", v);
+                    } else {
+                        println!("[ FAIL ] Node.js runtime below CVE floor (>=26.13.1): {}", v);
+                        failures += 1;
+                    }
+                }
+                None => { println!("[ FAIL ] Node.js runtime not found on PATH"); failures += 1; }
+            }
+
+            for lockfile in ["Cargo.lock", "pnpm-lock.yaml", "uv.lock"] {
+                if Path::new(lockfile).exists() {
+                    println!("[ PASS ] Lockfile present: {}", lockfile);
+                } else {
+                    println!("[ FAIL ] Lockfile missing: {}", lockfile);
+                    failures += 1;
+                }
+            }
+
+            let daemon_up = std::net::TcpStream::connect_timeout(
+                &std::net::SocketAddr::from(([127, 0, 0, 1], 41900)),
+                std::time::Duration::from_millis(250),
+            ).is_ok();
+            if daemon_up {
+                println!("[ PASS ] vd-daemon loopback 127.0.0.1:41900 reachable");
+            } else {
+                println!("[ INFO ] vd-daemon loopback 127.0.0.1:41900 not currently running");
+            }
+
+            let kicad = Command::new("kicad-cli").arg("--version").output()
+                .ok()
+                .filter(|o| o.status.success())
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+            match kicad {
+                Some(v) => println!("[ PASS ] KiCad CLI (Ring-2 subprocess): {}", v),
+                None => println!("[ INFO ] kicad-cli not installed (Ring-2 export unavailable)"),
+            }
+
+            if failures > 0 {
+                println!("\n[!] Preflight detected {} blocking floor/lockfile issue(s).", failures);
+                if args.iter().any(|a| a == "--strict") {
+                    process::exit(1);
+                }
+            } else {
+                println!("\n[+] System Health: All checked preflight invariants passed.");
+            }
         }
 
         other => {

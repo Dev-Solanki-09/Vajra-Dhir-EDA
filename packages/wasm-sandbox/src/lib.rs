@@ -1,4 +1,4 @@
-//! # Vajra-Dhīr EDA — Wasmtime 50 Component Model Code Mode Sandbox
+//! # Vajra-Dhīr EDA — Wasmtime 51+ Component Model Code Mode Sandbox
 //!
 //! Provides isolated, deterministic in-memory execution for AI agent script synthesis,
 //! atopile parsing, and parametric calculations with strict fuel, memory (256 MiB),
