@@ -59,7 +59,8 @@ impl PointDistance for SpatialElement {
             0
         };
 
-        dx * dx + dy * dy
+        let d2 = (dx as i128) * (dx as i128) + (dy as i128) * (dy as i128);
+        d2.min(i64::MAX as i128) as Nm
     }
 }
 
@@ -71,6 +72,13 @@ impl CadSpatialIndex {
     pub fn new() -> Self {
         Self {
             tree: RTree::new(),
+        }
+    }
+
+    /// Build a balanced STR-packed R-Tree in O(N log N) via `rstar::RTree::bulk_load`.
+    pub fn bulk_load(elements: Vec<SpatialElement>) -> Self {
+        Self {
+            tree: RTree::bulk_load(elements),
         }
     }
 
@@ -86,6 +94,20 @@ impl CadSpatialIndex {
         self.tree.size() == 0
     }
 
+    /// Zero-allocation scratch-buffer window query reusing caller capacity.
+    pub fn query_window_into<'a>(
+        &'a self,
+        min_x: Nm,
+        min_y: Nm,
+        max_x: Nm,
+        max_y: Nm,
+        out: &mut Vec<&'a SpatialElement>,
+    ) {
+        out.clear();
+        let envelope = AABB::from_corners([min_x, min_y], [max_x, max_y]);
+        out.extend(self.tree.locate_in_envelope(&envelope));
+    }
+
     /// Query all elements whose bounding boxes intersect the given rectangular window.
     pub fn query_window(
         &self,
@@ -94,8 +116,9 @@ impl CadSpatialIndex {
         max_x: Nm,
         max_y: Nm,
     ) -> Vec<&SpatialElement> {
-        let envelope = AABB::from_corners([min_x, min_y], [max_x, max_y]);
-        self.tree.locate_in_envelope(&envelope).collect()
+        let mut out = Vec::new();
+        self.query_window_into(min_x, min_y, max_x, max_y, &mut out);
+        out
     }
 
     /// Find elements on the same layer belonging to a DIFFERENT net that violate the clearance distance.

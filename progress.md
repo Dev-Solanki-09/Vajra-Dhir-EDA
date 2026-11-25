@@ -1,5 +1,13 @@
 # PROGRESS — Wave Log (orchestrator-maintained)
 
+## 2026-11-25 · P0–P5 ACCEPTED (Zero-Regression Optimization) · X1 READY
+
+- **P0 (`7fb0a61`) + P1–P5 (`VD-PERF-001`):**
+  - `P0`: Added `scripts/test-p0-perf-budgets.py` (Gate 79 in `scripts/verify-all.mjs`) measuring real CrossProbeBus latency, ELK layout latency, cold-booted `vd-daemon` endpoint medians, and workstation bundle sizes into gitignored `.ai-sync/private/perf-baseline.json`.
+  - `P1`: Added overflow-safe `i128` distance helpers, `CadSpatialIndex::bulk_load`, `query_window_into` scratch-buffer query + `test_bulk_load_and_query_window_into` in `packages/cad-geom`, and `prepare_cached` + WAL `PRAGMA synchronous = NORMAL; temp_store = MEMORY` in `packages/hw-ir/src/store.rs`. Verified `cargo metadata --format-version 1 --locked` exit `0`.
+  - `P2+P3+P4`: Configured Rollup `manualChunks` (`vendor-elk`, `vendor-uplot`, `vendor-dockview`, `vendor-react`), `React.lazy`+`<Suspense>` code-splitting in `Workspaces.tsx`, `[profile.release]` thin LTO in `Cargo.toml`, and `temp_store = MEMORY; cache_size = -16384` in `packages/vd-daemon/src/daemon.py`.
+  - **Measured Before -> After (`P0 -> P5`):** Workstation entry JS chunk dropped `2,220.89 kB` -> **`69.47 kB`** (`20.51 kB` gzip; `vendor-elk` `1,422.73 kB` lazy-loaded on Schematic mount), enforced with `< 400_000` byte entry budget in `scripts/test-p0-perf-budgets.py`; updated `docs/RELEASE_PACKET_v0.1.0.md` `dist/index.html` LF-SHA256 cleanly. Zero regressions across `test-g6d-e2e-golden-journeys.py` (`G6D_E2E_5_JOURNEYS_OK`).
+
 ## 2026-11-25 · G8 MERGED (`v0.1.0` Release Packet PENDING Signoff) · Workspaces Consolidated into `D:\Vajra-Dhir-EDA`
 
 - **G8 ACCEPTED (`41d5ba5`..`3b02f44`, merged `--no-ff`):**

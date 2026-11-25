@@ -50,6 +50,7 @@ impl HwIrStore {
     /// Open a file-backed SQLite HW-IR database with all migrations applied.
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, HwIrError> {
         let conn = Connection::open(path)?;
+        conn.execute_batch("PRAGMA synchronous = NORMAL; PRAGMA temp_store = MEMORY;")?;
         let mut store = Self { conn };
         store.migrate()?;
         Ok(store)
@@ -84,10 +85,10 @@ impl HwIrStore {
     ) -> Result<(), HwIrError> {
         let actor_str = actor.to_string();
         let override_val = if allow_override { 1 } else { 0 };
-        self.conn.execute(
+        let mut stmt = self.conn.prepare_cached(
             "UPDATE _tx_actor_ctx SET actor_kind = ?1, allow_lock_override = ?2 WHERE singleton = 1;",
-            params![actor_str, override_val],
         )?;
+        stmt.execute(params![actor_str, override_val])?;
         Ok(())
     }
 

@@ -26,7 +26,7 @@
 - `pnpm-lock.yaml`: `781149a6deeda6f513256430e47fd1ef238165b5fc620b7948cff00e88a10502`
 - `uv.lock`: `9a0843e2965d9eed176d13fd79e41023686ef13ce35751351dcec68b9bfc4d4c`
 - `Cargo.lock`: `5472553db43beba0e3164e6d2aa7be450332d91ae3a823dc9c953f5f30463b86`
-- `apps/workstation/dist/index.html`: `8c50fa978f4cf123911a971eeefaad7356c3fb2ae25138c7fa8c2ebd05bc8dba`
+- `apps/workstation/dist/index.html`: `36aacbc93a0df1a92e86849ae75963e6066cb65b5f8d5a3f5d0b94bd4d7a3782`
 
 ---
 

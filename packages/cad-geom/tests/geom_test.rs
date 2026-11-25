@@ -113,3 +113,35 @@ fn test_i_triangle_int64_copper_triangulation() {
     assert!(mesh.triangle_count >= 8, "Expected >= 8 triangles around keepout hole, got {}", mesh.triangle_count);
     assert_eq!(mesh.indices.len(), mesh.triangle_count * 3);
 }
+
+#[test]
+fn test_bulk_load_and_query_window_into() {
+    let elements = vec![
+        SpatialElement {
+            id: "pad-1".to_string(),
+            net_id: Some("NET1".to_string()),
+            layer: "F.Cu".to_string(),
+            kind: SpatialKind::Pad,
+            min_x: 0,
+            min_y: 0,
+            max_x: 1_000_000,
+            max_y: 1_000_000,
+        },
+        SpatialElement {
+            id: "pad-2".to_string(),
+            net_id: Some("NET2".to_string()),
+            layer: "F.Cu".to_string(),
+            kind: SpatialKind::Pad,
+            min_x: 10_000_000,
+            min_y: 10_000_000,
+            max_x: 12_000_000,
+            max_y: 12_000_000,
+        },
+    ];
+    let index = CadSpatialIndex::bulk_load(elements);
+    assert_eq!(index.len(), 2);
+    let mut buf = Vec::with_capacity(4);
+    index.query_window_into(-500_000, -500_000, 1_500_000, 1_500_000, &mut buf);
+    assert_eq!(buf.len(), 1);
+    assert_eq!(buf[0].id, "pad-1");
+}

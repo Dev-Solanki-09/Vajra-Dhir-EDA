@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import {
   STEP_WORKER_LICENSE,
   createStepWorkerRequest,
@@ -7,8 +7,13 @@ import {
 import { globalCrossProbeBus } from '@vajradhir/crossprobe-bus';
 import { WorkspaceId } from '../commandBus';
 import { PcbEngineCanvas } from './PcbEngineCanvas';
-import { SchematicElkCanvas } from './SchematicElkCanvas';
-import { UplotScope } from './UplotScope';
+
+const SchematicElkCanvas = React.lazy(() =>
+  import('./SchematicElkCanvas').then((m) => ({ default: m.SchematicElkCanvas }))
+);
+const UplotScope = React.lazy(() =>
+  import('./UplotScope').then((m) => ({ default: m.UplotScope }))
+);
 
 export type WorkspaceViewState = 'loading' | 'empty' | 'error' | 'full';
 
@@ -442,7 +447,11 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
         />
       )}
 
-      {workspace === 'schematic' && <SchematicElkCanvas />}
+      {workspace === 'schematic' && (
+        <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading elkjs schematic layout...</div>}>
+          <SchematicElkCanvas />
+        </Suspense>
+      )}
 
       {workspace === 'sim_lab' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -452,22 +461,24 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
               Solve PDN &amp; Bode
             </button>
           </div>
-          <UplotScope
-            title="SW_NODE Switching Transient & +3V3 Output Ripple (uPlot MIT)"
-            xLabel="Time (us)"
-            seriesLabel="V_SW (V)"
-            xValues={transientTimeUs}
-            yValues={transientSwV}
-            strokeColor="#E05D44"
-          />
-          <UplotScope
-            title="SMPS Closed-Loop Gain & Crossover (kHz)"
-            xLabel="Freq (kHz)"
-            seriesLabel="Gain (dB)"
-            xValues={simResult.bodeFreqKhz}
-            yValues={simResult.bodeGainDb}
-            strokeColor="#38BDF8"
-          />
+          <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading uPlot oscilloscope...</div>}>
+            <UplotScope
+              title="SW_NODE Switching Transient & +3V3 Output Ripple (uPlot MIT)"
+              xLabel="Time (us)"
+              seriesLabel="V_SW (V)"
+              xValues={transientTimeUs}
+              yValues={transientSwV}
+              strokeColor="#E05D44"
+            />
+            <UplotScope
+              title="SMPS Closed-Loop Gain & Crossover (kHz)"
+              xLabel="Freq (kHz)"
+              seriesLabel="Gain (dB)"
+              xValues={simResult.bodeFreqKhz}
+              yValues={simResult.bodeGainDb}
+              strokeColor="#38BDF8"
+            />
+          </Suspense>
         </div>
       )}
 

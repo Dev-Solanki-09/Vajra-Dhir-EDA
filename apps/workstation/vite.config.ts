@@ -14,5 +14,16 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/elkjs')) return 'vendor-elk';
+          if (id.includes('node_modules/uplot')) return 'vendor-uplot';
+          if (id.includes('node_modules/dockview')) return 'vendor-dockview';
+          if (id.includes('node_modules/react')) return 'vendor-react';
+          return undefined;
+        },
+      },
+    },
   },
 });

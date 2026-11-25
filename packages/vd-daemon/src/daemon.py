@@ -297,6 +297,8 @@ def init_db(db_path: pathlib.Path) -> sqlite3.Connection:
     con.execute("PRAGMA journal_mode = WAL;")
     con.execute("PRAGMA foreign_keys = ON;")
     con.execute("PRAGMA synchronous = NORMAL;")
+    con.execute("PRAGMA temp_store = MEMORY;")
+    con.execute("PRAGMA cache_size = -16384;")
     
     # Run DDLs if database is not yet initialized
     has_tables = con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'").fetchone()

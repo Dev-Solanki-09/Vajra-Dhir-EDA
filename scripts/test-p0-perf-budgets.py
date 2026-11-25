@@ -139,13 +139,17 @@ def measure_daemon_endpoints() -> dict:
 def measure_workstation_bundle() -> dict:
     dist_assets = ROOT / "apps" / "workstation" / "dist" / "assets"
     assert dist_assets.exists(), "apps/workstation/dist/assets missing"
-    js_bytes = sum(p.stat().st_size for p in dist_assets.glob("*.js"))
+    js_files = list(dist_assets.glob("*.js"))
+    js_bytes = sum(p.stat().st_size for p in js_files)
     css_bytes = sum(p.stat().st_size for p in dist_assets.glob("*.css"))
-    largest_js = max((p.stat().st_size for p in dist_assets.glob("*.js")), default=0)
+    largest_js = max((p.stat().st_size for p in js_files), default=0)
+    entry_js = sum(p.stat().st_size for p in js_files if p.name.startswith("index-"))
+    assert entry_js > 0, "Workstation entry JS bundle (index-*.js) missing"
     return {
         "total_js_bytes": js_bytes,
         "total_css_bytes": css_bytes,
         "largest_js_chunk_bytes": largest_js,
+        "entry_js_bytes": entry_js,
     }
 
 
@@ -164,10 +168,11 @@ def run() -> None:
     PRIVATE_BASELINE.parent.mkdir(parents=True, exist_ok=True)
     PRIVATE_BASELINE.write_text(json.dumps(baseline, indent=2) + "\n", encoding="utf-8")
 
-    # Enforce P0 baseline sanity contracts (hard <16ms CrossProbeBus + responsive offline daemon)
+    # Enforce P0/P4 performance budgets (hard <16ms CrossProbeBus + responsive offline daemon + split entry JS)
     assert node_metrics["crossprobe_max_ms"] < 16.0, f"CrossProbeBus budget violation: {node_metrics['crossprobe_max_ms']} ms"
     assert daemon_metrics["health_median_ms"] < 100.0, f"Daemon health slow: {daemon_metrics['health_median_ms']} ms"
-    assert node_metrics["elk_layout_median_ms"] < 1000.0, f"ELK layout slow: {node_metrics['elk_layout_median_ms']} ms"
+    assert node_metrics["elk_layout_median_ms"] < 1000.0, f"ELK layout slow: {daemon_metrics['elk_layout_median_ms']} ms"
+    assert bundle_metrics["entry_js_bytes"] < 400_000, f"Entry JS budget violation: {bundle_metrics['entry_js_bytes']} bytes"
 
     print("P0_BASELINE_OK", json.dumps(baseline))
 
