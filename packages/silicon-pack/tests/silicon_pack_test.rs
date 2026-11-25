@@ -18,7 +18,11 @@ fn test_librelane_pack_validation_and_c2p2b_balls() {
     legacy.flow = "openlane".to_string();
     assert_eq!(legacy.validate(), Err(SiliconPackError::LegacyOpenLaneForbidden));
 
-    let mut bridge = valid;
+    let mut bridge = valid.clone();
     bridge.network_mode = "bridge".to_string();
     assert_eq!(bridge.validate(), Err(SiliconPackError::EgressBlocked));
+
+    let mut non_hex = valid;
+    non_hex.image_digest_sha256 = format!("sha256:{}", "Z".repeat(64));
+    assert_eq!(non_hex.validate(), Err(SiliconPackError::InvalidDigest));
 }

@@ -57,6 +57,8 @@ Thumbs.db
 *.swp
 prompt-and-skills/
 prompt and skill/
+*prompt*.txt
+*prompt*.md
 .qoder/
 docs/*
 !docs/LICENSE_EXCEPTIONS.md

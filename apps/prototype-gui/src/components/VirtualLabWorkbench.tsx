@@ -42,7 +42,7 @@ export const VirtualLabWorkbench: React.FC = () => {
             { id: "PDN_HEATMAP", label: "2.5D Laplace PDN IR-Drop Heatmap" },
             { id: "OSCILLOSCOPE", label: "Virtual Oscilloscope (uPlot 60FPS)" },
             { id: "SMPS_BODE", label: "SMPS Stability & Compensator" },
-            { id: "LOGIC_ANALYZER", label: "Digital Waveform Logic Analyzer (Surfer)" },
+            { id: "LOGIC_ANALYZER", label: "Digital Waveform Logic Analyzer (Pure-MIT VCD/FST)" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -254,7 +254,7 @@ export const VirtualLabWorkbench: React.FC = () => {
 
         {activeTab === "LOGIC_ANALYZER" && (
           <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
-            <h3 style={{ margin: "0 0 2px 0", fontSize: 14 }}>Digital Waveform Logic Analyzer (Surfer WASM)</h3>
+            <h3 style={{ margin: "0 0 2px 0", fontSize: 14 }}>Digital Waveform Logic Analyzer (Pure-MIT VCD Track)</h3>
             <p style={{ margin: 0, fontSize: 12, color: "var(--vd-text-secondary)" }}>
               Hardware-firmware synchronized logic trace viewer for I2C, SPI, and USB-PD protocol handshakes.
             </p>

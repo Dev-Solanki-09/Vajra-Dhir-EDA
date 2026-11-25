@@ -1,8 +1,13 @@
 Vajra-Dhīr EDA (vajra-dhir-eda)
 Copyright 2026 Vajra-Dhīr EDA Contributors
 
+Licensed under the Apache License, Version 2.0 (with Ring 1 crate dual-licensing
+`MIT OR Apache-2.0` where declared at package level).
+
 Ring 1 Core Isolation Notice:
-All software contained in packages/* and apps/* is strictly MIT or Apache-2.0.
-External multi-physics and silicon compilers (KiCad, openEMS, ElmerFEM, CalculiX, LibreLane)
-execute as isolated external processes or OCI/gVisor containers (Ring 2) and are never linked
-into the Ring 1 permissive core.
+All source packages under packages/* and apps/* remain permissive (Apache-2.0 / MIT),
+with explicit runtime-isolated exceptions documented in docs/LICENSE_EXCEPTIONS.md
+(elkjs EPL-2.0 unmodified npm package, occt-import-js LGPL-2.1-with-OCCT-exception Web Worker).
+External multi-physics and silicon compilers (KiCad, KiKit, openEMS, ElmerFEM, CalculiX,
+LibreLane, Renode) execute strictly as isolated external OS processes or OCI/gVisor containers
+(Ring 2) and are never statically or dynamically linked into Ring 1.

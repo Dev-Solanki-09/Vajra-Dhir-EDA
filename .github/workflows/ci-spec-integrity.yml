@@ -120,3 +120,6 @@ jobs:
 
       - name: 5. Secret Leak & Path Privacy Audit
         run: python3 scripts/audit-secrets-and-paths.py
+
+      - name: 6. Markdown Internal Link Check
+        run: python3 scripts/check-links.py

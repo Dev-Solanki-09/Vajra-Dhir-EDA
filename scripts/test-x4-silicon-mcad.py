@@ -147,6 +147,13 @@ def test_x4_daemon_mcad_silicon_and_supply_chain() -> None:
         })
         assert st == 400 and bad_flow["error"] == "LEGACY_OPENLANE_FORBIDDEN", f"OpenLane must be blocked: {st} {bad_flow}"
 
+        st, omitted_flow = _post_json(f"{base}/api/v1/silicon/librelane-pack", {
+            "pdk": "sky130A",
+            "network_mode": "none",
+            "image_digest_sha256": digest,
+        })
+        assert st == 400 and omitted_flow["error"] == "LEGACY_OPENLANE_FORBIDDEN", f"Omitted flow must fail closed: {st} {omitted_flow}"
+
         st, bad_net = _post_json(f"{base}/api/v1/silicon/librelane-pack", {
             "flow": "librelane",
             "pdk": "sky130A",

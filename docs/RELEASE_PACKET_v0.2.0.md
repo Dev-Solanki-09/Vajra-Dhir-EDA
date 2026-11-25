@@ -34,3 +34,15 @@
 1. **No Tier-4 Hardware-Verified Claim (`L128`):** `0/3` reference PCBs have been physically fabricated or bench-tested (`NOT_FABRICATED_0_OF_3`). All `board-{1,2,3}` verdicts remain strictly verified software reference blueprints (`designs/board-{1,2,3}/verification_report.json`).
 2. **Host Toolchain Caveats:** Local Windows build environment runs Node `24.19.0` (manifests target `>= 26.13.1`, CI pins `26.13.1`) and lacks MSVC `link.exe` (GitHub Actions `ubuntu-24.04` compiles full Rust workspace).
 3. **Human Release Gate:** Do NOT push to remote, tag `v0.2.0`, or flip `release_authorized: true` until human maintainer reviews this packet and issues explicit approval.
+
+---
+
+## 4. Draft GitHub Repository & Release Metadata (Zero-Hype, Generic Technical Copy)
+- **Repository License:** Apache License 2.0 ([`LICENSE`](../LICENSE), permissive `MIT OR Apache-2.0` per-crate Ring 1 core, Ring 2 isolated OCI boundaries, see [`NOTICE`](../NOTICE) & [`LICENSE_EXCEPTIONS.md`](./LICENSE_EXCEPTIONS.md)).
+- **Suggested GitHub Repo Description:** `Local-first hardware and firmware co-design EDA workstation in Rust, TypeScript, and Python with SQLite HW-IR, fail-closed human locks, and offline verification.`
+- **Suggested Topics:** `eda`, `pcb`, `kicad`, `hardware`, `asic`, `rust`, `webgpu`, `mcp`, `open-source-hardware`, `ai-agents`
+- **Draft Release Title (Only Upon Human Signoff):** `v0.2.0-rc — Vajra-Dhīr EDA Local Workstation, Constraint/BOM Analytics, CRDT Collab & Simulation Bridges`
+- **Draft Release Summary (Fact-Bound):**
+  - Introduces canonical `apps/workstation` (`vd studio` loopback server), `vd-constraint-mgr`, `vd-bom-analytics`, `@vajradhir/collab` (`Yjs` CRDT with fail-closed `KERNEL_LOCK_VIOLATION` + `vd.hw.lock.v1` digests), pure-MIT IEEE-1364 VCD/waveform tooling, and `vd-silicon-pack` (LibreLane Pack-2C + integer `i64` nm MCAD 3D clearance DRC).
+  - Software gates verified (`82 PASS / 1 FAIL` local Windows host due solely to absent MSVC `link.exe`; full Rust CI runs on `ubuntu-24.04`).
+  - Hardware status remains `NOT_FABRICATED_0_OF_3` software reference blueprints until 3 PCBs are fabricated and bench-verified.

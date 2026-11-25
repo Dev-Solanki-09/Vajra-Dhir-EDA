@@ -39,7 +39,10 @@ impl LibreLanePackJob {
         if self.network_mode != "none" {
             return Err(SiliconPackError::EgressBlocked);
         }
-        if !self.image_digest_sha256.starts_with("sha256:") || self.image_digest_sha256.len() != 71 {
+        let Some(hex) = self.image_digest_sha256.strip_prefix("sha256:") else {
+            return Err(SiliconPackError::InvalidDigest);
+        };
+        if hex.len() != 64 || !hex.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f')) {
             return Err(SiliconPackError::InvalidDigest);
         }
         Ok(())

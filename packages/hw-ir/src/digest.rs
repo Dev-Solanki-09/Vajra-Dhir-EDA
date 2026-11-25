@@ -25,7 +25,7 @@ pub fn compute_hw_lock_sha256(entities: &[HwLockEntityProjection]) -> HwLockDige
     let mut sorted = entities.to_vec();
     sorted.sort_by(|a, b| a.id.cmp(&b.id));
     let mut hasher = Sha256::new();
-    hasher.update(b"vd.hw.lock.v1\n");
+    hasher.update(b"vd.hw.lock.projection.v1\n");
     for e in &sorted {
         hasher.update(
             format!(
@@ -38,7 +38,7 @@ pub fn compute_hw_lock_sha256(entities: &[HwLockEntityProjection]) -> HwLockDige
     let bytes = hasher.finalize();
     let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
     HwLockDigest {
-        schema: "vd.hw.lock.v1".to_string(),
+        schema: "vd.hw.lock.projection.v1".to_string(),
         digest_sha256: hex,
         entity_count: sorted.len(),
     }

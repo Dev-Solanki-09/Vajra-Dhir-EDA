@@ -6,8 +6,8 @@
   <a href="https://github.com/Dev-Solanki-09/vajra-dhir-eda/actions/workflows/ci-spec-integrity.yml">
     <img src="https://github.com/Dev-Solanki-09/vajra-dhir-eda/actions/workflows/ci-spec-integrity.yml/badge.svg" alt="Spec & Security CI">
   </a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT%20%2F%20Apache--2.0-10B981.svg" alt="License: MIT / Apache-2.0"></a>
-  <a href="docs/VD-SAD-001-ARCHITECTURE.md"><img src="https://img.shields.io/badge/Spec-VD--SAD--001%20Rev%202.0-3B82F6.svg" alt="Architecture Spec"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0%20(%2B%20MIT%20Ring--1)-10B981.svg" alt="License: Apache-2.0"></a>
+  <a href="docs/VD-SAD-001.md"><img src="https://img.shields.io/badge/Spec-VD--SAD--001%20Rev%202.0-3B82F6.svg" alt="Architecture Spec"></a>
   <a href="#project-status--radical-transparency"><img src="https://img.shields.io/badge/Stage-Architecture%20Frozen%20%C2%B7%20Milestone%201-F59E0B.svg" alt="Stage: Milestone 1"></a>
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/DCO-Signed--off--by-8B5CF6.svg" alt="DCO Required"></a>
 </p>
@@ -26,11 +26,11 @@ We publish our complete, frozen industrial architecture and executable contracts
 
 | Layer | Current Status | Verifiable Artifacts in This Repo |
 |---|---|---|
-| **Master Architecture & ADRs** | **Frozen (`VD-SAD-001 Rev 2.0`)** | [`docs/VD-SAD-001-ARCHITECTURE.md`](docs/VD-SAD-001-ARCHITECTURE.md), [`docs/ADDENDUM_01_PRODUCTION_ESSENTIALS.md`](docs/ADDENDUM_01_PRODUCTION_ESSENTIALS.md) |
-| **Canonical `HW-IR` Schema** | **Frozen & CI-Tested** | [`packages/hw-ir/schema/001_init.sql`](packages/hw-ir/schema/001_init.sql), [`packages/hw-ir/schema/002_manual_perfection.sql`](packages/hw-ir/schema/002_manual_perfection.sql) |
+| **Master Architecture & ADRs** | **Frozen (`VD-SAD-001 Rev 2.0`)** | [`docs/VD-SAD-001.md`](docs/VD-SAD-001.md), [`docs/ADDENDUM_01_PRODUCTION_ESSENTIALS.md`](docs/ADDENDUM_01_PRODUCTION_ESSENTIALS.md) |
+| **Canonical `HW-IR` Schema** | **Frozen & CI-Tested** | [`packages/hw-ir/schema/001_v001_init.sql`](packages/hw-ir/schema/001_v001_init.sql), [`packages/hw-ir/schema/002_manual_perfection.sql`](packages/hw-ir/schema/002_manual_perfection.sql) |
 | **Protocols & Security Model** | **Frozen & Schema-Validated** | [`schemas/mcp-v2-12verbs.json`](schemas/mcp-v2-12verbs.json), [`schemas/worker_contract.v1.json`](schemas/worker_contract.v1.json), [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) |
-| **Milestone 1 (Ring 1 Lean PCB Core)** | **Software Reference Blueprints (0/3 Physically Fabricated)** | Software gates & E2E verified; gated by **3 real physical PCB fabrications** before production Tier-4 claims |
-| **Rings 2–4 (Multi-Physics / IC / Power / EvalOps)** | **Planned Plugin Packs** | Isolated behind `WorkerContract` OCI / `gVisor` boundaries |
+| **Release Readiness (`v0.1.0` & `v0.2.0`)** | **Software Reference Blueprints (0/3 Physically Fabricated · Human Signoff Pending)** | [`docs/RELEASE_PACKET_v0.1.0.md`](docs/RELEASE_PACKET_v0.1.0.md), [`docs/RELEASE_PACKET_v0.2.0.md`](docs/RELEASE_PACKET_v0.2.0.md), [`docs/CLAIMS_REGISTER.md`](docs/CLAIMS_REGISTER.md) |
+| **Rings 2–4 (Multi-Physics / IC / Power)** | **Subprocess / Container Boundary (`WorkerContract`)** | Isolated behind `network_mode: none` OCI / `gVisor` boundaries ([`docs/LICENSE_EXCEPTIONS.md`](docs/LICENSE_EXCEPTIONS.md)) |
 
 ---
 
@@ -122,13 +122,33 @@ vajra-dhir-eda/
 │   ├── pcb-diff/                           # Pure-MIT Visual Layer-by-Layer PCB Diff & ECO Visualizer
 │   ├── wire-harness/                       # Pure-MIT Declarative Cable & Wire Harness Compiler
 │   ├── panelizer/                          # Pure-MIT Automated PCB Panelization & Perforation Generator
+│   ├── constraint-mgr/                     # Netclass Width/Clearance, Diff-Pair Skew & Delay Bounds (`i64` nm)
+│   ├── bom-analytics/                      # Assembly Variants (DNP), Extended Feeder Fee & Risk Scorer
+│   ├── silicon-pack/                       # LibreLane Pack-2C Contract & C2P2B Ball Coordinate Bridge
+│   ├── collab/                             # Yjs CRDT Projection w/ Fail-Closed Peer Locks & `hw.lock` Digest
 │   ├── cli/                                # Unified `vd` Developer Command Line Tool
 │   └── ui-apps/                            # Portable MCP UI (Waveform & Interactive Lenses)
 ├── apps/
-│   ├── workstation/                        # Canonical Silicon Darkroom Studio (`vd studio`, React 19, Dockview MIT, WebGL2/Canvas2D, elkjs, uPlot)
+│   ├── workstation/                        # Canonical Silicon Darkroom Studio (`vd studio`, React 19, Dockview MIT, WebGL2/Canvas2D, elkjs, uPlot, Pure-MIT VCD)
 │   └── desktop/                            # Compatibility Desktop Package Target (React 19, Dockview)
-├── scripts/                                # 77-Gate Classified Verification & Playwright E2E Harnesses
+├── scripts/                                # 83-Gate Classified Verification & Playwright E2E Harnesses
 └── .github/workflows/                      # Automated DDL, Schema, DCO & License Firewall CI
+```
+
+### Quick Verification Commands (100% Offline, $0 API Cost)
+
+```bash
+# 1. Dependency lock & SPDX license firewall
+node scripts/check-spdx-firewall.mjs
+cargo metadata --locked --format-version 1 > /dev/null
+
+# 2. Full 83-gate verification harness & headless Chromium Golden E2E journeys
+node scripts/verify-all.mjs
+python scripts/test-g6d-e2e-golden-journeys.py
+
+# 3. Build & launch local loopback workstation (127.0.0.1:41900)
+pnpm --filter @vajradhir/workstation build
+python packages/vd-daemon/src/daemon.py
 ```
 
 ---
@@ -145,5 +165,5 @@ We welcome **Rust systems engineers, mixed-signal PCB designers, KiCad/atopile p
 
 ## License & Isolation Policy
 
-- **Ring 1 Core (`packages/*`, `apps/*`, specifications, schemas):** Dual-licensed under MIT / Apache-2.0 (see [`LICENSE`](LICENSE)).
-- **Ring 2 External Engines:** GPLv2/GPLv3 tools (`KiCad`, `openEMS`, `ElmerFEM`, `CalculiX`, `IIC-OSIC-TOOLS`, etc.) execute strictly as isolated OS processes or OCI/`gVisor` containers—never linked into Ring 1 permissive code. AGPL dependencies and non-commercial ML checkpoints are strictly excluded from core.
+- **Repository License:** Apache License, Version 2.0 (see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)); individual Ring 1 Rust workspace crates under `packages/*` remain permissively dual-licensed `MIT OR Apache-2.0`.
+- **Ring 2 External Engines:** GPLv2/GPLv3 tools (`KiCad`, `openEMS`, `ElmerFEM`, `CalculiX`, `IIC-OSIC-TOOLS`, etc.) execute strictly as isolated OS processes or OCI/`gVisor` containers—never linked into Ring 1 permissive code. AGPL dependencies, `EUPL-1.2` `surfer` in Ring 1, and non-commercial ML checkpoints are strictly excluded from core.

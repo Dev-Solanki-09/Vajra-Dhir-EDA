@@ -71,7 +71,7 @@ def handle_x4_post(handler: Any, path: str, req: Dict[str, Any]) -> bool:
         return True
 
     if path in ("/api/v1/silicon/librelane-pack", "/api/silicon/librelane-pack"):
-        flow = str(req.get("flow", "librelane")).strip().lower()
+        flow = str(req.get("flow", "")).strip().lower()
         if flow != "librelane":
             _send_json(handler, 400, {
                 "error": "LEGACY_OPENLANE_FORBIDDEN",
