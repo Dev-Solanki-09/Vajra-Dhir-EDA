@@ -22,6 +22,8 @@ import uuid
 
 try:
     from .agent_routes import handle_agent_post
+    from .kicad_bridge import ensure_external_id_map
+    from .kicad_routes import handle_kicad_get, handle_kicad_post
     from .x1_routes import handle_x1_post
     from .x3_routes import handle_x3_post
     from .x4_routes import handle_x4_post
@@ -30,6 +32,8 @@ except ImportError:
     if _DAEMON_SRC_DIR not in sys.path:
         sys.path.insert(0, _DAEMON_SRC_DIR)
     from agent_routes import handle_agent_post
+    from kicad_bridge import ensure_external_id_map
+    from kicad_routes import handle_kicad_get, handle_kicad_post
     from x1_routes import handle_x1_post
     from x3_routes import handle_x3_post
     from x4_routes import handle_x4_post
@@ -37,7 +41,7 @@ except ImportError:
 PORT = 41900
 HOST = "127.0.0.1"
 
-DB_DIR = pathlib.Path(".vd-dev")
+DB_DIR = pathlib.Path(os.environ.get("VD_DB_DIR") or ".vd-dev")
 DB_PATH = DB_DIR / "prototype-v0.0.1.vd.db"
 SCHEMA_V001 = pathlib.Path("packages/hw-ir/schema/001_v001_init.sql")
 BUDGET_PATH = pathlib.Path("budget.json")
@@ -312,8 +316,9 @@ def init_db(db_path: pathlib.Path) -> sqlite3.Connection:
         if SCHEMA_V001.exists():
             con.executescript(SCHEMA_V001.read_text(encoding="utf-8"))
 
-    # Ensure _tx_actor_ctx has human actor
+    # Ensure _tx_actor_ctx has human actor and external_id_map exists
     con.execute("INSERT OR IGNORE INTO _tx_actor_ctx(singleton, actor_kind, allow_lock_override) VALUES (1, 'human', 0)")
+    ensure_external_id_map(con)
     con.commit()
     return con
 
@@ -911,6 +916,8 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(preview).encode("utf-8"))
 
         else:
+            if handle_kicad_get(self, path):
+                return
             if not path.startswith("/api/") and not path.startswith("/stitch/"):
                 asset = resolve_studio_static_asset(path)
                 if asset["status"] == 200:
@@ -1605,6 +1612,9 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self._send_cors()
             self.end_headers()
             self.wfile.write(json.dumps(res).encode("utf-8"))
+
+        elif handle_kicad_post(self, path, req, self.con):
+            return
 
         elif handle_x1_post(self, path, req):
             return

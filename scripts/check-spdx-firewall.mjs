@@ -116,14 +116,25 @@ for (const lockName of ["uv.lock", "Cargo.lock"]) {
 }
 
 // 4. Scan for committed vendor PDF files (Copyright & Security Quarantine)
+const IGNORED_PDF_REL_PREFIXES = ["workers/sources/", "vendor/ring1-refs/", "vendor/quarantine/", ".vd-dev/"];
 function scanPdf(dir) {
   if (!fs.existsSync(dir)) return;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory() && entry.name !== ".git" && entry.name !== "node_modules" && entry.name !== ".pnpm-store" && entry.name !== "target") {
+    const normalized = path.relative(scanRoot, full).replace(/\\/g, "/");
+    if (entry.isDirectory()) {
+      if (
+        entry.name === ".git" ||
+        entry.name === "node_modules" ||
+        entry.name === ".pnpm-store" ||
+        entry.name === "target" ||
+        entry.name === ".vd-dev" ||
+        IGNORED_PDF_REL_PREFIXES.some((p) => `${normalized}/`.startsWith(p))
+      ) {
+        continue;
+      }
       scanPdf(full);
     } else if (entry.isFile() && entry.name.endsWith(".pdf")) {
-      const normalized = path.relative(scanRoot, full).replace(/\\/g, "/");
       if (!normalized.startsWith("docs/public-examples/")) {
         console.error(`VIOLATION: Vendor PDF staged/committed: ${normalized}. Cache PDFs locally via datasheet-lens!`);
         hasError = true;

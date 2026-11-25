@@ -23,6 +23,7 @@ env/
 *.vd.db*
 *.sqlite-wal
 *.sqlite-shm
+*.kicad_prl
 .vajradhir/
 .vd-dev/
 *.log
