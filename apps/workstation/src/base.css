@@ -41,8 +41,17 @@ body,
   transition: border-color var(--vd-dur-micro) ease, background-color var(--vd-dur-micro) ease;
 }
 
-.vd-btn:hover {
+.vd-btn:hover:not(:disabled) {
   border-color: var(--vd-border-active);
+}
+
+.vd-btn:active:not(:disabled) {
+  background-color: var(--vd-bg-canvas);
+}
+
+.vd-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .vd-btn-primary {
