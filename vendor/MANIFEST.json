@@ -1,0 +1,191 @@
+{
+  "schema_version": "1.0.0",
+  "generated_utc": "2026-11-25T11:45:00Z",
+  "policy": "Public legal attribution ledger ONLY covering Ring-1 permissive dependencies, isolated-exception dependencies, and Ring-2 external CLI/container subprocess tools. Study-only mirrors and forbidden packages are excluded per VD-MASTER-002 Part A.",
+  "entries": [
+    {
+      "name": "rusqlite",
+      "url": "https://github.com/rusqlite/rusqlite.git",
+      "license": "MIT",
+      "version_or_floor": "0.32+",
+      "class": "ring1-dep",
+      "purpose": "SQLite WAL HW-IR kernel persistence & fail-closed _tx_actor_ctx triggers"
+    },
+    {
+      "name": "rstar",
+      "url": "https://github.com/georust/rstar.git",
+      "license": "MIT OR Apache-2.0",
+      "version_or_floor": "0.12+",
+      "class": "ring1-dep",
+      "purpose": "R*-tree spatial indexing for i64 nanometer PCB/IC primitives"
+    },
+    {
+      "name": "iOverlay",
+      "url": "https://github.com/iShape-Rust/iOverlay.git",
+      "license": "MIT",
+      "version_or_floor": "1.x",
+      "class": "ring1-dep",
+      "purpose": "Exact integer polygon boolean clipping in i64 nanometers"
+    },
+    {
+      "name": "iTriangle",
+      "url": "https://github.com/iShape-Rust/iTriangle.git",
+      "license": "MIT OR Apache-2.0",
+      "version_or_floor": "0.33+",
+      "class": "ring1-dep",
+      "purpose": "Integer Delaunay triangulation (i_triangle::int::* API) for copper zones"
+    },
+    {
+      "name": "cavalier_contours",
+      "url": "https://github.com/jbuckmccready/cavalier_contours.git",
+      "license": "MIT OR Apache-2.0",
+      "version_or_floor": "0.7+",
+      "class": "ring1-dep",
+      "purpose": "Parallel polygon & biarc offsetting for solder mask / clearance contours"
+    },
+    {
+      "name": "wasmtime",
+      "url": "https://github.com/bytecodealliance/wasmtime.git",
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "version_or_floor": ">=51.0.0",
+      "class": "ring1-dep",
+      "purpose": "Zero-trust WebAssembly Code Mode sandbox with fuel, epoch, and memory ceilings"
+    },
+    {
+      "name": "atopile",
+      "url": "https://github.com/atopile/atopile.git",
+      "license": "MIT",
+      "version_or_floor": "uv.lock pinned",
+      "class": "ring1-dep",
+      "purpose": "Primary declarative hardware compiler bridge"
+    },
+    {
+      "name": "z3",
+      "url": "https://github.com/Z3Prover/z3.git",
+      "license": "MIT",
+      "version_or_floor": "uv.lock pinned",
+      "class": "ring1-dep",
+      "purpose": "SMT solver for MCU pinmux conflict & electrical invariant proofs"
+    },
+    {
+      "name": "sympy",
+      "url": "https://github.com/sympy/sympy.git",
+      "license": "BSD-3-Clause",
+      "version_or_floor": "uv.lock pinned",
+      "class": "ring1-dep",
+      "purpose": "Symbolic circuit equation checking"
+    },
+    {
+      "name": "pint",
+      "url": "https://github.com/hgrecco/pint.git",
+      "license": "BSD-3-Clause",
+      "version_or_floor": "uv.lock pinned",
+      "class": "ring1-dep",
+      "purpose": "Dimensional physical-unit enforcement"
+    },
+    {
+      "name": "duckdb",
+      "url": "https://github.com/duckdb/duckdb.git",
+      "license": "MIT",
+      "version_or_floor": "uv.lock pinned",
+      "class": "ring1-dep",
+      "purpose": "Local analytical Component Knowledge Graph & quarantine store"
+    },
+    {
+      "name": "pypdfium2",
+      "url": "https://github.com/pypdfium2-team/pypdfium2.git",
+      "license": "Apache-2.0 OR BSD-3-Clause",
+      "version_or_floor": "uv.lock pinned",
+      "class": "ring1-dep",
+      "purpose": "Apache/BSD PDF text/table extraction for datasheet auditing"
+    },
+    {
+      "name": "pdfplumber",
+      "url": "https://github.com/jsvine/pdfplumber.git",
+      "license": "MIT",
+      "version_or_floor": "uv.lock pinned",
+      "class": "ring1-dep",
+      "purpose": "Pin-table layout parsing for datasheet extraction"
+    },
+    {
+      "name": "dockview-react",
+      "url": "https://github.com/mathuo/dockview.git",
+      "license": "MIT",
+      "version_or_floor": "8.9.x",
+      "class": "ring1-dep",
+      "purpose": "MIT docking/floating multi-pane workstation shell (enterprise edition excluded)"
+    },
+    {
+      "name": "zustand",
+      "url": "https://github.com/pmndrs/zustand.git",
+      "license": "MIT",
+      "version_or_floor": "5.x",
+      "class": "ring1-dep",
+      "purpose": "Sub-16ms CrossProbeBus state synchronization across panels"
+    },
+    {
+      "name": "uPlot",
+      "url": "https://github.com/leeoniya/uPlot.git",
+      "license": "MIT",
+      "version_or_floor": "1.6.x",
+      "class": "ring1-dep",
+      "purpose": "High-throughput Canvas oscilloscope & pure-MIT digital VCD/FST waveform track"
+    },
+    {
+      "name": "three.js",
+      "url": "https://github.com/mrdoob/three.js.git",
+      "license": "MIT",
+      "version_or_floor": "0.17x+",
+      "class": "ring1-dep",
+      "purpose": "Interactive 3D MCAD PCB assembly viewport"
+    },
+    {
+      "name": "InteractiveHtmlBom",
+      "url": "https://github.com/openscopeproject/InteractiveHtmlBom.git",
+      "license": "MIT",
+      "version_or_floor": "2.x",
+      "class": "ring1-dep",
+      "purpose": "Interactive HTML assembly BOM generation"
+    },
+    {
+      "name": "PcbDraw",
+      "url": "https://github.com/yaqwsx/PcbDraw.git",
+      "license": "MIT",
+      "version_or_floor": "1.x",
+      "class": "ring1-dep",
+      "purpose": "Realistic 2D board assembly artwork export"
+    },
+    {
+      "name": "elkjs",
+      "url": "https://github.com/kieler/elkjs.git",
+      "license": "EPL-2.0",
+      "version_or_floor": "0.9.x+",
+      "class": "exception-isolated",
+      "purpose": "Unmodified npm runtime dependency for orthogonal schematic auto-layout (documented EPL-2.0 exception)"
+    },
+    {
+      "name": "occt-import-js",
+      "url": "https://github.com/kovacsv/occt-import-js.git",
+      "license": "LGPL-2.1-with-OCCT-exception",
+      "version_or_floor": "0.0.2x+",
+      "class": "exception-isolated",
+      "purpose": "Unmodified WASM module executed exclusively inside an isolated browser Web Worker for STEP/IGES mesh decoding"
+    },
+    {
+      "name": "kicad-cli",
+      "url": "https://github.com/KiCad/kicad-source-mirror.git",
+      "license": "GPL-3.0-or-later",
+      "version_or_floor": "10.x",
+      "class": "ring2-subprocess",
+      "purpose": "Isolated Ring-2 external CLI subprocess for DRC/ERC/STEP/Gerber parity verification"
+    },
+    {
+      "name": "KiKit",
+      "url": "https://github.com/yaqwsx/KiKit.git",
+      "license": "MIT (invokes GPL pcbnew runtime)",
+      "version_or_floor": "1.x",
+      "class": "ring2-subprocess",
+      "purpose": "Optional Ring-2 external panelization subprocess with fallback to pure-MIT Rust vd-panelizer"
+    }
+  ]
+}

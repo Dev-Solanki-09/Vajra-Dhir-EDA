@@ -1,0 +1,11 @@
+{
+  "provenance": "spec-derived",
+  "standard": "Ucamco Gerber Layer Format Revision 2024.05 (RS-274X + X2)",
+  "units": "MM",
+  "format_digits": [4, 6],
+  "expected_file_function": "Copper,L1,Top",
+  "expected_apertures": 2,
+  "expected_draws": 1,
+  "expected_moves": 1,
+  "expected_flashes": 2
+}
