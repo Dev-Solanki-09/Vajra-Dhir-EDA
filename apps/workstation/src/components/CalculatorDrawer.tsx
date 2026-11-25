@@ -119,20 +119,22 @@ export const CalculatorDrawer: React.FC<CalculatorDrawerProps> = ({ open, onClos
           <span>Dielectric H (mm)</span>
           <input type="number" step="0.01" value={dielectricHmm} onChange={(e) => setDielectricHmm(Number(e.target.value) || 0.05)} style={{ width: 76 }} />
         </label>
-        <label style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>MLCC Bias / Rated (V)</span>
-          <span style={{ display: 'flex', gap: 4 }}>
-            <input type="number" step="0.5" value={capBiasV} onChange={(e) => setCapBiasV(Number(e.target.value) || 0)} style={{ width: 46 }} />
-            <input type="number" step="1" value={capRatedV} onChange={(e) => setCapRatedV(Number(e.target.value) || 6.3)} style={{ width: 46 }} />
-          </span>
-        </label>
-        <label style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>SMPS L (uH) / C_eff (uF)</span>
-          <span style={{ display: 'flex', gap: 4 }}>
-            <input type="number" step="0.5" value={lUh} onChange={(e) => setLUh(Number(e.target.value) || 1)} style={{ width: 46 }} />
-            <input type="number" step="2" value={cEffUf} onChange={(e) => setCEffUf(Number(e.target.value) || 4.7)} style={{ width: 46 }} />
-          </span>
-        </label>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <label htmlFor="calc-mlcc-bias">MLCC Bias (V)</label>
+          <input id="calc-mlcc-bias" aria-label="MLCC Bias Voltage" type="number" step="0.5" value={capBiasV} onChange={(e) => setCapBiasV(Number(e.target.value) || 0)} style={{ width: 76 }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <label htmlFor="calc-mlcc-rated">MLCC Rated Voltage (V)</label>
+          <input id="calc-mlcc-rated" aria-label="MLCC Rated Voltage" type="number" step="1" value={capRatedV} onChange={(e) => setCapRatedV(Number(e.target.value) || 6.3)} style={{ width: 76 }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <label htmlFor="calc-smps-ind">SMPS Inductance (uH)</label>
+          <input id="calc-smps-ind" aria-label="SMPS Inductance uH" type="number" step="0.5" value={lUh} onChange={(e) => setLUh(Number(e.target.value) || 1)} style={{ width: 76 }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <label htmlFor="calc-smps-cap">SMPS Effective Capacitance (uF)</label>
+          <input id="calc-smps-cap" aria-label="SMPS Effective Capacitance uF" type="number" step="2" value={cEffUf} onChange={(e) => setCEffUf(Number(e.target.value) || 4.7)} style={{ width: 76 }} />
+        </div>
       </div>
     </aside>
   );

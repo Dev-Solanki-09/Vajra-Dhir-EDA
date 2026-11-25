@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   STEP_WORKER_LICENSE,
   createStepWorkerRequest,
@@ -214,24 +214,46 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
     mcad_3d: 'full',
     firmware_pinmux: 'full',
   });
-  const [simResult, setSimResult] = useState<{ phaseMarginDeg: number; irDropMv: number }>({
+  const [simResult, setSimResult] = useState<{
+    phaseMarginDeg: number;
+    irDropMv: number;
+    bodeFreqKhz: number[];
+    bodeGainDb: number[];
+  }>({
     phaseMarginDeg: 58.4,
     irDropMv: 14.2,
+    bodeFreqKhz: [1, 5, 10, 25, 50, 100, 200, 500],
+    bodeGainDb: [38, 28, 21, 11, 2, -6, -15, -24],
   });
+  const transientTimeUs = useMemo(() => [0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0], []);
+  const transientSwV = useMemo(() => [0.1, 11.8, 12.1, 11.9, 0.2, 0.1, 11.9, 12.0, 0.15], []);
+
   const [bomQuery, setBomQuery] = useState('');
   const [bomRows, setBomRows] = useState([
-    { refdes: 'U2', mpn: 'TPS54302DDCR', pkg: 'SOT-23-6', feeder: 'Extended (+$3)', qty: 1 },
-    { refdes: 'U1', mpn: 'CH224K', pkg: 'ESSOP-10', feeder: 'Basic ($0)', qty: 1 },
-    { refdes: 'L1', mpn: 'SWPA4020S4R7MT', pkg: '4x4mm', feeder: 'Basic ($0)', qty: 1 },
-    { refdes: 'C1', mpn: 'CL21A226MQQNNNE', pkg: '0805', feeder: 'Basic ($0)', qty: 2 },
+    { refdes: 'U2', mpn: 'TPS54302DDCR', pkg: 'SOT-23-6', feeder: 'Extended (+$3)', qty: 1, side: 'top' },
+    { refdes: 'U1', mpn: 'CH224K', pkg: 'ESSOP-10', feeder: 'Basic ($0)', qty: 1, side: 'top' },
+    { refdes: 'L1', mpn: 'SWPA4020S4R7MT', pkg: '4x4mm', feeder: 'Basic ($0)', qty: 1, side: 'top' },
+    { refdes: 'C1', mpn: 'CL21A226MQQNNNE', pkg: '0805', feeder: 'Basic ($0)', qty: 2, side: 'bottom' },
   ]);
+  const [datasheetInfo, setDatasheetInfo] = useState<string>('Select a part row to inspect PDFium datasheet metadata.');
+
+  const [mfgSubTab, setMfgSubTab] = useState<'panel' | 'diff' | 'harness' | 'ibom'>('panel');
+  const [panelPreview, setPanelPreview] = useState<string>(
+    `(kicad_pcb (version 20240108) (generator "vd-panelizer-mit")\n  (layers (0 "F.Cu" signal) (31 "B.Cu" signal) (44 "Edge.Cuts" user))\n  ;; 2x2 Matrix · 5.0 mm breakaway rails · 8 mouse-bites · 3 tooling holes\n)`
+  );
+  const [diffSummary, setDiffSummary] = useState<string>('vd-pcb-diff: compare rev 1 -> rev 2 via POST /api/v1/diff/compare');
+  const [harnessRows, setHarnessRows] = useState([
+    { wire: 'W1', route: 'J1:1 -> J2:1', gauge: '18 AWG', lenMm: 1220 },
+    { wire: 'W2', route: 'J1:2 -> J2:2', gauge: '18 AWG', lenMm: 1220 },
+  ]);
+
+  const [stackupInfo, setStackupInfo] = useState<string>('4-Layer FR-4 (1.6 mm) · F.Cu / In1.Cu / In2.Cu / B.Cu');
   const [stepStatus, setStepStatus] = useState<string>(
     `Boundary: ${STEP_WORKER_LICENSE} (${createStepWorkerRequest('enclosure.step', new TextEncoder().encode('ISO-10303-21;')).byteLength} B sample)`
   );
   const [pinmuxC, setPinmuxC] = useState<string>(
     '#define PIN_SWD_SWDIO PA13\n#define PIN_CAN1_TX   PB9\n#define PIN_PD_INT    PA2\n// Z3 SAT: 0 peripheral alternate-function collisions'
   );
-  const [mfgSubTab, setMfgSubTab] = useState<'panel' | 'diff' | 'harness' | 'ibom'>('panel');
 
   const currentMeta = SIGNATURE_META[workspace];
   const currentState = viewStates[workspace];
@@ -245,36 +267,135 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
         .then((data) => {
           if (data?.results?.length) {
             setBomRows(
-              data.results.slice(0, 8).map((r: { mpn: string; package: string; feeder_type?: string }, i: number) => ({
+              data.results.slice(0, 8).map((r: { mpn: string; package?: string; feeder_fee_type?: string }, i: number) => ({
                 refdes: `U${i + 1}`,
                 mpn: r.mpn,
                 pkg: r.package || '0603',
-                feeder: r.feeder_type === 'basic' ? 'Basic ($0)' : 'Extended (+$3)',
+                feeder: String(r.feeder_fee_type || '').toLowerCase() === 'basic' ? 'Basic ($0)' : 'Extended (+$3)',
                 qty: 1,
+                side: 'top',
               }))
             );
+          }
+        })
+        .catch(() => {});
+    } else if (workspace === 'mfg_diff') {
+      fetch('/api/v1/panel/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: 2, cols: 2, rail_mm: 5.0 }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((p) => {
+          if (p) {
+            setPanelPreview(
+              `; Engine: ${p.engine ?? 'vd-panelizer-mit'} | mouse_bites=${p.mouse_bites_count ?? 8} | tooling_holes=${p.tooling_holes ?? 3}\n${p.kicad_pcb_sexpr ?? '(kicad_pcb (version 20240108))'}`
+            );
+          }
+        })
+        .catch(() => {});
+
+      fetch('/api/v1/diff/compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rev_old: 1, rev_new: 2 }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (d?.summary) setDiffSummary(String(d.summary));
+        })
+        .catch(() => {});
+
+      fetch('/api/v1/harness/compile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ harness_id: 'WH-001_MAIN_INTERCONNECT' }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((h) => {
+          if (Array.isArray(h?.cut_list) && h.cut_list.length) {
+            setHarnessRows(
+              h.cut_list.slice(0, 6).map((c: { wire_id?: string; from_to?: string; gauge?: string; length_mm?: number }, idx: number) => ({
+                wire: c.wire_id || `W${idx + 1}`,
+                route: c.from_to || 'J1 -> J2',
+                gauge: c.gauge || '18 AWG',
+                lenMm: Number(c.length_mm ?? 1220),
+              }))
+            );
+          }
+        })
+        .catch(() => {});
+
+      fetch('/api/v1/board')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((b) => {
+          if (Array.isArray(b?.components) && b.components.length) {
+            setBomRows(
+              b.components.map((c: { refdes: string; mpn: string; footprint?: string; side?: string; locked?: number }) => ({
+                refdes: c.refdes,
+                mpn: c.mpn || c.refdes,
+                pkg: c.footprint || 'SMD',
+                feeder: c.locked ? 'Locked / BOM' : 'Basic ($0)',
+                qty: 1,
+                side: c.side || 'top',
+              }))
+            );
+          }
+        })
+        .catch(() => {});
+    } else if (workspace === 'mcad_3d') {
+      fetch('/api/v1/stackup')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((s) => {
+          if (Array.isArray(s?.layers) && s.layers.length) {
+            setStackupInfo(`${s.layers.length} layers (${s.total_thickness_mm ?? 1.6} mm) via /api/v1/stackup`);
           }
         })
         .catch(() => {});
     }
   }, [workspace, bomQuery]);
 
-  const runLiveSim = async () => {
+  const inspectDatasheet = async (mpn: string, refdes: string) => {
+    globalCrossProbeBus.select([refdes], 'tree');
     try {
-      const res = await fetch('/api/v1/pdn/solve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ net: '+3V3_OUT', current_a: 3.0 }),
-      });
+      const res = await fetch(`/api/v1/datasheet/preview?mpn=${encodeURIComponent(mpn)}`);
       if (res.ok) {
-        const data = await res.json();
-        setSimResult((prev) => ({
-          ...prev,
-          irDropMv: Number(data.max_ir_drop_mv ?? prev.irDropMv),
-        }));
+        const ds = await res.json();
+        setDatasheetInfo(`${ds.mpn}: ${ds.pages ?? 32}p via ${ds.rendering_engine ?? 'pypdfium2'}`);
       }
     } catch {
-      /* Offline preview fallback stays deterministic */
+      setDatasheetInfo(`${mpn} selected (daemon offline)`);
+    }
+  };
+
+  const runLiveSim = async () => {
+    try {
+      const [pdnRes, bodeRes] = await Promise.all([
+        fetch('/api/v1/pdn/solve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ net: '+3V3_OUT', current_a: 3.0 }),
+        }),
+        fetch('/api/v1/smps/bode-calc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vin: 12.0, vout: 3.3, iout: 2.0, fsw_khz: 500.0, l_uh: 4.7, c_nom_uf: 44.0 }),
+        }),
+      ]);
+      const pdnJson = pdnRes.ok ? await pdnRes.json() : null;
+      const bodeJson = bodeRes.ok ? await bodeRes.json() : null;
+      setSimResult((prev) => ({
+        phaseMarginDeg: Number(bodeJson?.phase_margin_deg ?? prev.phaseMarginDeg),
+        irDropMv: Number(pdnJson?.max_ir_drop_mv ?? prev.irDropMv),
+        bodeFreqKhz: Array.isArray(bodeJson?.bode_curve) && bodeJson.bode_curve.length
+          ? bodeJson.bode_curve.map((pt: { freq_hz: number }) => Number((pt.freq_hz / 1000).toFixed(2)))
+          : prev.bodeFreqKhz,
+        bodeGainDb: Array.isArray(bodeJson?.bode_curve) && bodeJson.bode_curve.length
+          ? bodeJson.bode_curve.map((pt: { gain_db: number }) => Number(pt.gain_db))
+          : prev.bodeGainDb,
+      }));
+    } catch {
+      /* Offline deterministic values retained */
     }
   };
 
@@ -286,7 +407,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
         if (txt.trim()) setPinmuxC(txt);
       }
     } catch {
-      /* Keep offline deterministic C header */
+      /* Offline C header retained */
     }
   };
 
@@ -328,16 +449,16 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
             title="SW_NODE Switching Transient & +3V3 Output Ripple (uPlot MIT)"
             xLabel="Time (us)"
             seriesLabel="V_SW (V)"
-            xValues={[0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]}
-            yValues={[0.1, 11.8, 12.1, 11.9, 0.2, 0.1, 11.9, 12.0, 0.15]}
+            xValues={transientTimeUs}
+            yValues={transientSwV}
             strokeColor="#E05D44"
           />
           <UplotScope
             title="SMPS Closed-Loop Gain & Crossover (kHz)"
             xLabel="Freq (kHz)"
             seriesLabel="Gain (dB)"
-            xValues={[1, 5, 10, 25, 50, 100, 200, 500]}
-            yValues={[38, 28, 21, 11, 2, -6, -15, -24]}
+            xValues={simResult.bodeFreqKhz}
+            yValues={simResult.bodeGainDb}
             strokeColor="#38BDF8"
           />
         </div>
@@ -362,6 +483,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
               }}
             />
           </div>
+          <div className="vd-metric" style={{ fontSize: 11, color: 'var(--vd-text-secondary)' }}>{datasheetInfo}</div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }} className="vd-metric">
             <thead>
               <tr style={{ textAlign: 'left', color: 'var(--vd-text-secondary)', borderBottom: '1px solid var(--vd-border-subtle)' }}>
@@ -378,10 +500,18 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
                 .map((row) => (
                   <tr
                     key={`${row.refdes}-${row.mpn}`}
-                    style={{ borderBottom: '1px solid var(--vd-border-subtle)', cursor: 'pointer' }}
-                    onClick={() => globalCrossProbeBus.select([row.refdes], 'tree')}
+                    style={{ borderBottom: '1px solid var(--vd-border-subtle)' }}
                   >
-                    <td style={{ padding: '6px 4px' }}>{row.refdes}</td>
+                    <td style={{ padding: '6px 4px' }}>
+                      <button
+                        type="button"
+                        className="vd-btn"
+                        style={{ minHeight: 24, padding: '2px 6px' }}
+                        onClick={() => void inspectDatasheet(row.mpn, row.refdes)}
+                      >
+                        {row.refdes}
+                      </button>
+                    </td>
                     <td style={{ padding: '6px 4px' }}>{row.mpn}</td>
                     <td style={{ padding: '6px 4px' }}>{row.pkg}</td>
                     <td style={{ padding: '6px 4px', color: row.feeder.includes('$0') ? 'var(--vd-pass)' : 'var(--vd-warn)' }}>{row.feeder}</td>
@@ -415,7 +545,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
 
           {mfgSubTab === 'panel' && (
             <pre className="vd-metric" style={{ margin: 0, padding: 10, borderRadius: 6, backgroundColor: 'var(--vd-bg-panel)', border: '1px solid var(--vd-border-subtle)', fontSize: 12, overflowX: 'auto' }}>
-              {`(kicad_pcb (version 20240108) (generator "vd-panelizer-mit")\n  (layers (0 "F.Cu" signal) (31 "B.Cu" signal) (44 "Edge.Cuts" user))\n  ;; 2x2 Matrix · 5.0 mm breakaway rails · 8 mouse-bites · 3 tooling holes\n)`}
+              {panelPreview}
             </pre>
           )}
 
@@ -423,7 +553,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
             <svg viewBox="0 0 420 140" style={{ width: '100%', maxHeight: 160, backgroundColor: 'var(--vd-bg-panel)', borderRadius: 6, border: '1px solid var(--vd-border-subtle)' }} aria-label="G5B PCB Diff SVG">
               <line x1="30" y1="60" x2="180" y2="60" stroke="var(--vd-fail)" strokeWidth="4" strokeDasharray="6 3" />
               <line x1="30" y1="88" x2="260" y2="88" stroke="var(--vd-pass)" strokeWidth="4" />
-              <text x="20" y="28" fill="var(--vd-text-primary)" fontSize="12" fontFamily="var(--vd-font-mono)">vd-pcb-diff: -1 trace removed, +1 trace widened (i64 nm)</text>
+              <text x="20" y="28" fill="var(--vd-text-primary)" fontSize="11" fontFamily="var(--vd-font-mono)">{diffSummary}</text>
             </svg>
           )}
 
@@ -438,18 +568,14 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
                 </tr>
               </thead>
               <tbody>
-                <tr style={{ borderBottom: '1px solid var(--vd-border-subtle)' }}>
-                  <td style={{ padding: '5px 4px' }}>W1 (VBUS)</td>
-                  <td style={{ padding: '5px 4px' }}>J1:1 → J2:1</td>
-                  <td style={{ padding: '5px 4px' }}>18 AWG Red</td>
-                  <td style={{ padding: '5px 4px', textAlign: 'right' }}>250</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '5px 4px' }}>W2 (GND)</td>
-                  <td style={{ padding: '5px 4px' }}>J1:2 → J2:2</td>
-                  <td style={{ padding: '5px 4px' }}>18 AWG Black</td>
-                  <td style={{ padding: '5px 4px', textAlign: 'right' }}>250</td>
-                </tr>
+                {harnessRows.map((h) => (
+                  <tr key={h.wire} style={{ borderBottom: '1px solid var(--vd-border-subtle)' }}>
+                    <td style={{ padding: '5px 4px' }}>{h.wire}</td>
+                    <td style={{ padding: '5px 4px' }}>{h.route}</td>
+                    <td style={{ padding: '5px 4px' }}>{h.gauge}</td>
+                    <td style={{ padding: '5px 4px', textAlign: 'right' }}>{h.lenMm}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}
@@ -466,14 +592,19 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
               </thead>
               <tbody>
                 {bomRows.map((row) => (
-                  <tr
-                    key={`ibom-${row.refdes}`}
-                    style={{ borderBottom: '1px solid var(--vd-border-subtle)', cursor: 'pointer' }}
-                    onClick={() => globalCrossProbeBus.select([row.refdes], 'pcb')}
-                  >
-                    <td style={{ padding: '5px 4px' }}>{row.refdes}</td>
+                  <tr key={`ibom-${row.refdes}`} style={{ borderBottom: '1px solid var(--vd-border-subtle)' }}>
+                    <td style={{ padding: '5px 4px' }}>
+                      <button
+                        type="button"
+                        className="vd-btn"
+                        style={{ minHeight: 24, padding: '2px 6px' }}
+                        onClick={() => globalCrossProbeBus.select([row.refdes], 'pcb')}
+                      >
+                        {row.refdes}
+                      </button>
+                    </td>
                     <td style={{ padding: '5px 4px' }}>{row.mpn} ({row.pkg})</td>
-                    <td style={{ padding: '5px 4px' }}>F.Cu / Top</td>
+                    <td style={{ padding: '5px 4px' }}>{row.side}</td>
                     <td style={{ padding: '5px 4px', textAlign: 'right', color: 'var(--vd-pass)' }}>Ready</td>
                   </tr>
                 ))}
@@ -495,7 +626,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
             <rect x="40" y="36" width="340" height="14" fill="var(--vd-layer-f-cu)" />
             <rect x="40" y="54" width="340" height="22" fill="var(--vd-bg-elevated)" />
             <rect x="40" y="80" width="340" height="14" fill="var(--vd-layer-b-cu)" />
-            <text x="44" y="26" fill="var(--vd-text-primary)" fontSize="11" fontFamily="var(--vd-font-mono)">1.6 mm FR-4 Stackup + RS-274X + Isolated OCCT STEP</text>
+            <text x="44" y="26" fill="var(--vd-text-primary)" fontSize="11" fontFamily="var(--vd-font-mono)">{stackupInfo}</text>
           </svg>
         </div>
       )}

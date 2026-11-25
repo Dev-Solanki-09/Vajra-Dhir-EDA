@@ -53,6 +53,7 @@ const ShellContext = React.createContext<PanelContextState>({
 const ViewportPanel: React.FC<IDockviewPanelProps> = () => {
   const ctx = React.useContext(ShellContext);
   const activeTab = WORKSPACE_TABS.find((t) => t.id === ctx.activeWorkspace) ?? WORKSPACE_TABS[1];
+  const isSelectedLocked = ctx.selectedRefdes === 'U1' || ctx.selectedRefdes === 'U2';
 
   return (
     <PanelErrorBoundary panelTitle={activeTab.title}>
@@ -79,13 +80,13 @@ const ViewportPanel: React.FC<IDockviewPanelProps> = () => {
             className="vd-metric"
             style={{
               padding: '4px 8px',
-              border: '1px solid var(--vd-human-lock)',
+              border: `1px solid ${isSelectedLocked ? 'var(--vd-human-lock)' : 'var(--vd-pass)'}`,
               borderRadius: 4,
-              color: 'var(--vd-human-lock)',
+              color: isSelectedLocked ? 'var(--vd-human-lock)' : 'var(--vd-pass)',
               fontSize: 12,
             }}
           >
-            {ctx.selectedRefdes} human-locked
+            {ctx.selectedRefdes} {isSelectedLocked ? 'human-locked' : 'unlocked'}
           </span>
         </div>
 
@@ -245,6 +246,8 @@ export const WorkstationShell: React.FC = () => {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      const inInput =
+        document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA';
       if (e.key === 'Escape') {
         setShowTemplates(false);
         setShowShortcuts(false);
@@ -254,13 +257,13 @@ export const WorkstationShell: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         setShowPalette((prev) => !prev);
-      } else if (e.key === 'F1' || (e.key === '?' && document.activeElement?.tagName !== 'INPUT')) {
+      } else if (e.key === 'F1' || (e.key === '?' && !inInput)) {
         e.preventDefault();
         setShowShortcuts((prev) => !prev);
-      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+      } else if (!inInput && (e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         void executeCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === 'edit.undo')!);
-      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
+      } else if (!inInput && (e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         void executeCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === 'edit.redo')!);
       }

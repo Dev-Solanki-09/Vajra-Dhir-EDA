@@ -8,9 +8,12 @@ so SQLite triggers abort (HTTP 409 KERNEL_LOCK_VIOLATION) on human-locked rows.
 
 from __future__ import annotations
 
+from collections import OrderedDict
+from datetime import datetime, timezone
 import json
 import os
 import pathlib
+import re
 import secrets
 import sqlite3
 import threading
@@ -35,9 +38,19 @@ ALLOWED_MCP_VERBS = frozenset({
 })
 
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+PROPOSAL_PATH_RE = re.compile(r"^/api(?:/v1)?/agent/proposals/([0-9a-fA-F-]{8,64})/(accept|reject)$")
+MAX_PROPOSALS = 256
 
 _PROPOSAL_LOCK = threading.Lock()
-_PROPOSAL_STORE: dict[str, dict] = {}
+_PROPOSAL_STORE: OrderedDict[str, dict] = OrderedDict()
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise ValueError(f"NDA_AIRGAP_VIOLATION: Refused HTTP {code} redirect to {newurl}")
+
+
+_NO_REDIRECT_OPENER = urllib.request.build_opener(_NoRedirectHandler())
 
 
 def _uuid7() -> str:
@@ -108,11 +121,18 @@ def _maybe_query_loopback_ollama(endpoint: str, prompt: str) -> str | None:
             method="POST",
             headers={"Content-Type": "application/json"},
         )
-        with urllib.request.urlopen(req, timeout=2.5) as resp:
+        with _NO_REDIRECT_OPENER.open(req, timeout=2.5) as resp:
             parsed = json.loads(resp.read().decode("utf-8"))
             return str(parsed.get("response", "")).strip() or None
     except Exception:
         return None
+
+
+def _store_proposal(proposal: dict) -> None:
+    with _PROPOSAL_LOCK:
+        _PROPOSAL_STORE[proposal["proposal_id"]] = proposal
+        while len(_PROPOSAL_STORE) > MAX_PROPOSALS:
+            _PROPOSAL_STORE.popitem(last=False)
 
 
 def handle_agent_post(
@@ -128,7 +148,7 @@ def handle_agent_post(
         try:
             provider, ollama_endpoint = resolve_llm_provider()
         except ValueError as err:
-            _send_json(handler, 403, {"error": str(err), "airgap": True})
+            _send_json(handler, 403, {"error": str(err), "error_code": "NDA_AIRGAP_VIOLATION", "airgap": True})
             return True
 
         comp = _select_target_component(handler.con, prompt)
@@ -156,8 +176,8 @@ def handle_agent_post(
             }
         ]
 
-        with _PROPOSAL_LOCK:
-            _PROPOSAL_STORE[proposal_id] = {
+        _store_proposal(
+            {
                 "proposal_id": proposal_id,
                 "component_id": comp_id,
                 "refdes": refdes,
@@ -168,6 +188,7 @@ def handle_agent_post(
                 "ops": ops,
                 "status": "pending",
             }
+        )
 
         handler.send_response(200)
         handler.send_header("Content-Type", "text/event-stream; charset=utf-8")
@@ -211,110 +232,139 @@ def handle_agent_post(
         _write_sse(handler, "done", {"provider": provider, "airgap": True})
         return True
 
-    if path.startswith("/api/v1/agent/proposals/") or path.startswith("/api/agent/proposals/"):
-        parts = [p for p in path.split("/") if p]
-        if len(parts) < 5:
-            _send_json(handler, 404, {"error": "Malformed proposal path"})
-            return True
-        action = parts[-1]
-        proposal_id = parts[-2]
+    match = PROPOSAL_PATH_RE.match(path)
+    if match:
+        proposal_id, action = match.group(1), match.group(2)
+
         with _PROPOSAL_LOCK:
             proposal = _PROPOSAL_STORE.get(proposal_id)
-
-        if proposal is None:
-            _send_json(handler, 404, {"error": f"Unknown proposal {proposal_id}"})
-            return True
-
-        if action == "reject":
-            with _PROPOSAL_LOCK:
-                proposal["status"] = "rejected"
-            _send_json(handler, 200, {"proposal_id": proposal_id, "status": "rejected", "accepted": False})
-            return True
-
-        if action == "accept":
-            cur = handler.con.cursor()
-            try:
-                cur.execute(
-                    "UPDATE _tx_actor_ctx SET actor_kind = 'agent', allow_lock_override = 0 WHERE singleton = 1"
-                )
-                inv_ops = []
-                for op in proposal["ops"]:
-                    if op.get("op") == "MOVE_COMPONENT":
-                        cid = op["component_id"]
-                        old = cur.execute(
-                            "SELECT x_nm, y_nm, rot_mdeg, side FROM components WHERE id = ?",
-                            (cid,),
-                        ).fetchone()
-                        if old:
-                            inv_ops.append(
-                                {
-                                    "op": "MOVE_COMPONENT",
-                                    "component_id": cid,
-                                    "x_nm": old[0],
-                                    "y_nm": old[1],
-                                    "rot_mdeg": old[2],
-                                    "side": old[3],
-                                }
-                            )
-                        cur.execute(
-                            "UPDATE components SET x_nm = ?, y_nm = ?, rot_mdeg = ?, side = ? WHERE id = ?",
-                            (op["x_nm"], op["y_nm"], op.get("rot_mdeg", 0), op.get("side", "top"), cid),
-                        )
-
-                patch_id = _uuid7()
-                cur.execute("UPDATE projects SET rev_lamport = rev_lamport + 1")
-                lamport_row = cur.execute("SELECT rev_lamport, id FROM projects LIMIT 1").fetchone()
-                cur.execute("DELETE FROM hardware_patches WHERE project_id = ? AND undone = 1", (lamport_row[1],))
-                cur.execute(
-                    """
-                    INSERT INTO hardware_patches
-                    (patch_id, project_id, actor_kind, actor_id, lamport_ts, summary, forward_ops_json, inverse_ops_json, undone, applied_at_utc)
-                    VALUES (?, ?, 'agent', 'agent-proposal', ?, ?, ?, ?, 0, '2026-11-25T00:00:00Z')
-                    """,
-                    (
-                        patch_id,
-                        lamport_row[1],
-                        lamport_row[0],
-                        proposal["summary"],
-                        json.dumps(proposal["ops"]),
-                        json.dumps(inv_ops),
-                    ),
-                )
-                handler.con.commit()
-                wal_checkpointer(handler.con, lamport_row[0], False)
-                autosave_writer(str(db_dir / "board.vd.autosave.jsonl"), proposal["ops"])
-                with _PROPOSAL_LOCK:
-                    proposal["status"] = "accepted"
-                _send_json(
-                    handler,
-                    200,
-                    {
-                        "accepted": True,
-                        "proposal_id": proposal_id,
-                        "patch_id": patch_id,
-                        "new_lamport": lamport_row[0],
-                        "status": "accepted",
-                    },
-                )
+            if proposal is None:
+                _send_json(handler, 404, {"error": f"Unknown proposal {proposal_id}"})
                 return True
-            except sqlite3.IntegrityError as e:
-                handler.con.rollback()
-                err_msg = str(e)
-                code = "KERNEL_LOCK_VIOLATION" if "KERNEL_LOCK_VIOLATION" in err_msg else "DB_INTEGRITY_ERROR"
-                status = 409 if code == "KERNEL_LOCK_VIOLATION" else 400
+
+            current_status = proposal["status"]
+            if current_status != "pending":
                 _send_json(
                     handler,
-                    status,
+                    409,
                     {
                         "accepted": False,
                         "proposal_id": proposal_id,
-                        "error_code": code,
-                        "message": err_msg,
+                        "status": current_status,
+                        "error_code": "PROPOSAL_STATE_CONFLICT",
+                        "message": f"Proposal already finalized with status '{current_status}'; replay refused.",
                     },
                 )
                 return True
 
-        _send_json(handler, 404, {"error": f"Unknown proposal action '{action}'"})
+            if action == "reject":
+                proposal["status"] = "rejected"
+                _send_json(handler, 200, {"proposal_id": proposal_id, "status": "rejected", "accepted": False})
+                return True
+
+            # Atomically reserve transition before SQLite execution to prevent concurrent double-accept
+            proposal["status"] = "applying"
+            ops_snapshot = list(proposal["ops"])
+            summary_snapshot = str(proposal["summary"])
+
+        cur = handler.con.cursor()
+        try:
+            cur.execute(
+                "UPDATE _tx_actor_ctx SET actor_kind = 'agent', allow_lock_override = 0 WHERE singleton = 1"
+            )
+            inv_ops = []
+            for op in ops_snapshot:
+                if op.get("op") == "MOVE_COMPONENT":
+                    cid = op["component_id"]
+                    old = cur.execute(
+                        "SELECT x_nm, y_nm, rot_mdeg, side FROM components WHERE id = ?",
+                        (cid,),
+                    ).fetchone()
+                    if old:
+                        inv_ops.append(
+                            {
+                                "op": "MOVE_COMPONENT",
+                                "component_id": cid,
+                                "x_nm": old[0],
+                                "y_nm": old[1],
+                                "rot_mdeg": old[2],
+                                "side": old[3],
+                            }
+                        )
+                    cur.execute(
+                        "UPDATE components SET x_nm = ?, y_nm = ?, rot_mdeg = ?, side = ? WHERE id = ?",
+                        (op["x_nm"], op["y_nm"], op.get("rot_mdeg", 0), op.get("side", "top"), cid),
+                    )
+
+            patch_id = _uuid7()
+            applied_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            cur.execute("UPDATE projects SET rev_lamport = rev_lamport + 1")
+            lamport_row = cur.execute("SELECT rev_lamport, id FROM projects LIMIT 1").fetchone()
+            cur.execute("DELETE FROM hardware_patches WHERE project_id = ? AND undone = 1", (lamport_row[1],))
+            cur.execute(
+                """
+                INSERT INTO hardware_patches
+                (patch_id, project_id, actor_kind, actor_id, lamport_ts, summary, forward_ops_json, inverse_ops_json, undone, applied_at_utc)
+                VALUES (?, ?, 'agent', 'agent-proposal', ?, ?, ?, ?, 0, ?)
+                """,
+                (
+                    patch_id,
+                    lamport_row[1],
+                    lamport_row[0],
+                    summary_snapshot,
+                    json.dumps(ops_snapshot),
+                    json.dumps(inv_ops),
+                    applied_utc,
+                ),
+            )
+            handler.con.commit()
+            wal_checkpointer(handler.con, lamport_row[0], False)
+            autosave_writer(str(db_dir / "board.vd.autosave.jsonl"), ops_snapshot)
+            with _PROPOSAL_LOCK:
+                if proposal_id in _PROPOSAL_STORE:
+                    _PROPOSAL_STORE[proposal_id]["status"] = "accepted"
+            _send_json(
+                handler,
+                200,
+                {
+                    "accepted": True,
+                    "proposal_id": proposal_id,
+                    "patch_id": patch_id,
+                    "new_lamport": lamport_row[0],
+                    "status": "accepted",
+                },
+            )
+            return True
+        except sqlite3.IntegrityError as e:
+            handler.con.rollback()
+            err_msg = str(e)
+            code = "KERNEL_LOCK_VIOLATION" if "KERNEL_LOCK_VIOLATION" in err_msg else "DB_INTEGRITY_ERROR"
+            status = 409 if code == "KERNEL_LOCK_VIOLATION" else 400
+            with _PROPOSAL_LOCK:
+                if proposal_id in _PROPOSAL_STORE:
+                    # Keep rejected/conflict finality on lock violations or revert non-lock error to pending
+                    _PROPOSAL_STORE[proposal_id]["status"] = "conflict" if code == "KERNEL_LOCK_VIOLATION" else "pending"
+            _send_json(
+                handler,
+                status,
+                {
+                    "accepted": False,
+                    "proposal_id": proposal_id,
+                    "error_code": code,
+                    "message": err_msg,
+                },
+            )
+            return True
+        except Exception as e:
+            handler.con.rollback()
+            with _PROPOSAL_LOCK:
+                if proposal_id in _PROPOSAL_STORE:
+                    _PROPOSAL_STORE[proposal_id]["status"] = "pending"
+            _send_json(handler, 500, {"accepted": False, "error_code": "PROPOSAL_EXEC_ERROR", "message": str(e)})
+            return True
+
+    if path.startswith("/api/v1/agent/proposals/") or path.startswith("/api/agent/proposals/"):
+        _send_json(handler, 404, {"error": "Malformed proposal route"})
         return True
 
     return False

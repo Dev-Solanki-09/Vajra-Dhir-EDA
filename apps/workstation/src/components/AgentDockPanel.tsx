@@ -41,7 +41,18 @@ export const AgentDockPanel: React.FC = () => {
       });
 
       if (!res.ok || !res.body) {
-        throw new Error(`HTTP ${res.status}`);
+        let errText = `HTTP ${res.status}`;
+        try {
+          const errJson = await res.json();
+          if (errJson?.error) errText = String(errJson.error);
+        } catch {
+          /* Non-JSON body */
+        }
+        if (res.status === 403) {
+          setThoughts((prev) => [...prev, errText]);
+          return;
+        }
+        throw new Error(errText);
       }
 
       const reader = res.body.getReader();

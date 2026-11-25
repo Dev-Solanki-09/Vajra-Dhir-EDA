@@ -129,9 +129,36 @@ def run():
             st_ok, ok_body = http_json(f"{base}/api/v1/agent/proposals/{unlocked_card['proposal_id']}/accept", method="POST", payload={})
             assert st_ok == 200 and ok_body.get("accepted") is True, f"Expected HTTP 200 accept on L1: {st_ok} {ok_body}"
 
-            # Test reject proposal (200)
-            st_rej, rej_body = http_json(f"{base}/api/v1/agent/proposals/{locked_card['proposal_id']}/reject", method="POST", payload={})
+            # Negative replay guard: double-accept & reject-after-accept MUST return 409 PROPOSAL_STATE_CONFLICT
+            st_replay, replay_body = http_json(f"{base}/api/v1/agent/proposals/{unlocked_card['proposal_id']}/accept", method="POST", payload={})
+            assert st_replay == 409 and replay_body.get("error_code") == "PROPOSAL_STATE_CONFLICT", f"Expected 409 double-accept block: {replay_body}"
+
+            st_rej_after_acc, raa_body = http_json(f"{base}/api/v1/agent/proposals/{unlocked_card['proposal_id']}/reject", method="POST", payload={})
+            assert st_rej_after_acc == 409 and raa_body.get("error_code") == "PROPOSAL_STATE_CONFLICT", f"Expected 409 reject-after-accept block: {raa_body}"
+
+            # Test reject proposal (200) -> then accept-after-reject MUST return 409 PROPOSAL_STATE_CONFLICT
+            req_r2 = urllib.request.Request(
+                f"{base}/api/v1/agent/chat",
+                data=json.dumps({"prompt": "Move C1 slightly"}).encode("utf-8"),
+                method="POST",
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req_r2, timeout=5) as resp:
+                r2_events = parse_sse_frames(resp.read().decode("utf-8"))
+            r2_card = next(d for k, d in r2_events if k == "proposal_card")
+            st_rej, rej_body = http_json(f"{base}/api/v1/agent/proposals/{r2_card['proposal_id']}/reject", method="POST", payload={})
             assert st_rej == 200 and rej_body.get("status") == "rejected", f"Expected HTTP 200 reject: {rej_body}"
+
+            st_aar, aar_body = http_json(f"{base}/api/v1/agent/proposals/{r2_card['proposal_id']}/accept", method="POST", payload={})
+            assert st_aar == 409 and aar_body.get("error_code") == "PROPOSAL_STATE_CONFLICT", f"Expected 409 accept-after-reject block: {aar_body}"
+
+            # Verify live backend routes consumed by G6C Workspaces (sim_lab, mfg_diff, mcad_3d, library_bom)
+            st_bode, bode_body = http_json(f"{base}/api/v1/smps/bode-calc", method="POST", payload={"vin": 12.0, "vout": 3.3, "iout": 2.0})
+            assert st_bode == 200 and "phase_margin_deg" in bode_body, f"Bad /api/v1/smps/bode-calc: {bode_body}"
+            st_stk, stk_body = http_json(f"{base}/api/v1/stackup")
+            assert st_stk == 200 and isinstance(stk_body.get("layers"), list), f"Bad /api/v1/stackup: {stk_body}"
+            st_srch, srch_body = http_json(f"{base}/api/v1/components/search?q=TPS")
+            assert st_srch == 200 and any("feeder_fee_type" in r for r in srch_body.get("results", [])), f"Missing feeder_fee_type: {srch_body}"
 
         finally:
             proc.terminate()
