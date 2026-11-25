@@ -16,6 +16,9 @@ export interface HwDiagnosticFinding {
   message: string;
   refdes?: string;
   netName?: string;
+  line?: number;
+  col?: number;
+  source?: string;
 }
 
 export interface SymbolLocation {

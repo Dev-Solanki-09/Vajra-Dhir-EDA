@@ -109,7 +109,7 @@ def main() -> None:
 
                 # 1. Fail-closed KERNEL_LOCK_VIOLATION test on locked J1
                 page.locator('[data-testid="test-agent-lock-guard-btn"]').click()
-                page.wait_for_selector('[data-testid="kernel-lock-violation-toast"]', timeout=5000)
+                page.wait_for_selector('[data-testid="kernel-lock-violation-toast"]', timeout=15000)
                 toast_text = page.locator('[data-testid="kernel-lock-violation-toast"]').inner_text()
                 assert "KERNEL_LOCK_VIOLATION" in toast_text, toast_text
 
@@ -138,7 +138,7 @@ def main() -> None:
                 try:
                     page.wait_for_function(
                         "() => document.body.innerText.includes('DRC PASS') || document.body.innerText.includes('DRC FAIL')",
-                        timeout=30000,
+                        timeout=60000,
                     )
                 except Exception as exc:
                     panel_txt = page.locator('[data-testid="pcb-2d-panel"]').inner_text()

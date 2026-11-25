@@ -155,7 +155,7 @@ class KiCadSyncStore {
       ws.onmessage = (ev) => {
         try {
           const msg = JSON.parse(String(ev.data)) as { type?: string };
-          if (msg.type === 'patch_applied' || msg.type === 'external_file_changed') {
+          if (msg.type === 'patch_applied' || msg.type === 'external_file_changed' || msg.type === 'ato_build_complete') {
             this.update({ lastEventType: msg.type });
             void this.fetchFiles();
           }

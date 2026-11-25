@@ -16,6 +16,9 @@ export interface HwDiagnosticFinding {
   message: string;
   refdes?: string;
   netName?: string;
+  line?: number;
+  col?: number;
+  source?: string;
 }
 
 export interface SymbolLocation {
@@ -138,33 +141,34 @@ export function mapFindingsToIdeMarkers(
 ): MappedIdeMarker[] {
   const markers: MappedIdeMarker[] = [];
   for (const f of findings) {
-    let targetLine = 1;
-    let startColumn = 1;
-    let endColumn = 2;
+    let targetLine = f.line && f.line > 0 ? f.line : 1;
+    let startColumn = f.col && f.col > 0 ? f.col : 1;
+    let endColumn = Math.max(2, startColumn + 12);
 
-    if (f.refdes) {
-      const loc = findFirstSymbolInText(fileContent, f.refdes);
-      if (loc) {
-        targetLine = loc.line;
-        startColumn = loc.startCol;
-        endColumn = loc.endCol;
-      }
-    } else if (f.netName) {
-      const loc = findFirstSymbolInText(fileContent, f.netName);
-      if (loc) {
-        targetLine = loc.line;
-        startColumn = loc.startCol;
-        endColumn = loc.endCol;
-      }
-    } else {
-      // Fallback: match refdes pattern inside finding message (e.g. "U1", "C1")
-      const refMatch = f.message.match(/\b([UJCRLDQ]\d+)\b/);
-      if (refMatch) {
-        const loc = findFirstSymbolInText(fileContent, refMatch[1]);
+    if (!f.line) {
+      if (f.refdes) {
+        const loc = findFirstSymbolInText(fileContent, f.refdes);
         if (loc) {
           targetLine = loc.line;
           startColumn = loc.startCol;
           endColumn = loc.endCol;
+        }
+      } else if (f.netName) {
+        const loc = findFirstSymbolInText(fileContent, f.netName);
+        if (loc) {
+          targetLine = loc.line;
+          startColumn = loc.startCol;
+          endColumn = loc.endCol;
+        }
+      } else {
+        const refMatch = f.message.match(/\b([UJCRLDQ]\d+)\b/);
+        if (refMatch) {
+          const loc = findFirstSymbolInText(fileContent, refMatch[1]);
+          if (loc) {
+            targetLine = loc.line;
+            startColumn = loc.startCol;
+            endColumn = loc.endCol;
+          }
         }
       }
     }
@@ -176,7 +180,7 @@ export function mapFindingsToIdeMarkers(
       endColumn,
       message: `[${f.ruleId}] ${f.message}`,
       severity: f.severity,
-      source: 'kicad10-diagnostics',
+      source: f.source || 'kicad10-diagnostics',
       code: f.ruleId,
     });
   }

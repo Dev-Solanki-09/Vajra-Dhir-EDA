@@ -220,8 +220,13 @@ export function scaffoldAtoStubFromArchitecture(arch: SystemArchitecture): strin
   }
   for (const bus of arch.buses) {
     const netLabel = bus.netNames[0] || bus.id.toUpperCase();
+    const safeVar = bus.id.replace(/[^A-Za-z0-9_]/g, '_') + '_v';
+    const lo = Math.max(0.1, Number((bus.railVoltageV * 0.9).toFixed(2)));
+    const hi = Number((bus.railVoltageV * 1.1).toFixed(2));
     lines.push(`    # ${bus.protocol} (${bus.railVoltageV}V, ${bus.expectedMa}mA): ${bus.source} -> ${bus.target}`);
     lines.push(`    signal ${netLabel}`);
+    lines.push(`    ${safeVar} = ${bus.railVoltageV}V +/- 5%`);
+    lines.push(`    assert ${safeVar} within ${lo}V to ${hi}V`);
   }
   return lines.join('\n') + '\n';
 }

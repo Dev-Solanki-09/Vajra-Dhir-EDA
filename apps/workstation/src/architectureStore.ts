@@ -229,7 +229,8 @@ class ArchitectureStore {
       body: JSON.stringify({ path: 'elec/src/arch_blocks.ato', content: atoText }),
     }).catch(() => {});
     await globalIdeWorkspaceStore.openFile('elec/src/arch_blocks.ato', true);
-    this.snapshot = { ...this.snapshot, statusNote: 'Generated elec/src/arch_blocks.ato' };
+    await globalIdeWorkspaceStore.compileAto(true);
+    this.snapshot = { ...this.snapshot, statusNote: 'Generated & compiled elec/src/arch_blocks.ato' };
     this.emit();
     return atoText;
   }

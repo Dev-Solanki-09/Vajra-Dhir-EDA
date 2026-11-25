@@ -307,21 +307,33 @@ export const CodeEditorPanel: React.FC = () => {
     }, 60);
   }, [ide.revealTarget?.seq, activeTab?.path]);
 
-  // Diagnostics Gutter Sync: KiCad 10 ERC/DRC findings -> Monaco markers via ide-core
+  // Diagnostics Gutter Sync: KiCad 10 ERC/DRC + atopile compiler diagnostics -> Monaco markers via ide-core
   useEffect(() => {
     const editor = editorRef.current;
     const model = editor?.getModel();
     if (!model) return;
 
-    const mapped = mapFindingsToIdeMarkers(
-      model.getValue(),
-      [...sync.ercFindings, ...sync.drcFindings].map((f) => ({
-        ruleId: f.rule_id,
-        severity: f.severity === 'error' ? 'error' : f.severity === 'warning' ? 'warning' : 'info',
-        message: f.message,
-        refdes: f.entity_uuid || undefined,
-      }))
-    );
+    const kicadFindings = [...sync.ercFindings, ...sync.drcFindings].map((f) => ({
+      ruleId: f.rule_id,
+      severity: (f.severity === 'error' ? 'error' : f.severity === 'warning' ? 'warning' : 'info') as 'error' | 'warning' | 'info',
+      message: f.message,
+      refdes: f.entity_uuid || undefined,
+      source: 'kicad10-diagnostics',
+    }));
+
+    const atoFindings = ide.atoDiagnostics
+      .filter((d) => !d.file || d.file === activeTab?.path)
+      .map((d) => ({
+        ruleId: d.constraint_failure,
+        severity: (d.severity === 'error' ? 'error' : 'warning') as 'error' | 'warning',
+        message: d.message,
+        refdes: d.refdes || undefined,
+        line: d.line,
+        col: d.col,
+        source: 'atopile-compiler',
+      }));
+
+    const mapped = mapFindingsToIdeMarkers(model.getValue(), [...kicadFindings, ...atoFindings]);
 
     const markers: monaco.editor.IMarkerData[] = mapped.map((m) => ({
       severity:
@@ -339,7 +351,7 @@ export const CodeEditorPanel: React.FC = () => {
       code: m.code,
     }));
     monaco.editor.setModelMarkers(model, 'kicad10-diagnostics', markers);
-  }, [sync.ercFindings, sync.drcFindings, activeTab?.path, activeTab?.content]);
+  }, [sync.ercFindings, sync.drcFindings, ide.atoDiagnostics, activeTab?.path, activeTab?.content]);
 
   // Incoming CrossProbeBus selection from 2D/3D/Explorer -> jump directly to component line
   useEffect(() => {
@@ -398,6 +410,26 @@ export const CodeEditorPanel: React.FC = () => {
           <span data-testid="monaco-jump-status" style={{ color: 'var(--vd-border-active)' }}>
             {jumpInfo}
           </span>
+          <span
+            data-testid="ato-compile-badge"
+            style={{ color: ide.atoDiagnostics.length > 0 ? 'var(--vd-fail)' : 'var(--vd-pass)' }}
+          >
+            {ide.atoStatus}
+          </span>
+          {ide.atoLockConflicts.length > 0 && (
+            <span data-testid="ato-lock-conflict-badge" style={{ color: 'var(--vd-warn)' }}>
+              LOCK GUARD: {ide.atoLockConflicts.map((l) => l.refdes).join(', ')}
+            </span>
+          )}
+          <button
+            type="button"
+            data-testid="monaco-ato-build-btn"
+            className="vd-btn"
+            style={{ minHeight: 22, padding: '2px 8px', fontSize: 11 }}
+            onClick={() => void globalIdeWorkspaceStore.compileAto(true)}
+          >
+            Compile .ato
+          </button>
           <button
             type="button"
             data-testid="monaco-save-btn"

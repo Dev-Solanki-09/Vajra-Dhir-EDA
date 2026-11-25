@@ -16,6 +16,18 @@ export interface OpenEditorTab {
   language: string;
 }
 
+export interface AtoDiagnosticEntry {
+  file: string;
+  line: number;
+  col: number;
+  severity: 'error' | 'warning' | 'info';
+  constraint_failure: string;
+  expected: string;
+  actual: string;
+  message: string;
+  refdes?: string | null;
+}
+
 export interface IdeWorkspaceSnapshot {
   rootDir: string;
   files: WorkspaceFileEntry[];
@@ -23,6 +35,9 @@ export interface IdeWorkspaceSnapshot {
   activePath: string;
   statusNote: string;
   revealTarget: { path: string; line: number; seq: number } | null;
+  atoDiagnostics: AtoDiagnosticEntry[];
+  atoLockConflicts: Array<{ refdes: string; error: string; message: string }>;
+  atoStatus: string;
 }
 
 export function detectMonacoLanguage(filePath: string): string {
@@ -65,6 +80,9 @@ class IdeWorkspaceStore {
     activePath: 'elec/src/main.ato',
     statusNote: 'IDE ready',
     revealTarget: null,
+    atoDiagnostics: [],
+    atoLockConflicts: [],
+    atoStatus: 'atopile ready',
   };
 
   private listeners = new Set<() => void>();
@@ -174,10 +192,47 @@ class IdeWorkspaceStore {
         t.path === targetPath ? { ...t, savedContent: t.content, dirty: false } : t
       );
       this.update({ tabs: nextTabs, statusNote: `Saved ${tab.path}` });
-      await globalKiCadSyncStore.pollEvents();
+      if (tab.path.toLowerCase().endsWith('.ato')) {
+        await this.compileAto(true);
+      } else {
+        await globalKiCadSyncStore.pollEvents();
+      }
       return true;
     } catch {
       this.update({ statusNote: `Save failed (daemon offline): ${tab.path}` });
+      return false;
+    }
+  }
+
+  async compileAto(applyBuild = true): Promise<boolean> {
+    try {
+      const endpoint = applyBuild ? '/api/v1/ato/build' : '/api/v1/ato/check';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      const diags = Array.isArray(data.diagnostics) ? (data.diagnostics as AtoDiagnosticEntry[]) : [];
+      const locks = Array.isArray(data.lock_conflicts)
+        ? (data.lock_conflicts as Array<{ refdes: string; error: string; message: string }>)
+        : [];
+      const ok = Boolean(data.success);
+      const count = Array.isArray(data.components) ? data.components.length : 0;
+      const status = ok
+        ? `atopile PASS (${count} components, ${locks.length} lock guard${locks.length === 1 ? '' : 's'})`
+        : `atopile FAIL (${diags.length} error${diags.length === 1 ? '' : 's'})`;
+      this.update({
+        atoDiagnostics: diags,
+        atoLockConflicts: locks,
+        atoStatus: status,
+        statusNote: status,
+      });
+      await globalKiCadSyncStore.pollEvents();
+      return ok;
+    } catch {
+      this.update({ atoStatus: 'atopile offline' });
       return false;
     }
   }
