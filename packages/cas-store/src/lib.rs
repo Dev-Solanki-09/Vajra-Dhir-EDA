@@ -1,6 +1,7 @@
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::fs;
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -90,6 +91,47 @@ impl CasStore {
     pub fn is_pinned(&self, digest: &str) -> bool {
         self.pinned_digests.contains(digest)
     }
+
+    /// Stores compressed zstd payload at sha256/<p0>/<p1>/<digest>.zst keyed by raw SHA-256.
+    pub fn put_bytes_zst(&self, data: &[u8]) -> Result<String, CasError> {
+        let digest = Self::compute_sha256(data);
+        let raw_path = self.path_for_digest(&digest)?;
+        let zst_path = raw_path.with_extension("zst");
+        if let Some(parent) = zst_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        if !zst_path.exists() {
+            let compressed = zstd::encode_all(Cursor::new(data), zstd::DEFAULT_COMPRESSION_LEVEL)?;
+            let tmp_path = zst_path.with_extension("zst.tmp");
+            fs::write(&tmp_path, &compressed)?;
+            fs::rename(&tmp_path, &zst_path)?;
+        }
+        Ok(format!("cas+zst://sha256/{}", digest))
+    }
+
+    /// Reads and decompresses a zstd CAS artifact while verifying raw SHA-256 digest.
+    pub fn get_bytes_zst(&self, uri: &str) -> Result<Vec<u8>, CasError> {
+        let digest = uri
+            .strip_prefix("cas+zst://sha256/")
+            .ok_or_else(|| CasError::InvalidUri(format!("Malformed zstd CAS URI: {}", uri)))?;
+        let zst_path = self.path_for_digest(digest)?.with_extension("zst");
+        if !zst_path.exists() {
+            return Err(CasError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Compressed CAS artifact not found: {}", digest),
+            )));
+        }
+        let compressed = fs::read(&zst_path)?;
+        let data = zstd::decode_all(Cursor::new(compressed))?;
+        let computed = Self::compute_sha256(&data);
+        if computed != digest {
+            return Err(CasError::Integrity(format!(
+                "CAS corrupt after zstd decode: expected {}, got {}",
+                digest, computed
+            )));
+        }
+        Ok(data)
+    }
 }
 
 #[cfg(test)]
@@ -111,5 +153,18 @@ mod tests {
         let digest = uri.strip_prefix("cas://sha256/").unwrap();
         store.pin_digest(digest);
         assert!(store.is_pinned(digest));
+    }
+
+    #[test]
+    fn test_cas_zstd_put_get_integrity() {
+        let tmp = std::env::temp_dir().join("vd_cas_zstd_test");
+        let store = CasStore::new(&tmp);
+
+        let payload = b"Vajra-Dhir Hardware Snapshot Payload Repeated Geometry Buffer ".repeat(8);
+        let uri = store.put_bytes_zst(&payload).expect("put_bytes_zst failed");
+        assert!(uri.starts_with("cas+zst://sha256/"));
+
+        let decoded = store.get_bytes_zst(&uri).expect("get_bytes_zst failed");
+        assert_eq!(decoded, payload);
     }
 }

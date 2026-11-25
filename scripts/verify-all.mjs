@@ -535,6 +535,11 @@ step('[CAD/G5B] Wire Harness, PCB Diff SVG, i_triangle i64 & STEP Worker', () =>
   execSync('python scripts/test-g5b-engines.py', { stdio: 'pipe' });
 });
 
+// 72. G5C CAS zstd, WAL Ladder, Autosave Recovery, Supervision & vd studio
+step('[DURABILITY/G5C] CAS zstd, WAL Ladder, Supervision & vd studio', () => {
+  execSync('python scripts/test-g5c-durability-studio.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');

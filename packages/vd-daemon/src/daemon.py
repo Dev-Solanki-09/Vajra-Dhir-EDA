@@ -6,6 +6,7 @@ Implements all 11 REST API endpoints on 127.0.0.1:41900 with exact i64 nm & UUID
 import http.server
 import json
 import math
+import mimetypes
 import os
 import pathlib
 import re
@@ -14,6 +15,7 @@ import socketserver
 import sqlite3
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.parse
 import uuid
@@ -175,6 +177,109 @@ def compute_copper_refill_metrics(
         "mesh_triangles_count": mesh_tris,
         "computation_time_ms": round(max(0.2, mesh_tris * 0.015), 2),
     }
+
+
+def maybe_checkpoint_wal(con: sqlite3.Connection, patch_count: int, idle: bool = False) -> str | None:
+    """Executes SQLite WAL checkpoint ladder (PASSIVE every 250 patches, TRUNCATE on idle)."""
+    if idle:
+        con.execute("PRAGMA wal_checkpoint(TRUNCATE);")
+        return "TRUNCATE"
+    if patch_count > 0 and patch_count % 250 == 0:
+        con.execute("PRAGMA wal_checkpoint(PASSIVE);")
+        return "PASSIVE"
+    return None
+
+
+def write_autosave_shadow(shadow_path: str, ops: list[dict]) -> None:
+    """Atomically writes .vd.autosave.jsonl shadow log via temp file + fsync + os.replace."""
+    target = pathlib.Path(shadow_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=".vd_tmp_", dir=str(target.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            for op in ops:
+                f.write(json.dumps(op) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_name, target)
+    except Exception:
+        if os.path.exists(tmp_name):
+            os.remove(tmp_name)
+        raise
+
+
+def load_autosave_shadow(shadow_path: str) -> list[dict]:
+    """Recovers complete JSONL records from a .vd.autosave.jsonl crash shadow."""
+    records: list[dict] = []
+    if not os.path.isfile(shadow_path):
+        return records
+    with open(shadow_path, "r", encoding="utf-8") as f:
+        for line in f:
+            raw = line.strip()
+            if not raw:
+                continue
+            try:
+                records.append(json.loads(raw))
+            except json.JSONDecodeError:
+                break
+    return records
+
+
+STUDIO_CSP = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; "
+    "connect-src 'self' http://127.0.0.1:41900; "
+    "frame-ancestors 'none'"
+)
+
+
+def resolve_studio_static_asset(req_path: str) -> dict:
+    """Serves compiled apps/workstation or apps/prototype-gui static assets with strict CSP & traversal guard."""
+    decoded = urllib.parse.unquote(req_path or "/").split("?", 1)[0]
+    if "\\" in decoded or "\x00" in decoded or ":" in decoded:
+        return {"status": 404, "content_type": "text/plain", "csp": STUDIO_CSP, "body": b"Not Found"}
+    parts = [p for p in decoded.split("/") if p]
+    if ".." in parts or "." in parts:
+        return {"status": 404, "content_type": "text/plain", "csp": STUDIO_CSP, "body": b"Not Found"}
+    rel = "/".join(parts)
+    if not rel or rel == "index.html":
+        rel = "index.html"
+
+    candidates = [
+        pathlib.Path("apps/workstation/dist"),
+        pathlib.Path("apps/prototype-gui/dist"),
+    ]
+    for root in candidates:
+        if root.is_dir():
+            root_resolved = root.resolve()
+            target = (root_resolved / rel).resolve()
+            if target.is_relative_to(root_resolved) and target.is_file():
+                ctype, _ = mimetypes.guess_type(str(target))
+                return {
+                    "status": 200,
+                    "content_type": ctype or "application/octet-stream",
+                    "csp": STUDIO_CSP,
+                    "body": target.read_bytes(),
+                }
+
+    if rel == "index.html":
+        html = (
+            "<!doctype html><html lang='en'><head><meta charset='utf-8'/>"
+            "<title>Vajra-Dhir Studio</title></head>"
+            "<body style='background:#0B0E14;color:#E6EDF7;font-family:sans-serif;padding:24px'>"
+            "<h1>Vajra-Dhir Studio (Loopback 127.0.0.1:41900)</h1>"
+            "<p>Daemon health: <code>/api/v1/health</code>. Build frontend dist to serve full bundle.</p>"
+            "</body></html>"
+        ).encode("utf-8")
+        return {
+            "status": 200,
+            "content_type": "text/html; charset=utf-8",
+            "csp": STUDIO_CSP,
+            "body": html,
+        }
+    return {"status": 404, "content_type": "text/plain", "csp": STUDIO_CSP, "body": b"Not Found"}
 
 
 def init_db(db_path: pathlib.Path) -> sqlite3.Connection:
@@ -773,6 +878,15 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(preview).encode("utf-8"))
 
         else:
+            if not path.startswith("/api/") and not path.startswith("/stitch/"):
+                asset = resolve_studio_static_asset(path)
+                if asset["status"] == 200:
+                    self.send_response(200)
+                    self.send_header("Content-Type", asset["content_type"])
+                    self.send_header("Content-Security-Policy", asset["csp"])
+                    self.end_headers()
+                    self.wfile.write(asset["body"])
+                    return
             self.send_response(404)
             self._send_cors()
             self.end_headers()
@@ -902,11 +1016,17 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                 lamport = cur.execute("SELECT rev_lamport, id FROM projects LIMIT 1").fetchone()
 
                 cur.execute("""
+                    DELETE FROM hardware_patches WHERE project_id = ? AND undone = 1
+                """, (lamport[1],))
+
+                cur.execute("""
                     INSERT INTO hardware_patches (patch_id, project_id, actor_kind, actor_id, lamport_ts, summary, forward_ops_json, inverse_ops_json, undone, applied_at_utc)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
                 """, (patch_id, lamport[1], actor_kind, actor_id, lamport[0], summary, json.dumps(ops), json.dumps(inv_ops), "2026-11-24T00:00:00Z"))
 
                 self.con.commit()
+                maybe_checkpoint_wal(self.con, lamport[0], idle=False)
+                write_autosave_shadow(str(DB_DIR / "board.vd.autosave.jsonl"), ops)
                 res = {
                     "applied": True,
                     "patch_id": patch_id,
@@ -1489,6 +1609,11 @@ def run_server(port: int = PORT):
         except KeyboardInterrupt:
             print("\nShutting down daemon cleanly...")
             httpd.shutdown()
+        finally:
+            try:
+                maybe_checkpoint_wal(con, 0, idle=True)
+            except Exception:
+                pass
 
 if __name__ == "__main__":
     _ensure_utf8_console()
