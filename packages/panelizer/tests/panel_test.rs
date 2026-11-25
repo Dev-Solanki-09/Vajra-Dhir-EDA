@@ -45,3 +45,26 @@ fn test_v_score_panelization() {
     assert_eq!(report.v_score_lines_count, 5); // 2 horizontal + 3 vertical cuts
     assert!(report.perforation_holes.is_empty());
 }
+
+#[test]
+fn test_kicad10_panel_pcb_export_round_trip() {
+    let cfg = PanelConfiguration {
+        rows: 2,
+        cols: 2,
+        board_width_nm: 40_000_000,
+        board_height_nm: 30_000_000,
+        rail_width_nm: 5_000_000,
+        spacing_x_nm: 2_000_000,
+        spacing_y_nm: 2_000_000,
+        separation: SeparationMethod::MouseBites,
+    };
+    let report = PanelizerEngine::generate_panel(&cfg);
+    let sexpr_text = PanelizerEngine::export_kicad10_panel_pcb(&cfg, &report);
+
+    assert!(sexpr_text.contains("(kicad_pcb"));
+    assert!(sexpr_text.contains("92.000000 72.000000"));
+    assert!(sexpr_text.contains("Edge.Cuts"));
+
+    let ast = vd_transcoder::SExpr::parse(&sexpr_text).expect("Panel .kicad_pcb must parse cleanly");
+    assert_eq!(ast.len(), 1, "Expected single top-level kicad_pcb S-expr node");
+}

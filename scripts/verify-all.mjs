@@ -520,6 +520,16 @@ step('[GUI/FSM] Manual CAD Interactive FSM (Same-Hands Law)', () => {
   execSync('node --test apps/prototype-gui/tests/manualEditorFsm.test.mjs', { stdio: 'pipe' });
 });
 
+// 69. G4 Upstream Ledger, License Exceptions & Spec-Derived Fixtures
+step('[LICENSE/G4] Upstream Importer Firewall, Public MANIFEST & Exceptions', () => {
+  execSync('python scripts/test-upstream-ledgers.py', { stdio: 'pipe' });
+});
+
+// 70. G5A Clean-Room Panelizer, RS-274X, EAGLE & Ring-2 KiKit Subprocess Boundary
+step('[MFG/G5A] Rust Panelizer, RS-274X/EAGLE & Ring-2 KiKit Subprocess', () => {
+  execSync('python scripts/test-g5a-manufacturing.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');

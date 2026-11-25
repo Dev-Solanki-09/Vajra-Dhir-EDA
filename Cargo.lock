@@ -2340,6 +2340,7 @@ dependencies = [
  "thiserror 2.0.21",
  "uuid",
  "vd-ir",
+ "vd-transcoder",
 ]
 
 [[package]]
