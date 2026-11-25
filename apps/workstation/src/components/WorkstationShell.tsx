@@ -14,8 +14,9 @@ import {
 } from '../commandBus';
 import { WorkbenchIcon } from './Icons';
 import { PanelErrorBoundary } from './PanelErrorBoundary';
-import { PcbEngineCanvas } from './PcbEngineCanvas';
-import { SchematicElkCanvas } from './SchematicElkCanvas';
+import { AgentDockPanel } from './AgentDockPanel';
+import { CalculatorDrawer } from './CalculatorDrawer';
+import { ActiveWorkspaceView } from './Workspaces';
 
 export type ToolMode = 'select' | 'route' | 'place' | 'inspect';
 
@@ -24,6 +25,21 @@ const PROJECT_TEMPLATES = [
   { id: 'buck_pd', name: 'Buck PD Reference', layers: 4, summary: 'TPS54302 + CH224K 4-layer USB-PD converter' },
   { id: 'mcu_dev', name: 'MCU Devboard', layers: 4, summary: 'STM32G4 / ESP32-S3 CAN-FD & SWD devboard' },
 ] as const;
+
+interface BoardComponentMeta {
+  refdes: string;
+  detail: string;
+  locked: boolean;
+  net: string;
+}
+
+const DEFAULT_COMPONENTS: BoardComponentMeta[] = [
+  { refdes: 'J1', detail: 'USB-C PD', locked: true, net: 'VBUS_12V' },
+  { refdes: 'U2', detail: 'TPS54302', locked: true, net: 'SW_NODE' },
+  { refdes: 'U1', detail: 'CH224K', locked: false, net: 'VBUS_12V' },
+  { refdes: 'L1', detail: '4.7uH', locked: false, net: 'SW_NODE' },
+  { refdes: 'C1', detail: '22uF X7R', locked: false, net: '+3V3_OUT' },
+];
 
 interface PanelContextState {
   activeWorkspace: WorkspaceId;
@@ -34,6 +50,7 @@ interface PanelContextState {
   projectName: string;
   lockedCount: number;
   selectedRefdes: string;
+  boardComponents: BoardComponentMeta[];
   thoughtLog: string[];
 }
 
@@ -46,12 +63,15 @@ const ShellContext = React.createContext<PanelContextState>({
   projectName: 'board-1-buck-pd',
   lockedCount: 2,
   selectedRefdes: 'U2',
+  boardComponents: DEFAULT_COMPONENTS,
   thoughtLog: [],
 });
 
 const ViewportPanel: React.FC<IDockviewPanelProps> = () => {
   const ctx = React.useContext(ShellContext);
   const activeTab = WORKSPACE_TABS.find((t) => t.id === ctx.activeWorkspace) ?? WORKSPACE_TABS[1];
+  const compMeta = ctx.boardComponents.find((c) => c.refdes === ctx.selectedRefdes);
+  const isSelectedLocked = compMeta ? compMeta.locked : false;
 
   return (
     <PanelErrorBoundary panelTitle={activeTab.title}>
@@ -78,25 +98,22 @@ const ViewportPanel: React.FC<IDockviewPanelProps> = () => {
             className="vd-metric"
             style={{
               padding: '4px 8px',
-              border: '1px solid var(--vd-human-lock)',
+              border: `1px solid ${isSelectedLocked ? 'var(--vd-human-lock)' : 'var(--vd-pass)'}`,
               borderRadius: 4,
-              color: 'var(--vd-human-lock)',
+              color: isSelectedLocked ? 'var(--vd-human-lock)' : 'var(--vd-pass)',
               fontSize: 12,
             }}
           >
-            {ctx.selectedRefdes} human-locked
+            {ctx.selectedRefdes} {isSelectedLocked ? 'human-locked' : 'unlocked'}
           </span>
         </div>
 
-        {ctx.activeWorkspace === 'schematic' ? (
-          <SchematicElkCanvas />
-        ) : (
-          <PcbEngineCanvas
-            layersVisible={ctx.layersVisible}
-            ratsnestVisible={ctx.ratsnestVisible}
-            lockRingsVisible={ctx.lockRingsVisible}
-          />
-        )}
+        <ActiveWorkspaceView
+          workspace={ctx.activeWorkspace}
+          layersVisible={ctx.layersVisible}
+          ratsnestVisible={ctx.ratsnestVisible}
+          lockRingsVisible={ctx.lockRingsVisible}
+        />
       </div>
     </PanelErrorBoundary>
   );
@@ -104,12 +121,6 @@ const ViewportPanel: React.FC<IDockviewPanelProps> = () => {
 
 const ExplorerPanel: React.FC<IDockviewPanelProps> = () => {
   const ctx = React.useContext(ShellContext);
-  const components = [
-    { refdes: 'U1', detail: 'CH224K', locked: true, net: 'VBUS_12V' },
-    { refdes: 'U2', detail: 'TPS54302', locked: true, net: 'SW_NODE' },
-    { refdes: 'L1', detail: '4.7uH', locked: false, net: 'SW_NODE' },
-    { refdes: 'C1', detail: '22uF X7R', locked: false, net: '+3V3_OUT' },
-  ];
 
   return (
     <PanelErrorBoundary panelTitle="Explorer">
@@ -124,22 +135,27 @@ const ExplorerPanel: React.FC<IDockviewPanelProps> = () => {
             </tr>
           </thead>
           <tbody className="vd-metric">
-            {components.map((item) => {
+            {ctx.boardComponents.map((item) => {
               const selected = ctx.selectedRefdes === item.refdes;
               return (
                 <tr
                   key={item.refdes}
                   style={{
                     backgroundColor: selected ? 'var(--vd-bg-elevated)' : 'transparent',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => {
-                    globalCrossProbeBus.select([item.refdes], 'tree');
-                    globalCrossProbeBus.highlightNet(item.net, 'tree');
                   }}
                 >
                   <td style={{ padding: '4px 4px' }}>
-                    {item.refdes} ({item.detail})
+                    <button
+                      type="button"
+                      className="vd-btn"
+                      style={{ minHeight: 24, padding: '2px 6px', fontSize: 11 }}
+                      onClick={() => {
+                        globalCrossProbeBus.select([item.refdes], 'tree');
+                        globalCrossProbeBus.highlightNet(item.net, 'tree');
+                      }}
+                    >
+                      {item.refdes} ({item.detail})
+                    </button>
                   </td>
                   <td style={{ color: item.locked ? 'var(--vd-human-lock)' : 'var(--vd-pass)' }}>
                     {item.locked ? 'Locked' : 'Unlocked'}
@@ -173,14 +189,8 @@ const InspectorPanel: React.FC<IDockviewPanelProps> = () => {
           {probe.activeHighlight.netId ?? 'none'} ({probe.lastLatencyMs.toFixed(2)} ms)
         </p>
         <div style={{ marginTop: 12 }}>
-          <p style={{ margin: '0 0 6px', fontWeight: 600 }}>Thought stream</p>
-          <div className="vd-metric" style={{ fontSize: 12, color: 'var(--vd-text-secondary)' }}>
-            {ctx.thoughtLog.map((line, i) => (
-              <div key={i} style={{ marginBottom: 4 }}>
-                {line}
-              </div>
-            ))}
-          </div>
+          <p style={{ margin: '0 0 6px', fontWeight: 600 }}>Agent hardware assistant</p>
+          <AgentDockPanel />
         </div>
       </div>
     </PanelErrorBoundary>
@@ -205,9 +215,11 @@ export const WorkstationShell: React.FC = () => {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
+  const [showCalculators, setShowCalculators] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState('');
   const [fps, setFps] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState('Loopback 127.0.0.1:41900 ready');
+  const [boardComponents, setBoardComponents] = useState<BoardComponentMeta[]>(DEFAULT_COMPONENTS);
   const frameCountRef = useRef(0);
 
   const probeSnapshot = useSyncExternalStore(
@@ -225,9 +237,22 @@ export const WorkstationShell: React.FC = () => {
           setAutosaveAvailable(true);
         }
       })
-      .catch(() => {
-        /* Daemon offline or unit preview */
-      });
+      .catch(() => {});
+    fetch('/api/v1/board')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((b) => {
+        if (!cancelled && Array.isArray(b?.components) && b.components.length) {
+          setBoardComponents(
+            b.components.map((c: { refdes: string; mpn?: string; value?: string; locked?: number }) => ({
+              refdes: c.refdes,
+              detail: c.mpn || c.value || c.refdes,
+              locked: Boolean(c.locked),
+              net: 'SW_NODE',
+            }))
+          );
+        }
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -252,6 +277,8 @@ export const WorkstationShell: React.FC = () => {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      const inInput =
+        document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA';
       if (e.key === 'Escape') {
         setShowTemplates(false);
         setShowShortcuts(false);
@@ -261,13 +288,13 @@ export const WorkstationShell: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         setShowPalette((prev) => !prev);
-      } else if (e.key === 'F1' || (e.key === '?' && document.activeElement?.tagName !== 'INPUT')) {
+      } else if (e.key === 'F1' || (e.key === '?' && !inInput)) {
         e.preventDefault();
         setShowShortcuts((prev) => !prev);
-      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+      } else if (!inInput && (e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         void executeCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === 'edit.undo')!);
-      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
+      } else if (!inInput && (e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         void executeCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === 'edit.redo')!);
       }
@@ -324,8 +351,9 @@ export const WorkstationShell: React.FC = () => {
     ratsnestVisible,
     lockRingsVisible,
     projectName,
-    lockedCount: 2,
+    lockedCount: boardComponents.filter((c) => c.locked).length,
     selectedRefdes: probeSnapshot.selection.entityIds[0] ?? 'U2',
+    boardComponents,
     thoughtLog: [
       `Active workspace: ${activeWorkspace}`,
       'SQLite HW-IR WAL & _tx_actor_ctx lock triggers armed',
@@ -383,6 +411,9 @@ export const WorkstationShell: React.FC = () => {
             </button>
             <button type="button" className="vd-btn" onClick={() => setShowTemplates(true)}>
               New template
+            </button>
+            <button type="button" className="vd-btn" onClick={() => setShowCalculators((v) => !v)} aria-pressed={showCalculators}>
+              Calculators
             </button>
             <button type="button" className="vd-btn" onClick={() => setShowPalette(true)}>
               Palette (Ctrl+Shift+P)
@@ -561,6 +592,7 @@ export const WorkstationShell: React.FC = () => {
             </div>
           </div>
         )}
+        <CalculatorDrawer open={showCalculators} onClose={() => setShowCalculators(false)} />
       </div>
     </ShellContext.Provider>
   );

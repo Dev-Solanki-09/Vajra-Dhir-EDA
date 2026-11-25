@@ -157,7 +157,8 @@ export const PcbEngineCanvas: React.FC<PcbEngineCanvasProps> = ({
         }}
       >
         <span>
-          Backend: <strong>{renderPath}</strong> · Target {engine.getTargetFps()} FPS · {bufferSummary}
+          Backend: <strong>{renderPath}</strong> · Target {renderPath === 'webgl2' ? 60 : engine.getTargetFps()} FPS ·{' '}
+          {bufferSummary}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span>CrossProbe: {snapshot.lastLatencyMs.toFixed(2)} ms</span>
