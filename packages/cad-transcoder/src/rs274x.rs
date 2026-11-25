@@ -84,9 +84,12 @@ impl GerberParser {
             if line.starts_with("%FSLA") {
                 if let Some(xpos) = line.find('X') {
                     let bytes = line.as_bytes();
-                    if xpos + 2 < bytes.len() {
-                        int_digits = bytes[xpos + 1].saturating_sub(b'0');
-                        dec_digits = bytes[xpos + 2].saturating_sub(b'0');
+                    if xpos + 2 < bytes.len()
+                        && bytes[xpos + 1].is_ascii_digit()
+                        && bytes[xpos + 2].is_ascii_digit()
+                    {
+                        int_digits = bytes[xpos + 1] - b'0';
+                        dec_digits = bytes[xpos + 2] - b'0';
                     }
                 }
                 continue;

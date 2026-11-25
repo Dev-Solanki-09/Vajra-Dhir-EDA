@@ -89,9 +89,18 @@ impl EagleBoardParser {
 
 fn extract_attr(tag: &str, key: &str) -> Option<String> {
     let needle = format!("{}=\"", key);
-    let start = tag.find(&needle)? + needle.len();
-    let end = tag[start..].find('"')? + start;
-    Some(tag[start..end].to_string())
+    let mut search_from = 0;
+    while let Some(rel) = tag[search_from..].find(&needle) {
+        let abs = search_from + rel;
+        let boundary_ok = abs == 0 || tag.as_bytes()[abs - 1].is_ascii_whitespace();
+        if boundary_ok {
+            let start = abs + needle.len();
+            let end = tag[start..].find('"')? + start;
+            return Some(tag[start..end].to_string());
+        }
+        search_from = abs + 1;
+    }
+    None
 }
 
 fn parse_mm_to_nm(raw: &str) -> Result<Nm, EagleParseError> {

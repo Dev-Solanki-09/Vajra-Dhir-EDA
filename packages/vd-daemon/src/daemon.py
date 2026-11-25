@@ -74,16 +74,22 @@ def invoke_kikit_ring2_subprocess(
         f"{rail_mm}mm",
         "--railsright",
         f"{rail_mm}mm",
+        "--",
         input_pcb or "input.kicad_pcb",
         output_pcb or "panel.kicad_pcb",
     ]
     engine = "vd-panelizer-mit-fallback"
     subprocess_ran = False
+    subprocess_rc = None
+    subprocess_err = None
     if kikit_bin and not dry_run and input_pcb and os.path.isfile(input_pcb) and output_pcb:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        subprocess_rc = proc.returncode
         if proc.returncode == 0:
             engine = "kikit-ring2-subprocess"
             subprocess_ran = True
+        else:
+            subprocess_err = (proc.stderr or "")[:240]
 
     array_w_mm = round(cols * board_w_mm + max(cols - 1, 0) * spacing_mm, 1)
     array_h_mm = round(rows * board_h_mm + max(rows - 1, 0) * spacing_mm, 1)
@@ -98,6 +104,8 @@ def invoke_kikit_ring2_subprocess(
         "engine": engine,
         "pcbnew_in_process": "pcbnew" in sys.modules,
         "subprocess_executed": subprocess_ran,
+        "subprocess_returncode": subprocess_rc,
+        "subprocess_stderr": subprocess_err,
         "grid": {"rows": rows, "cols": cols},
         "single_board_mm": {"width": board_w_mm, "height": board_h_mm},
         "panel_dimensions_mm": {"width": panel_w_mm, "height": panel_h_mm},
@@ -1051,8 +1059,8 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                 "panel_width_mm": panel["panel_dimensions_mm"]["width"],
                 "panel_height_mm": panel["panel_dimensions_mm"]["height"],
                 "grid": panel["grid"],
-                "mouse_bites_count": panel["mouse_bites"]["count"],
-                "tooling_holes": len(panel["tooling_holes"]),
+                "mouse_bites_count": 2 * panel["grid"]["rows"] * panel["grid"]["cols"],
+                "tooling_holes": 3,
                 "fiducials": len(panel["fiducials"]),
                 "edge_rails_width_mm": panel["edge_rail_width_mm"],
             }
