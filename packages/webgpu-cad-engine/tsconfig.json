@@ -1,11 +1,15 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable", "WebWorker"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "declaration": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
     "strict": true,
-    "allowJs": true,
-    "noEmit": true,
+    "allowJs": false,
+    "noEmit": false,
     "skipLibCheck": true
   },
   "include": ["src/**/*.ts"]

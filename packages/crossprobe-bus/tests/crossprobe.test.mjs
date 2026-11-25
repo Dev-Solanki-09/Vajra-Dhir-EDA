@@ -1,56 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { CrossProbeBus, globalCrossProbeBus } from '../src/index.ts';
 
-// Test implementation of CrossProbeBus directly
-class CrossProbeBus {
-  constructor() {
-    this.selectionListeners = new Set();
-    this.hoverListeners = new Set();
-    this.netListeners = new Set();
-    this.currentSelection = { entityIds: [], source: 'tree', timestamp: 0 };
-    this.currentHover = { entityId: null, source: 'tree', timestamp: 0 };
-    this.activeHighlight = { netId: null, source: 'tree', timestamp: 0 };
-  }
-
-  select(entityIds, source) {
-    const event = {
-      entityIds: [...new Set(entityIds)],
-      source,
-      timestamp: Date.now(),
-    };
-    this.currentSelection = event;
-    for (const l of this.selectionListeners) l(event);
-  }
-
-  hover(entityId, source) {
-    const event = { entityId, source, timestamp: Date.now() };
-    this.currentHover = event;
-    for (const l of this.hoverListeners) l(event);
-  }
-
-  highlightNet(netId, source, color) {
-    const event = { netId, color, source, timestamp: Date.now() };
-    this.activeHighlight = event;
-    for (const l of this.netListeners) l(event);
-  }
-
-  onSelection(l) {
-    this.selectionListeners.add(l);
-    return () => this.selectionListeners.delete(l);
-  }
-
-  onHover(l) {
-    this.hoverListeners.add(l);
-    return () => this.hoverListeners.delete(l);
-  }
-
-  onNetHighlight(l) {
-    this.netListeners.add(l);
-    return () => this.netListeners.delete(l);
-  }
-}
-
-test('CrossProbeBus emits selection events to multiple listeners', () => {
+test('CrossProbeBus emits selection events to multiple listeners within <16ms budget', () => {
   const bus = new CrossProbeBus();
   const received = [];
 
@@ -63,25 +15,63 @@ test('CrossProbeBus emits selection events to multiple listeners', () => {
   assert.equal(received.length, 1);
   assert.deepEqual(received[0].entityIds, ['comp-u1', 'comp-r1']);
   assert.equal(received[0].source, 'schematic');
+  assert.ok(bus.getLastLatencyMs() >= 0 && bus.getLastLatencyMs() < 16, `Expected <16ms, got ${bus.getLastLatencyMs()}`);
 
-  // Verify unsubscribe
   unsubscribe();
   bus.select(['comp-c1'], 'pcb');
   assert.equal(received.length, 1, 'Should not receive events after unsubscribe');
 });
 
-test('CrossProbeBus emits net highlights with color', () => {
+test('CrossProbeBus emits net highlights and supports React useSyncExternalStore snapshots', () => {
   const bus = new CrossProbeBus();
-  let highlightedNet = null;
-
-  bus.onNetHighlight((evt) => {
-    highlightedNet = evt;
+  let snapshotHits = 0;
+  const unsubSnap = bus.subscribeSnapshot(() => {
+    snapshotHits += 1;
   });
 
-  bus.highlightNet('net-usb-dp', 'code', '#00F0FF');
+  const before = bus.getSnapshot();
+  bus.highlightNet('net-usb-dp', 'code', '#38BDF8');
+  const after = bus.getSnapshot();
 
-  assert.notEqual(highlightedNet, null);
-  assert.equal(highlightedNet.netId, 'net-usb-dp');
-  assert.equal(highlightedNet.color, '#00F0FF');
-  assert.equal(highlightedNet.source, 'code');
+  assert.notEqual(after, before);
+  assert.equal(after.activeHighlight.netId, 'net-usb-dp');
+  assert.equal(after.activeHighlight.color, '#38BDF8');
+  assert.equal(snapshotHits, 1);
+  assert.ok(bus.getLastLatencyMs() < 16);
+
+  unsubSnap();
+});
+
+test('CrossProbeBus BroadcastChannel syncs peer instances without echo loops', () => {
+  const messagesA = [];
+  class FakeBroadcastChannel {
+    constructor(name) {
+      this.name = name;
+      this.onmessage = null;
+      FakeBroadcastChannel.peers.add(this);
+    }
+    postMessage(data) {
+      for (const peer of FakeBroadcastChannel.peers) {
+        if (peer !== this && peer.name === this.name && typeof peer.onmessage === 'function') {
+          peer.onmessage({ data });
+        }
+      }
+    }
+    close() {
+      FakeBroadcastChannel.peers.delete(this);
+    }
+  }
+  FakeBroadcastChannel.peers = new Set();
+
+  const busA = new CrossProbeBus('vd-test-channel', (name) => new FakeBroadcastChannel(name));
+  const busB = new CrossProbeBus('vd-test-channel', (name) => new FakeBroadcastChannel(name));
+  busB.onSelection((evt) => messagesA.push(evt));
+
+  busA.select(['U2'], 'pcb');
+  assert.equal(messagesA.length, 1);
+  assert.deepEqual(messagesA[0].entityIds, ['U2']);
+  assert.ok(globalCrossProbeBus instanceof CrossProbeBus);
+
+  busA.dispose();
+  busB.dispose();
 });

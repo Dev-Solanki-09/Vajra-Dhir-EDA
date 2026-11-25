@@ -2,11 +2,24 @@
   "name": "@vajradhir/webgpu-cad-engine",
   "version": "0.0.1",
   "type": "module",
-  "description": "High-performance WebGPU 2D/3D PCB canvas renderer with WebGL2 fallback for Vajra-Dhīr EDA",
+  "description": "High-performance WebGPU 2D/3D PCB canvas renderer with WebGL2 and Canvas2D fallback for Vajra-Dhīr EDA",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "license": "MIT OR Apache-2.0",
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc && node --test tests/*.test.mjs"
+  },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
   }
 }

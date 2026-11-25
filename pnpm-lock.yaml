@@ -141,9 +141,18 @@ importers:
 
   apps/workstation:
     dependencies:
+      '@vajradhir/crossprobe-bus':
+        specifier: workspace:*
+        version: link:../../packages/crossprobe-bus
+      '@vajradhir/webgpu-cad-engine':
+        specifier: workspace:*
+        version: link:../../packages/webgpu-cad-engine
       dockview-react:
         specifier: ^8.9.0
         version: 8.9.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      elkjs:
+        specifier: ^0.10.0
+        version: 0.10.2
       react:
         specifier: ^19.3.1
         version: 19.3.1
@@ -195,6 +204,10 @@ importers:
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.10.0
+    devDependencies:
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
 
 packages:
 
