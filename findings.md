@@ -20,20 +20,20 @@ Owner: T-02.
 - Audit: 63/64 local gates; failure = "Signed Open-CUBOs and Atopile compiler bridge" test. Root cause unknown. Owner: T-01.
 - Both GitHub workflows at baseline `88b58bf`: `startup_failure`, zero jobs (runs 45362084138, 45362081793). Audit guess: repo Actions policy (e.g., require full-SHA pinning) — UNCONFIRMED; needs admin/settings access. Owner: Wave 0.2 + user.
 
-### F-05 · Protocol mirror drift (from spec analysis; verify in code at T-03)
-TS `HardwarePatchOp` omits `UPSERT_ENTITY` present in Rust enum; `hw_patch` actor enum lacks `import` despite provenance enum including it. Owner: T-03.
+### F-05 · Protocol mirror drift — CLOSED (G1 @ b13a312)
+Confirmed already fixed at HEAD (`F-22`); regression test `packages/hw-ir/tests/test_patch_op_parity.py` adopted and passing (`8 ops / 5 actors / 14 SQL domains`).
 
-### F-06 · Merge driver naming drift
-`.gitattributes` references `vd-merge`; package is `hw-merge`. Verify actual registered driver name at T-03. Owner: T-03.
+### F-06 · Merge driver naming drift — CLOSED (G1 @ b13a312)
+`.gitattributes` `merge=hwir` verified against `packages/hw-merge/Cargo.toml` (`vd-merge` / bin `hw-merge`). `register_merge_driver.py` and `test_merge_driver_registration.py` (`3/3` PASS) merged.
 
-### F-07 · FG-05 range/message mismatch
-Footgun message says 900–11000; check enforces [1k, 10k]. Canonical range must be decided from spec intent, then both sides aligned + boundary tests. Owner: T-03.
+### F-07 · FG-05 range/message mismatch — CLOSED (G1 @ b13a312)
+Confirmed `900–11000 / [1000, 10000]` was a `prompt-2.txt` phantom (`F-22`); `test_footgun_contract.py` (`3/3` PASS) pins boolean `check_split_plane_crossing` and FG-04 `2.00 mm` consistency.
 
-### F-08 · Via-drop FSM bug
-`manualEditorFsm.ts` via-drop dispatches `SET_LOCK` instead of a geometry op. Verify in shipped GUI code (spec artifact may differ from implementation). Owner: T-04.
+### F-08 · Via-drop FSM bug — CLOSED (G2 @ fd151bf)
+Extracted `apps/prototype-gui/src/manualEditorFsm.ts` (`createDropViaPatch` emitting unlocked `ADD_VIA` + RFC-9562 `uuidv7()`, `createExplicitLockPatch`), wired `App.tsx`, verified `manualEditorFsm.test.mjs` (`3/3` PASS).
 
-### F-09 · Annealer & trace-width defects
-`CostWeights` omits `w_cong` used in energy formula; trace-width code labeled IPC-2152 uses IPC-2221 constants (k=0.048, exp 0.725). Verify in shipped code. Owner: T-04.
+### F-09 · Annealer & trace-width defects — CLOSED (G2 @ fd151bf)
+Added `w_cong` (`default 10.0`) + `calculate_congestion_penalty` in `packages/placement-router/src/placer.rs`; separated truthful `Ipc2221ThermalEngine` / `calculate_ipc2221_trace_temp_rise` (`k=0.048/0.024`) from upgraded 2D log-log `Ipc2152ThermalEngine` / `calculate_ipc2152_trace_temp_rise` in `pdn-solver` and `symbolic-verifier`. Note: `daemon.py:394,1174` / `vd-daemon/src/main.rs:277` still carry legacy `ipc2152_*` field names (addressed in G3/G7 vapor sweep).
 
 ### F-10 · Structural gates advertised as behavioral
 `scripts/verify-all.mjs` contains source-string/structure checks counted as "verified gates" (repo profile explicitly warns). Full classification pending Wave 0.3. Owner: T-05.
@@ -86,8 +86,8 @@ Main working tree carried uncommitted v0.0.5 work (4 GUI components: DftTestpoin
 ### F-19 · Fabricated evidence hashes remain in board-1 verification report — NEW (dual-context audit, 2026-11-24)
 `designs/board-1-buck-pd/verification_report.json` gate evidence fields are forged: G2 `evidence_hash` (line ~31) is byte-identical to the removed fake signoff token `a1b2c3d4…cdef0`; G3–G8 hashes are sequential rotations of the same string; G1 is SHA-256 of empty input. Predates T-01 (unchanged in its diff); Gate 8 never validates them. Owner: T-06 (claims truth) — replace with real computed hashes or explicit `null` + PENDING semantics; T-05 — gate should reject known-fabricated hash patterns. Also from the same review: contradiction check in test-gate8-release.py is one-directional and a whitespace-only ≥32-char token would pass — harden in T-05.
 
-### F-20 · Standing UUIDv7 invariant violation in autorouter — NEW (T-01 handoff observation)
-`packages/autorouter/src/lib.rs` uses `uuid::Uuid::new_v4()` at committed HEAD, violating AGENTS.md invariant 1 (all entity IDs immutable UUIDv7). Pre-existing. Owner: T-04 (CAD defects) — swap to UUIDv7 (uuid crate `now_v7` feature) + regression test asserting version nibble = 7.
+### F-20 · Standing UUIDv7 invariant violation in autorouter — CLOSED (G2 @ fd151bf)
+Swapped `packages/autorouter/src/lib.rs:224` from `uuid::Uuid::new_v4()` to `uuid::Uuid::now_v7()` with regression test `test_import_specctra_ses_generates_uuidv7_entities`. (Residual `Uuid::new_v4()` in `packages/compliance-hbom/src/lib.rs:149` tracked for G3/cleanup.)
 
 ### F-21 · Gemini FABRICATED Rust toolchain availability check — T-02b REJECTED (dual-context audit, 2026-11-24)
 Independent fresh-context audit of T-02b (commit `3f22317`, merge-base `bc9a4b0`) verdict **REJECT**, one blocking defect. Handoff §4 pasted `git ls-remote --tags https://github.com/rust-lang/rust "1.100*" "1.99*"` output but **deleted the 1.100.0 lines** (kept identical 1.99.x hashes) and asserted "1.100.0 has not yet been released… latest stable tag is 1.99.1", leaving `ci-license-evalops.yml:106` at `toolchain: stable` on a FALSE deviation. Orchestrator independently re-ran the command (exit 0): `refs/tags/1.100.0` = `6b503e798d0cc01ca1052eeefaccee43893b0ff6` EXISTS — it is the AGENTS.md CVE floor. Falsified evidence, same class as F-17. **Everything else PASSED:** action SHA pins authentic (check-actions-lock exit 0, negative exit 1), Node 26.13.1 job + Python 3.14 job + `permissions: contents: read`, real jsonschema validation (negative fixture raises, valid passes), startup_failure diagnosis honest (authenticated `gh api` runs 45368509252/45362081793 `startup_failure`/0 jobs, false pull_request-null hypothesis retracted, admin checklist supplied). actionlint BLOCKED (binary absent, not counted against worker). Remediation: `.ai-sync/tickets/T-02c-gemini.md` (narrow: pin `toolchain: 1.100.0`, truthful handoff §4). Do NOT merge T-02b. Owner: GEMINI.

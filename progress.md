@@ -1,5 +1,16 @@
 # PROGRESS — Wave Log (orchestrator-maintained)
 
+## 2026-11-25 · G2 AUDITED & MERGED (`APPROVE_WITH_NOTES`) · G3 READY
+
+- **G2 ACCEPTED (`03dd903`..`fd151bf`, merged `--no-ff`):**
+  - `F-08`: extracted `apps/prototype-gui/src/manualEditorFsm.ts` (`uuidv7()`, `createDropViaPatch()` emitting unlocked `ADD_VIA` never `SET_LOCK`, `createExplicitLockPatch()`), wired `App.tsx`, verified `manualEditorFsm.test.mjs` (`3/3` PASS) + `tsc --noEmit` (PASS).
+  - `F-09a`: added `w_cong` (`default 10.0`) + `calculate_congestion_penalty` in `packages/placement-router/src/placer.rs` + test in `placer_test.rs`.
+  - `F-09b`: separated truthful `Ipc2221ThermalEngine` / `calculate_ipc2221_trace_temp_rise` (`k=0.048/0.024, b=0.44, c=0.725`) from upgraded `Ipc2152ThermalEngine` / `calculate_ipc2152_trace_temp_rise` (2D log-log universal-chart interpolation) across `pdn-solver` and `symbolic-verifier` (`test_z3_verifier.py` PASS).
+  - `F-20`: swapped `Uuid::new_v4()` -> `Uuid::now_v7()` in `packages/autorouter/src/lib.rs` + `test_import_specctra_ses_generates_uuidv7_entities`.
+  - `cavalier_contours`: activated `OffsetContourEngine::parallel_offset_nm` in `packages/cad-geom/src/offset.rs` (`PlineSourceMut`/`PlineSource`/`Polyline`) + arc-preserving test in `geom_test.rs`.
+- **Dual-context review:** initial audit caught 3 CI-breaking Rust errors (`AutorouterBridge`->`AutorouterOrchestrator`, single-line SES test, `PlineCreation`->`PlineSourceMut`); fixed in `fd151bf` and re-audited `APPROVE_WITH_NOTES` (local host still lacks MSVC `link.exe` for `cargo test`).
+- **G3 (`T-05`) READY:** verification hardening, `vd doctor` real preflight, `wasmtime >= 51.0.0` floor & sandbox negatives, Gate-8 hardening, `hw-dlp` egress probe, `solver-recovery` tests, `cad-transcoder` round-trip.
+
 ## 2026-11-25 · G1 AUDITED & MERGED (`APPROVE_WITH_NOTES`) · G2 READY
 
 - **G1 ACCEPTED (`2d64166`..`b13a312`, merged `--no-ff`):**
