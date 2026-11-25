@@ -10,7 +10,7 @@ PATTERNS = [
     re.compile(r"C:\\Users\\[a-zA-Z0-9._-]+"),
 ]
 
-IGNORED_DIRS = {".git", ".venv", "node_modules", "target", "dist", "prompt-and-skills", "prompt and skill"}
+IGNORED_DIRS = {".git", ".venv", "node_modules", ".pnpm-store", "target", "dist", "prompt-and-skills", "prompt and skill"}
 IGNORED_FILES = {"audit-secrets-and-paths.py", "publish-github.sh", "publish-github.ps1"}
 
 violations = []

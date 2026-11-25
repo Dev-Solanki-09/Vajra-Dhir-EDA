@@ -120,7 +120,7 @@ function scanPdf(dir) {
   if (!fs.existsSync(dir)) return;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory() && entry.name !== ".git" && entry.name !== "node_modules" && entry.name !== "target") {
+    if (entry.isDirectory() && entry.name !== ".git" && entry.name !== "node_modules" && entry.name !== ".pnpm-store" && entry.name !== "target") {
       scanPdf(full);
     } else if (entry.isFile() && entry.name.endsWith(".pdf")) {
       const normalized = path.relative(scanRoot, full).replace(/\\/g, "/");
