@@ -232,7 +232,7 @@ Traceback (most recent call last):
   File "<string>", line 1, in <module>
     import json,jsonschema; s=json.load(open('schemas/worker_contract.v1.json')); jsonschema.validate(json.load(open('schemas/fixtures/invalid_project.json')), s)
                                                                                   ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\D.Solanki\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\jsonschema\validators.py", line 1332, in validate
+  File "<USER_HOME>\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\jsonschema\validators.py", line 1332, in validate
     raise error
 jsonschema.exceptions.ValidationError: 'job_id' is a required property
 
