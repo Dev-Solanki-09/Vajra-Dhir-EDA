@@ -28,9 +28,9 @@ body,
 .vd-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-height: 32px;
-  padding: 4px 10px;
+  padding: 4px 12px;
   background-color: var(--vd-bg-elevated);
   color: var(--vd-text-primary);
   border: 1px solid var(--vd-border-subtle);
@@ -41,8 +41,17 @@ body,
   transition: border-color var(--vd-dur-micro) ease, background-color var(--vd-dur-micro) ease;
 }
 
-.vd-btn:hover {
+.vd-btn:hover:not(:disabled) {
   border-color: var(--vd-border-active);
+}
+
+.vd-btn:active:not(:disabled) {
+  background-color: var(--vd-bg-canvas);
+}
+
+.vd-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .vd-btn-primary {
@@ -99,7 +108,7 @@ body,
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 8px 4px;
   background-color: var(--vd-bg-panel);
   border-right: 1px solid var(--vd-border-subtle);
@@ -138,7 +147,7 @@ body,
 .vd-modal-backdrop {
   position: fixed;
   inset: 0;
-  background-color: rgba(11, 14, 20, 0.78);
+  background-color: var(--vd-bg-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;

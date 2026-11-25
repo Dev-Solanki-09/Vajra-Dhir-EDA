@@ -48,7 +48,7 @@ export const SchematicElkCanvas: React.FC = () => {
         }}
       >
         <span>
-          Engine: {layout?.algorithm ?? 'elkjs'} · {layoutMs.toFixed(2)} ms · Rule: +V UP / GND DOWN
+          Engine: {layout?.algorithm ?? 'elkjs'} ({layoutMs.toFixed(2)} ms), +V UP / GND DOWN
         </span>
         <button type="button" className="vd-btn vd-btn-primary" onClick={() => void computeLayout()}>
           Auto-Beautify (elkjs)
@@ -64,7 +64,7 @@ export const SchematicElkCanvas: React.FC = () => {
       <div
         style={{
           flex: 1,
-          minHeight: 0,
+          minHeight: 240,
           border: '1px solid var(--vd-border-subtle)',
           borderRadius: 6,
           backgroundColor: 'var(--vd-bg-canvas)',

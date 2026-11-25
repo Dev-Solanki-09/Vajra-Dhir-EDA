@@ -243,11 +243,11 @@ export const WorkstationShell: React.FC = () => {
       .then((b) => {
         if (!cancelled && Array.isArray(b?.components) && b.components.length) {
           setBoardComponents(
-            b.components.map((c: { refdes: string; mpn?: string; value?: string; locked?: number }) => ({
+            b.components.map((c: { refdes: string; mpn?: string; value_str?: string; value?: string; locked?: number | boolean }) => ({
               refdes: c.refdes,
-              detail: c.mpn || c.value || c.refdes,
+              detail: c.mpn || c.value_str || c.value || c.refdes,
               locked: Boolean(c.locked),
-              net: 'SW_NODE',
+              net: c.refdes === 'U1' || c.refdes === 'J1' ? 'VBUS_12V' : c.refdes === 'C1' ? '+3V3_OUT' : 'SW_NODE',
             }))
           );
         }
