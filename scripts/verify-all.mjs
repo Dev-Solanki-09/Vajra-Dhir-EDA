@@ -565,6 +565,11 @@ step('[AUDIT/G7] Claims Truth, Real Artifact SHA-256 & Footgun Alignment', () =>
   execSync('python scripts/test-g7-claims-and-hashes.py', { stdio: 'pipe' });
 });
 
+// 78. G8 Lockfile-Wide SPDX Firewall & Injected-AGPL Negative Suite
+step('[SECURITY/G8] Lockfile SPDX Firewall (pnpm/uv/Cargo/apps) & Negatives', () => {
+  execSync('node scripts/test-g8-lockfile-spdx.mjs', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');

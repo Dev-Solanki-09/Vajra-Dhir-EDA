@@ -23,6 +23,9 @@ import uuid
 try:
     from .agent_routes import handle_agent_post
 except ImportError:
+    _DAEMON_SRC_DIR = str(pathlib.Path(__file__).resolve().parent)
+    if _DAEMON_SRC_DIR not in sys.path:
+        sys.path.insert(0, _DAEMON_SRC_DIR)
     from agent_routes import handle_agent_post
 
 PORT = 41900

@@ -9,7 +9,7 @@
 | Vision | Blender + Adobe + VS Code + simulation tester lab + chatbot agent that does the work + interactive/manual designing like Flux.ai / Protoflow. Consolidated into **`apps/workstation`**, launched via **`vd studio`** (`127.0.0.1:41900`, optional Tauri v2 shell in v0.2.0). |
 | Dependencies | G2 (cad truth), G3 (gate hardening), G5A–G5C (real engines, transactional Undo/Redo, `vd studio` static serving) MUST precede. |
 
-> **Skills to load at U0:** `hallmark` (read `SKILL.md`, `references/redesign.md`, `references/flow.md` § App screens, `references/gates.md` §1–§5, `references/craft.md` §9, `references/interaction-and-states.md`), `vd-silicon-darkroom-ui`, `antislop`, `antislop-ui`, `antislop-human`. Hallmark scripts live at `C:\Users\D.Solanki\.agents\skills\hallmark\scripts\` (`theme.mjs`, `sloplint.mjs`, `capture.mjs`) — run via `node`.
+> **Skills to load at U0:** `hallmark` (read `SKILL.md`, `references/redesign.md`, `references/flow.md` § App screens, `references/gates.md` §1–§5, `references/craft.md` §9, `references/interaction-and-states.md`), `vd-silicon-darkroom-ui`, `antislop`, `antislop-ui`, `antislop-human`. Hallmark scripts live at `<USER_HOME>\.agents\skills\hallmark\scripts\` (`theme.mjs`, `sloplint.mjs`, `capture.mjs`) — run via `node`.
 
 ---
 

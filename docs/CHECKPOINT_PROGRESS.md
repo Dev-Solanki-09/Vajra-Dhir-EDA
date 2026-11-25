@@ -29,7 +29,7 @@ This document preserves the architectural state, thinking, internal decisions, a
 
 ## 2. Inventory of Implemented Core Packages
 
-All 26 core packages below are active, tested, and passing deterministic verification:
+All 33 core packages/apps below are tracked, tested, and verified in CI (`ubuntu-24.04` runs full Cargo tests; Windows hosts without MSVC `link.exe` run JS/Python/TS/Cargo-metadata checks offline):
 
 | Package | Path | Language / Tech | Primary Architectural Purpose |
 |---|---|---|---|
@@ -90,14 +90,14 @@ All three reference hardware designs are software blueprints checked via offline
 
 ---
 
-## 4. Automated Classified Verification Suite (Gates 1..77)
+## 4. Automated Classified Verification Suite (Gates 1..78)
 
 To verify the repository offline (`BEHAVIORAL` + `STRUCTURAL_CONTRACT` classified gates), run:
 ```bash
 node scripts/verify-all.mjs
 ```
 
-All 31 verification gates:
+Key verification gates (suite currently spans 78 classified `BEHAVIORAL` and `STRUCTURAL_CONTRACT` checks):
 1. `SPDX License & AGPL Firewall` — `check-spdx-firewall.mjs`
 2. `CrossProbeBus` — Sub-millisecond channel unit tests
 3. `Harness MCP v2 Gateway` — 12 Typed EDA Verbs unit tests
@@ -120,7 +120,7 @@ All 31 verification gates:
 20. `Pure-MIT Visual Layer-by-Layer PCB Diff Engine` — Polygon boolean diff & SVG output
 21. `Pure-MIT Wire Harness & Interconnect Compiler` — Wire cut-lists & BOM generator
 22. `Pure-MIT Automated PCB Panelization & Stencil Engine` — Rails, fiducials & mouse bites
-23. `Hardware Exit: 3 Physical Boards & Kernel Locks` — Real HW-IR validation & lock enforcement
+23. `Hardware Blueprints (0/3 Physically Fabricated) & Kernel Locks` — Real HW-IR validation & lock enforcement
 24. `Hardware-Firmware Co-Design Parity & DT Overlays` — Deterministic headers & Zephyr bindings
 25. `Ring 2 OCI Container Isolation & Zero-Egress Compose` — Dockerfile and compose invariants
 26. `Ring 2 Stateless Worker SDK & Job Contract Dispatcher` — Contract schema and staging tests
