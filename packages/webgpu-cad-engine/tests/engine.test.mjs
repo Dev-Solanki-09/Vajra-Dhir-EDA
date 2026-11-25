@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { WebGpuCadEngine, SILICON_DARKROOM_PALETTE } from '../src/engine.js';
+import {
+  STEP_WORKER_LICENSE,
+  createStepWorkerRequest,
+  decodeStepBufferInWorker,
+} from '../src/stepWorker.js';
 
 test('WebGPU CAD Engine Hardware Acceleration & Fallback Selection', () => {
   const engineWebGPU = new WebGpuCadEngine(true, true);
@@ -39,4 +44,21 @@ test('CrossProbeBus Integration and Coordinate Transformation', () => {
     payload: { netId: '018f6c31-7b40-7001-a000-000000000020' }
   });
   assert.equal(engine.getActiveHighlights().netId, '018f6c31-7b40-7001-a000-000000000020');
+});
+
+test('LGPL-2.1-with-OCCT-exception Isolated STEP Web Worker Boundary', () => {
+  const sample = new TextEncoder().encode('ISO-10303-21;\nHEADER;\nENDSEC;\nEND-ISO-10303-21;');
+  const req = createStepWorkerRequest('board.step', sample);
+  assert.equal(req.licenseIsolation, STEP_WORKER_LICENSE);
+  assert.equal(req.byteLength, sample.byteLength);
+
+  const offlineRes = decodeStepBufferInWorker(sample, null);
+  assert.equal(offlineRes.ok, false);
+  assert.equal(offlineRes.reason, 'OCCT_WASM_UNBUNDLED_IN_OFFLINE_ENV');
+
+  const mockedRes = decodeStepBufferInWorker(sample, {
+    ImportStepFile: () => ({ success: true, meshes: [{ name: 'PCB_Substrate' }] }),
+  });
+  assert.equal(mockedRes.ok, true);
+  assert.equal(mockedRes.meshes.length, 1);
 });

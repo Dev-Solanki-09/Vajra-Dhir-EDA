@@ -15,6 +15,7 @@ pub mod offset;
 pub mod room_replication;
 pub mod spatial;
 pub mod teardrops;
+pub mod triangulate;
 pub mod windowpaning;
 
 pub use bool2d::{BoolGeomError, IntPoint2D, PolygonBooleanEngine};
@@ -30,4 +31,5 @@ pub use room_replication::{
 };
 pub use spatial::{CadSpatialIndex, GeomPoint, SpatialElement, SpatialKind};
 pub use teardrops::{TeardropEngine, TeardropFillet, TeardropParams};
+pub use triangulate::{CopperMeshNm, CopperTriangulator};
 pub use windowpaning::{WindowpaneAperture, WindowpaneGrid, WindowpaningEngine};

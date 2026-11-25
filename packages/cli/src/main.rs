@@ -39,6 +39,7 @@ SUBCOMMANDS:
     worker list           List registered Ring 2 isolated OCI container worker packs
     worker run <pack>     Dispatch stateless job to isolated zero-egress worker
     asic c2p2b            Run Chip-to-Package-to-Board (C2P2B) pad-ring to ball-map bridge
+    step                  Inspect isolated LGPL STEP AP242 Web Worker and Ring-2 kicad-cli status
     emc scan <freq_mhz>   Harmonic collision scan against protected RF bands (Wi-Fi, GPS)
     emc esd               Audit connector-to-TVS distance in nanometers (<= 5.0 mm)
     cas put <file>        Store artifact in content-addressed store (cas://sha256/...)
@@ -240,6 +241,16 @@ fn main() {
             } else {
                 eprintln!("Usage: vd asic c2p2b");
                 process::exit(1);
+            }
+        }
+
+        "step" => {
+            println!("[*] vd step: STEP AP242 MCAD Geometry Bridge");
+            println!("[INFO] Isolated LGPL-2.1-with-OCCT-exception runtime lives in packages/webgpu-cad-engine/src/stepWorker.js (Web Worker boundary; never linked into Ring-1 Rust crates).");
+            let kicad_cli = std::process::Command::new("kicad-cli").arg("--version").output().ok().filter(|o| o.status.success());
+            match kicad_cli {
+                Some(out) => println!("[PASS] Ring-2 kicad-cli available for PCB export-step: {}", String::from_utf8_lossy(&out.stdout).trim()),
+                None => println!("[INFO] Ring-2 kicad-cli not present on PATH; workstation stepWorker handles browser-side STEP AP242 decoding."),
             }
         }
 

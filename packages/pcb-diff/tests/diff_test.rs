@@ -62,3 +62,21 @@ fn test_pcb_diff_engine() {
     assert!(report.svg_diff_markup.contains("<svg"));
     assert!(report.svg_diff_markup.contains("Green: Added"));
 }
+
+#[test]
+fn test_pcb_diff_trace_and_layer_deltas() {
+    let rev_a = vec![
+        ("018e0000-0000-7000-8000-000000000101".into(), "F.Cu".into(), 0, 0, 5_000_000, 0, 250_000),
+        ("018e0000-0000-7000-8000-000000000102".into(), "B.Cu".into(), 0, 1_000_000, 5_000_000, 1_000_000, 250_000),
+    ];
+    let rev_b = vec![
+        ("018e0000-0000-7000-8000-000000000101".into(), "F.Cu".into(), 0, 0, 6_000_000, 0, 250_000),
+        ("018e0000-0000-7000-8000-000000000103".into(), "F.Cu".into(), 1_000_000, 2_000_000, 4_000_000, 2_000_000, 200_000),
+    ];
+
+    let report = PcbDiffEngine::compute_trace_and_layer_diff("rev_a", &rev_a, "rev_b", &rev_b);
+    assert_eq!(report.layer_summaries.len(), 2);
+    assert!(report.component_changes.iter().any(|c| matches!(c.kind, ComponentChangeKind::Added)));
+    assert!(report.component_changes.iter().any(|c| matches!(c.kind, ComponentChangeKind::Removed)));
+    assert!(report.component_changes.iter().any(|c| matches!(c.kind, ComponentChangeKind::Moved { dx_nm: 1_000_000, .. })));
+}

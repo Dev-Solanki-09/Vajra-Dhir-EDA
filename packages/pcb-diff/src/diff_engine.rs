@@ -181,4 +181,96 @@ impl PcbDiffEngine {
         svg.push_str("</g></svg>");
         svg
     }
+
+    /// Clean-room MIT trace + layer delta diff across two i64 nanometer PCB revisions.
+    pub fn compute_trace_and_layer_diff(
+        rev_a_label: &str,
+        traces_a: &[(String, String, Nm, Nm, Nm, Nm, Nm)], // (id, layer, x1, y1, x2, y2, width)
+        rev_b_label: &str,
+        traces_b: &[(String, String, Nm, Nm, Nm, Nm, Nm)],
+    ) -> PcbDiffReport {
+        let mut by_id_a: BTreeMap<&str, &(String, String, Nm, Nm, Nm, Nm, Nm)> = BTreeMap::new();
+        let mut by_id_b: BTreeMap<&str, &(String, String, Nm, Nm, Nm, Nm, Nm)> = BTreeMap::new();
+        let mut layers: BTreeSet<String> = BTreeSet::new();
+
+        for t in traces_a {
+            by_id_a.insert(t.0.as_str(), t);
+            layers.insert(t.1.clone());
+        }
+        for t in traces_b {
+            by_id_b.insert(t.0.as_str(), t);
+            layers.insert(t.1.clone());
+        }
+
+        let mut changes = Vec::new();
+        let mut layer_added: BTreeMap<String, usize> = BTreeMap::new();
+        let mut layer_removed: BTreeMap<String, usize> = BTreeMap::new();
+        let mut layer_unchanged: BTreeMap<String, usize> = BTreeMap::new();
+
+        for (id, ta) in &by_id_a {
+            match by_id_b.get(id) {
+                Some(tb) => {
+                    if ta.2 != tb.2 || ta.3 != tb.3 || ta.4 != tb.4 || ta.5 != tb.5 || ta.6 != tb.6 {
+                        let dx_nm = if tb.2 != ta.2 { tb.2 - ta.2 } else { tb.4 - ta.4 };
+                        let dy_nm = if tb.3 != ta.3 { tb.3 - ta.3 } else { tb.5 - ta.5 };
+                        *layer_added.entry(tb.1.clone()).or_insert(0) += 1;
+                        changes.push(ComponentChange {
+                            refdes: (*id).to_string(),
+                            kind: ComponentChangeKind::Moved {
+                                dx_nm,
+                                dy_nm,
+                                drot_mdeg: 0,
+                            },
+                            details: format!("Trace modified on {}", tb.1),
+                        });
+                    } else {
+                        *layer_unchanged.entry(ta.1.clone()).or_insert(0) += 1;
+                    }
+                }
+                None => {
+                    *layer_removed.entry(ta.1.clone()).or_insert(0) += 1;
+                    changes.push(ComponentChange {
+                        refdes: (*id).to_string(),
+                        kind: ComponentChangeKind::Removed,
+                        details: format!("Trace removed from {}", ta.1),
+                    });
+                }
+            }
+        }
+        for (id, tb) in &by_id_b {
+            if !by_id_a.contains_key(id) {
+                *layer_added.entry(tb.1.clone()).or_insert(0) += 1;
+                changes.push(ComponentChange {
+                    refdes: (*id).to_string(),
+                    kind: ComponentChangeKind::Added,
+                    details: format!("Trace added on {}", tb.1),
+                });
+            }
+        }
+
+        let layer_summaries = layers
+            .into_iter()
+            .map(|layer_name| {
+                let added = *layer_added.get(&layer_name).unwrap_or(&0);
+                let removed = *layer_removed.get(&layer_name).unwrap_or(&0);
+                let unchanged = *layer_unchanged.get(&layer_name).unwrap_or(&0);
+                LayerDiffSummary {
+                    layer_name,
+                    added_features_count: added,
+                    removed_features_count: removed,
+                    unchanged_features_count: unchanged,
+                    net_area_change_nm2: (added as i64 - removed as i64) * 1_000_000_000,
+                }
+            })
+            .collect();
+
+        let svg = Self::generate_svg_diff(rev_a_label, rev_b_label, &changes);
+        PcbDiffReport {
+            rev_a_label: rev_a_label.to_string(),
+            rev_b_label: rev_b_label.to_string(),
+            component_changes: changes,
+            layer_summaries,
+            svg_diff_markup: svg,
+        }
+    }
 }

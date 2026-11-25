@@ -1,6 +1,6 @@
 use vd_cad_geom::{
-    ArcVertexNm, CadSpatialIndex, DifferentialPairEngine, OffsetContourEngine,
-    PolygonBooleanEngine, SpatialElement, SpatialKind,
+    ArcVertexNm, CadSpatialIndex, CopperTriangulator, DifferentialPairEngine,
+    OffsetContourEngine, PolygonBooleanEngine, SpatialElement, SpatialKind,
 };
 
 #[test]
@@ -92,4 +92,24 @@ fn test_cavalier_contours_arc_preserving_offset() {
         offsets[0].iter().any(|v| v.bulge.abs() > 0.01),
         "Arc bulge must be preserved after parallel offset"
     );
+}
+
+#[test]
+fn test_i_triangle_int64_copper_triangulation() {
+    let outer = vec![
+        [0_i64, 0],
+        [40_000_000, 0],
+        [40_000_000, 30_000_000],
+        [0, 30_000_000],
+    ];
+    let hole = vec![
+        [10_000_000_i64, 10_000_000],
+        [10_000_000, 20_000_000],
+        [20_000_000, 20_000_000],
+        [20_000_000, 10_000_000],
+    ];
+    let mesh = CopperTriangulator::triangulate_polygon_nm(&outer, &[hole])
+        .expect("Integer i64 triangulation must succeed");
+    assert!(mesh.triangle_count >= 8, "Expected >= 8 triangles around keepout hole, got {}", mesh.triangle_count);
+    assert_eq!(mesh.indices.len(), mesh.triangle_count * 3);
 }
