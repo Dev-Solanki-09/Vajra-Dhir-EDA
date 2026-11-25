@@ -21,12 +21,12 @@ export const THEME = {
     amber: '#F59E0B',          // Warning / human confirmation required
 
     layers: {
-      f_cu: '#E04040',         // Top copper (red)
-      b_cu: '#4080E0',         // Bottom copper (blue)
+      f_cu: '#E05D44',         // Unified Top copper (F.Cu)
+      b_cu: '#3B82F6',         // Unified Bottom copper (B.Cu)
       in1_cu: '#D0A020',       // Inner 1 plane (gold)
-      in2_cu: '#30A050',       // Inner 2 plane (green)
-      silkscreen: '#F0F0F0',   // Silkscreen (white)
-      courtyard: '#A020A0',    // Physical courtyard (purple)
+      in2_cu: '#10B981',       // Inner 2 plane (green)
+      silkscreen: '#F8FAFC',   // Silkscreen (white)
+      courtyard: '#A855F7',    // Physical courtyard (purple)
     },
   },
   typography: {
