@@ -51,3 +51,45 @@ def check_soldermask_dam_widths(
                 "description": f"Soldermask dam {gap_nm / 1000:.1f} µm is thinner than fab limit {min_dam_nm / 1000:.1f} µm (solder bridge risk)"
             })
     return violations
+
+
+def check_panel_and_gerber_dfm(
+    rail_width_nm: int = 5_000_000,
+    tooling_hole_edge_nm: int = 2_500_000,
+    copper_to_edge_nm: int = 500_000,
+) -> Dict[str, Any]:
+    """
+    Pure-MIT manufacturing pre-flight DFM checks (IPC-7525B / fab panel conventions).
+    Zero AGPL dependencies; pairs cleanly with Ring-2 kicad-cli DRC outputs.
+    """
+    violations = []
+    if rail_width_nm < 3_000_000:
+        violations.append({
+            "rule": "PANEL_RAIL_WIDTH_MIN",
+            "actual_nm": rail_width_nm,
+            "min_nm": 3_000_000,
+            "severity": "ERROR",
+            "description": "Breakaway conveyor rail thinner than 3.0 mm minimum",
+        })
+    if tooling_hole_edge_nm < 1_500_000:
+        violations.append({
+            "rule": "TOOLING_HOLE_EDGE_CLEARANCE",
+            "actual_nm": tooling_hole_edge_nm,
+            "min_nm": 1_500_000,
+            "severity": "ERROR",
+            "description": "NPTH tooling hole center closer than 1.5 mm to rail edge",
+        })
+    if copper_to_edge_nm < 300_000:
+        violations.append({
+            "rule": "COPPER_TO_BOARD_EDGE_MIN",
+            "actual_nm": copper_to_edge_nm,
+            "min_nm": 300_000,
+            "severity": "ERROR",
+            "description": "Copper feature closer than 0.30 mm to routed board edge / V-score",
+        })
+    return {
+        "engine": "vd-dfm-mit",
+        "passed": len(violations) == 0,
+        "violations": violations,
+    }
+

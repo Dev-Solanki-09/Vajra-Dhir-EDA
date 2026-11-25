@@ -150,4 +150,66 @@ impl PanelizerEngine {
             v_score_lines_count,
         }
     }
+
+    /// Exports a pure-MIT KiCad 10 S-expression (.kicad_pcb) panel layout from i64 nanometer geometry.
+    pub fn export_kicad10_panel_pcb(config: &PanelConfiguration, report: &PanelLayoutReport) -> String {
+        let nm_to_mm = |nm: Nm| -> f64 { nm as f64 / 1_000_000.0 };
+        let mut out = String::new();
+        out.push_str("(kicad_pcb (version 20240108) (generator \"vd-panelizer\")\n");
+        out.push_str(&format!(
+            "  (gr_rect (start 0.000000 0.000000) (end {:.6} {:.6}) (stroke (width 0.15) (type solid)) (fill none) (layer \"Edge.Cuts\"))\n",
+            nm_to_mm(report.total_width_nm),
+            nm_to_mm(report.total_height_nm)
+        ));
+
+        for r in 0..config.rows {
+            for c in 0..config.cols {
+                let bx = config.rail_width_nm + (c as Nm * (config.board_width_nm + config.spacing_x_nm));
+                let by = config.rail_width_nm + (r as Nm * (config.board_height_nm + config.spacing_y_nm));
+                out.push_str(&format!(
+                    "  (gr_rect (start {:.6} {:.6}) (end {:.6} {:.6}) (stroke (width 0.15) (type solid)) (fill none) (layer \"Edge.Cuts\"))\n",
+                    nm_to_mm(bx),
+                    nm_to_mm(by),
+                    nm_to_mm(bx + config.board_width_nm),
+                    nm_to_mm(by + config.board_height_nm)
+                ));
+            }
+        }
+
+        for th in &report.tooling_holes {
+            out.push_str(&format!(
+                "  (footprint \"MountingHole:MountingHole_3.2mm\" (layer \"F.Cu\") (at {:.6} {:.6}) (pad \"1\" np_thru_hole circle (at 0 0) (size {:.6} {:.6}) (drill {:.6}) (layers \"*.Cu\" \"*.Mask\")))\n",
+                nm_to_mm(th.x_nm),
+                nm_to_mm(th.y_nm),
+                nm_to_mm(th.diameter_nm),
+                nm_to_mm(th.diameter_nm),
+                nm_to_mm(th.diameter_nm)
+            ));
+        }
+
+        for fid in &report.fiducials {
+            out.push_str(&format!(
+                "  (footprint \"Fiducial:Fiducial_1mm_Mask2mm\" (layer \"F.Cu\") (at {:.6} {:.6}) (pad \"1\" smd circle (at 0 0) (size {:.6} {:.6}) (layers \"F.Cu\" \"F.Mask\") (solder_mask_margin {:.6})))\n",
+                nm_to_mm(fid.x_nm),
+                nm_to_mm(fid.y_nm),
+                nm_to_mm(fid.copper_diameter_nm),
+                nm_to_mm(fid.copper_diameter_nm),
+                nm_to_mm((fid.mask_clearance_nm - fid.copper_diameter_nm) / 2)
+            ));
+        }
+
+        for ph in &report.perforation_holes {
+            out.push_str(&format!(
+                "  (footprint \"Panelizer:MouseBite_0.5mm\" (layer \"F.Cu\") (at {:.6} {:.6}) (pad \"\" np_thru_hole circle (at 0 0) (size {:.6} {:.6}) (drill {:.6}) (layers \"*.Cu\" \"*.Mask\")))\n",
+                nm_to_mm(ph.x_nm),
+                nm_to_mm(ph.y_nm),
+                nm_to_mm(ph.diameter_nm),
+                nm_to_mm(ph.diameter_nm),
+                nm_to_mm(ph.diameter_nm)
+            ));
+        }
+
+        out.push_str(")\n");
+        out
+    }
 }

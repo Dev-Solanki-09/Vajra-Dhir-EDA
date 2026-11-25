@@ -1,5 +1,6 @@
-use vd_cad_transcoder::{
-    EchoSuppressionRing, KiCadSchTranscoder, SExpr,
+use vd_transcoder::{
+    EagleBoardParser, EchoSuppressionRing, GerberOpKind, GerberParser, GerberPlotter,
+    KiCadSchTranscoder, SExpr,
 };
 use vd_ir::model::HardwareEntity;
 
@@ -92,4 +93,52 @@ fn test_kicad_sch_golden_round_trip_ast_equivalence() {
         .join("\n");
     let ast2 = SExpr::parse(&serialized).expect("Re-parse after serialize failed");
     assert_eq!(ast1, ast2, "AST must round-trip identically after serialize()");
+}
+
+#[test]
+fn test_rs274x_golden_fixture_round_trip() {
+    let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let gbr_path = manifest_dir.join("../../tests/fixtures/rs274x/sample_pad_flash.gbr");
+    let raw = std::fs::read_to_string(&gbr_path).expect("sample_pad_flash.gbr fixture missing");
+    let doc1 = GerberParser::parse(&raw).expect("RS-274X parse failed");
+
+    assert_eq!(doc1.file_function.as_deref(), Some("Copper,L1,Top"));
+    assert_eq!(doc1.apertures.len(), 2);
+    assert_eq!(doc1.operations.iter().filter(|o| o.op == GerberOpKind::Draw).count(), 1);
+    assert_eq!(doc1.operations.iter().filter(|o| o.op == GerberOpKind::Move).count(), 1);
+    assert_eq!(doc1.operations.iter().filter(|o| o.op == GerberOpKind::Flash).count(), 2);
+
+    let reemitted = GerberPlotter::emit(&doc1);
+    let doc2 = GerberParser::parse(&reemitted).expect("Re-parse of emitted RS-274X failed");
+    assert_eq!(doc1, doc2, "RS-274X document must round-trip deterministically");
+}
+
+#[test]
+fn test_eagle_xml_import_nanometers() {
+    let xml = r#"
+        <eagle version="9.6.2">
+          <drawing>
+            <board>
+              <elements>
+                <element name="R1" package="R0603" value="10k" x="12.5" y="4.0" rot="R90"/>
+              </elements>
+              <signals>
+                <signal name="VIN">
+                  <wire x1="0.0" y1="0.0" x2="12.5" y2="4.0" width="0.25" layer="1"/>
+                </signal>
+              </signals>
+            </board>
+          </drawing>
+        </eagle>
+    "#;
+    let board = EagleBoardParser::parse(xml).expect("EAGLE XML parse failed");
+    assert_eq!(board.elements.len(), 1);
+    assert_eq!(board.elements[0].name, "R1");
+    assert_eq!(board.elements[0].x_nm, 12_500_000);
+    assert_eq!(board.elements[0].y_nm, 4_000_000);
+    assert_eq!(board.elements[0].rot_mdeg, 90_000);
+
+    assert_eq!(board.wires.len(), 1);
+    assert_eq!(board.wires[0].signal, "VIN");
+    assert_eq!(board.wires[0].width_nm, 250_000);
 }

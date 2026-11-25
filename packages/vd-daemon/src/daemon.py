@@ -9,8 +9,10 @@ import math
 import os
 import pathlib
 import re
+import shutil
 import socketserver
 import sqlite3
+import subprocess
 import sys
 import time
 import urllib.parse
@@ -44,6 +46,92 @@ def load_budget() -> dict:
             "trace_below_0_10mm_4mil": 22.0
         }
     }
+
+def invoke_kikit_ring2_subprocess(
+    rows: int = 2,
+    cols: int = 2,
+    board_w_mm: float = 60.0,
+    board_h_mm: float = 40.0,
+    spacing_mm: float = 2.0,
+    rail_mm: float = 5.0,
+    input_pcb: str = "",
+    output_pcb: str = "",
+    dry_run: bool = False,
+) -> dict:
+    """
+    Executes `kikit panelize` strictly via an isolated Ring-2 CLI subprocess (never imports
+    GPL pcbnew inside vd-daemon) with deterministic pure-MIT vd-panelizer math fallback.
+    """
+    kikit_bin = shutil.which("kikit")
+    cmd = [
+        kikit_bin or "kikit",
+        "panelize",
+        "--layout",
+        f"grid; rows: {rows}; cols: {cols}; space: {spacing_mm}mm",
+        "--tabs",
+        "mousebites",
+        "--railsleft",
+        f"{rail_mm}mm",
+        "--railsright",
+        f"{rail_mm}mm",
+        "--",
+        input_pcb or "input.kicad_pcb",
+        output_pcb or "panel.kicad_pcb",
+    ]
+    engine = "vd-panelizer-mit-fallback"
+    subprocess_ran = False
+    subprocess_rc = None
+    subprocess_err = None
+    if kikit_bin and not dry_run and input_pcb and os.path.isfile(input_pcb) and output_pcb:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        subprocess_rc = proc.returncode
+        if proc.returncode == 0:
+            engine = "kikit-ring2-subprocess"
+            subprocess_ran = True
+        else:
+            subprocess_err = (proc.stderr or "")[:240]
+
+    array_w_mm = round(cols * board_w_mm + max(cols - 1, 0) * spacing_mm, 1)
+    array_h_mm = round(rows * board_h_mm + max(rows - 1, 0) * spacing_mm, 1)
+    panel_w_mm = round(array_w_mm + 2.0 * rail_mm, 1)
+    panel_h_mm = round(array_h_mm + 2.0 * rail_mm, 1)
+    board_area = rows * cols * board_w_mm * board_h_mm
+    panel_area = panel_w_mm * panel_h_mm if panel_w_mm > 0 and panel_h_mm > 0 else 1.0
+    utilization_pct = round((board_area / panel_area) * 100.0, 1)
+
+    return {
+        "success": True,
+        "engine": engine,
+        "pcbnew_in_process": "pcbnew" in sys.modules,
+        "subprocess_executed": subprocess_ran,
+        "subprocess_returncode": subprocess_rc,
+        "subprocess_stderr": subprocess_err,
+        "grid": {"rows": rows, "cols": cols},
+        "single_board_mm": {"width": board_w_mm, "height": board_h_mm},
+        "panel_dimensions_mm": {"width": panel_w_mm, "height": panel_h_mm},
+        "edge_rail_width_mm": rail_mm,
+        "utilization_pct": utilization_pct,
+        "mouse_bites": {
+            "count": (rows * (cols + 1) + cols * (rows + 1)),
+            "drill_diameter_mm": 0.8,
+            "hole_pitch_mm": 0.4,
+            "holes_per_tab": 5,
+        },
+        "fiducials": [
+            {"x_mm": 2.5, "y_mm": 2.5, "pad_dia_mm": 1.0, "mask_dia_mm": 2.0},
+            {"x_mm": panel_w_mm - 2.5, "y_mm": 2.5, "pad_dia_mm": 1.0, "mask_dia_mm": 2.0},
+            {"x_mm": 2.5, "y_mm": panel_h_mm - 2.5, "pad_dia_mm": 1.0, "mask_dia_mm": 2.0},
+            {"x_mm": panel_w_mm - 2.5, "y_mm": panel_h_mm - 2.5, "pad_dia_mm": 1.0, "mask_dia_mm": 2.0},
+        ],
+        "tooling_holes": [
+            {"x_mm": 5.0, "y_mm": 2.5, "drill_dia_mm": 3.0, "plated": False},
+            {"x_mm": panel_w_mm - 5.0, "y_mm": 2.5, "drill_dia_mm": 3.0, "plated": False},
+            {"x_mm": 5.0, "y_mm": panel_h_mm - 2.5, "drill_dia_mm": 3.0, "plated": False},
+            {"x_mm": panel_w_mm - 5.0, "y_mm": panel_h_mm - 2.5, "drill_dia_mm": 3.0, "plated": False},
+        ],
+        "kikit_cli_preview": " ".join(cmd),
+    }
+
 
 def init_db(db_path: pathlib.Path) -> sqlite3.Connection:
     DB_DIR.mkdir(parents=True, exist_ok=True)
@@ -962,16 +1050,19 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(res).encode("utf-8"))
 
         elif path == "/stitch/kikit/panelize":
-            # KiKit MIT Panelization Engine
+            # Ring-2 KiKit subprocess boundary with pure-MIT vd-panelizer fallback
+            panel = invoke_kikit_ring2_subprocess(rows=2, cols=2, board_w_mm=59.0, board_h_mm=39.0, spacing_mm=2.0, rail_mm=5.0, dry_run=True)
             res = {
                 "success": True,
-                "panel_width_mm": 130.0,
-                "panel_height_mm": 90.0,
-                "grid": {"rows": 2, "cols": 2},
-                "mouse_bites_count": 8,
+                "engine": panel["engine"],
+                "pcbnew_in_process": panel["pcbnew_in_process"],
+                "panel_width_mm": panel["panel_dimensions_mm"]["width"],
+                "panel_height_mm": panel["panel_dimensions_mm"]["height"],
+                "grid": panel["grid"],
+                "mouse_bites_count": 2 * panel["grid"]["rows"] * panel["grid"]["cols"],
                 "tooling_holes": 3,
-                "fiducials": 4,
-                "edge_rails_width_mm": 5.0
+                "fiducials": len(panel["fiducials"]),
+                "edge_rails_width_mm": panel["edge_rail_width_mm"],
             }
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -1251,47 +1342,20 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             rows = int(req.get("rows", 2))
             cols = int(req.get("cols", 2))
             rail_mm = float(req.get("rail_mm", 5.0))
-
-            board_w_mm = 60.0
-            board_h_mm = 40.0
-            spacing_mm = 2.0
-
-            array_w_mm = round(cols * board_w_mm + (cols - 1) * spacing_mm, 1)
-            array_h_mm = round(rows * board_h_mm + (rows - 1) * spacing_mm, 1)
-            panel_w_mm = round(array_w_mm + 2.0 * rail_mm, 1)
-            panel_h_mm = round(array_h_mm + 2.0 * rail_mm, 1)
-
-            board_area = rows * cols * board_w_mm * board_h_mm
-            panel_area = panel_w_mm * panel_h_mm
-            utilization_pct = round((board_area / panel_area) * 100.0, 1)
-
-            res = {
-                "success": True,
-                "grid": {"rows": rows, "cols": cols},
-                "single_board_mm": {"width": board_w_mm, "height": board_h_mm},
-                "panel_dimensions_mm": {"width": panel_w_mm, "height": panel_h_mm},
-                "edge_rail_width_mm": rail_mm,
-                "utilization_pct": utilization_pct,
-                "mouse_bites": {
-                    "count": (rows * (cols + 1) + cols * (rows + 1)),
-                    "drill_diameter_mm": 0.8,
-                    "hole_pitch_mm": 0.4,
-                    "holes_per_tab": 5
-                },
-                "fiducials": [
-                    {"x_mm": 2.5, "y_mm": 2.5, "pad_dia_mm": 1.0, "mask_dia_mm": 2.0},
-                    {"x_mm": panel_w_mm - 2.5, "y_mm": 2.5, "pad_dia_mm": 1.0, "mask_dia_mm": 2.0},
-                    {"x_mm": 2.5, "y_mm": panel_h_mm - 2.5, "pad_dia_mm": 1.0, "mask_dia_mm": 2.0},
-                    {"x_mm": panel_w_mm - 2.5, "y_mm": panel_h_mm - 2.5, "pad_dia_mm": 1.0, "mask_dia_mm": 2.0}
-                ],
-                "tooling_holes": [
-                    {"x_mm": 5.0, "y_mm": 2.5, "drill_dia_mm": 3.0, "plated": False},
-                    {"x_mm": panel_w_mm - 5.0, "y_mm": 2.5, "drill_dia_mm": 3.0, "plated": False},
-                    {"x_mm": 5.0, "y_mm": panel_h_mm - 2.5, "drill_dia_mm": 3.0, "plated": False},
-                    {"x_mm": panel_w_mm - 5.0, "y_mm": panel_h_mm - 2.5, "drill_dia_mm": 3.0, "plated": False}
-                ],
-                "kikit_cli_preview": f"kikit panelize --layout 'grid; rows: {rows}; cols: {cols}; space: {spacing_mm}mm' --tabs 'mousebites' --railsleft '{rail_mm}mm' --railsright '{rail_mm}mm' input.kicad_pcb panel.kicad_pcb"
-            }
+            board_w_mm = float(req.get("board_w_mm", 60.0))
+            board_h_mm = float(req.get("board_h_mm", 40.0))
+            spacing_mm = float(req.get("spacing_mm", 2.0))
+            res = invoke_kikit_ring2_subprocess(
+                rows=rows,
+                cols=cols,
+                board_w_mm=board_w_mm,
+                board_h_mm=board_h_mm,
+                spacing_mm=spacing_mm,
+                rail_mm=rail_mm,
+                input_pcb=str(req.get("input_pcb", "")),
+                output_pcb=str(req.get("output_pcb", "")),
+                dry_run=bool(req.get("dry_run", False)),
+            )
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self._send_cors()
