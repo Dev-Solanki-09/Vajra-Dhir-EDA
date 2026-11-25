@@ -221,6 +221,9 @@ const LazyArchitecturePlannerPanel = React.lazy(() =>
 const LazyComponentLibraryPanel = React.lazy(() =>
   import('./ComponentLibraryPanel').then((m) => ({ default: m.ComponentLibraryPanel }))
 );
+const LazyEeAuditPanel = React.lazy(() =>
+  import('./EeAuditPanel').then((m) => ({ default: m.EeAuditPanel }))
+);
 
 const DockViewport3DPanel: React.FC<IDockviewPanelProps> = () => (
   <PanelErrorBoundary panelTitle="Viewport 3D (STEP)">
@@ -280,6 +283,16 @@ const DockComponentLibraryPanel: React.FC<IDockviewPanelProps> = () => (
   </PanelErrorBoundary>
 );
 
+const DockEeAuditPanel: React.FC<IDockviewPanelProps> = () => (
+  <PanelErrorBoundary panelTitle="EE Audit (Z3/SymPy)">
+    <div style={{ padding: 8, height: '100%', backgroundColor: 'var(--vd-bg-canvas)', overflowY: 'auto' }}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading Senior EE Verification Brain...</div>}>
+        <LazyEeAuditPanel />
+      </Suspense>
+    </div>
+  </PanelErrorBoundary>
+);
+
 const DockPcb2DPanel: React.FC<IDockviewPanelProps> = () => {
   const ctx = React.useContext(ShellContext);
   return (
@@ -318,6 +331,7 @@ const DOCK_COMPONENTS = {
   terminal: DockTerminalPanel,
   architecture: DockArchitecturePlannerPanel,
   componentLibrary: DockComponentLibraryPanel,
+  eeAudit: DockEeAuditPanel,
   explorer: ExplorerPanel,
   inspector: InspectorPanel,
 };
@@ -505,6 +519,12 @@ export const WorkstationShell: React.FC = () => {
       id: 'architecture_panel',
       component: 'architecture',
       title: 'Architecture (xyflow)',
+      position: { referencePanel: center, direction: 'within' },
+    });
+    event.api.addPanel({
+      id: 'ee_audit_panel',
+      component: 'eeAudit',
+      title: 'EE Audit (Z3/SymPy)',
       position: { referencePanel: center, direction: 'within' },
     });
     center.api.setActive();

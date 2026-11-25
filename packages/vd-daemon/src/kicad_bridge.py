@@ -40,7 +40,7 @@ except ImportError:
 assert "pcbnew" not in sys.modules, "GPL_FIREWALL_VIOLATION: pcbnew must NEVER be imported in Ring 1"
 
 DEFAULT_SUPPRESSION_WINDOW_SEC = 5.0
-DEFAULT_CLI_TIMEOUT_SEC = 120.0
+DEFAULT_CLI_TIMEOUT_SEC = 240.0
 INSTALL_KICAD_CMD = "winget install KiCad.KiCad"
 
 

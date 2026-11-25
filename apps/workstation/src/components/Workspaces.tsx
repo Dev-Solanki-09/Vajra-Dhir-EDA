@@ -41,6 +41,9 @@ const UplotScope = React.lazy(() =>
 const VcdWaveformViewer = React.lazy(() =>
   import('./VcdWaveformViewer').then((m) => ({ default: m.VcdWaveformViewer }))
 );
+const EeAuditPanel = React.lazy(() =>
+  import('./EeAuditPanel').then((m) => ({ default: m.EeAuditPanel }))
+);
 
 export type WorkspaceViewState = 'loading' | 'empty' | 'error' | 'full';
 
@@ -604,6 +607,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
               strokeColor="#38BDF8"
             />
             <VcdWaveformViewer />
+            <EeAuditPanel />
           </Suspense>
         </div>
       )}

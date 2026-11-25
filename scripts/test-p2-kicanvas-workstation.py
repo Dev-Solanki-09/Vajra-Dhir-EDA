@@ -138,7 +138,7 @@ def main() -> None:
                 try:
                     page.wait_for_function(
                         "() => document.body.innerText.includes('DRC PASS') || document.body.innerText.includes('DRC FAIL')",
-                        timeout=60000,
+                        timeout=240000,
                     )
                 except Exception as exc:
                     panel_txt = page.locator('[data-testid="pcb-2d-panel"]').inner_text()

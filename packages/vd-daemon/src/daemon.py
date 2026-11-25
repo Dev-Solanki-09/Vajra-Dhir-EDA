@@ -27,6 +27,7 @@ import uuid
 try:
     from .agent_routes import handle_agent_post
     from .atopile_engine import handle_ato_get, handle_ato_post
+    from .ee_audit_routes import handle_ee_get, handle_ee_post
     from .fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
     from .kg_routes import handle_kg_get, handle_kg_post
     from .kicad_bridge import ensure_external_id_map
@@ -47,6 +48,7 @@ except ImportError:
         sys.path.insert(0, _DAEMON_SRC_DIR)
     from agent_routes import handle_agent_post
     from atopile_engine import handle_ato_get, handle_ato_post
+    from ee_audit_routes import handle_ee_get, handle_ee_post
     from fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
     from kg_routes import handle_kg_get, handle_kg_post
     from kicad_bridge import ensure_external_id_map
@@ -1020,6 +1022,8 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                     return
                 if handle_kg_get(self, path, full_path=self.path):
                     return
+                if handle_ee_get(self, path, full_path=self.path, con=self.con):
+                    return
             if not path.startswith("/api/") and not path.startswith("/stitch/") and not path.startswith("/ws/"):
                 asset = resolve_studio_static_asset(path)
                 if asset["status"] == 200:
@@ -1841,6 +1845,9 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             return
 
         elif handle_kg_post(self, path, req, self.con):
+            return
+
+        elif handle_ee_post(self, path, req, self.con):
             return
 
         elif handle_x1_post(self, path, req):
