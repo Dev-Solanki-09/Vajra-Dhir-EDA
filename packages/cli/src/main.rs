@@ -243,6 +243,16 @@ fn main() {
             }
         }
 
+        "step" => {
+            println!("[*] vd step: STEP AP242 MCAD Geometry Bridge");
+            println!("[INFO] Isolated LGPL-2.1-with-OCCT-exception runtime lives in packages/webgpu-cad-engine/src/stepWorker.js (Web Worker boundary; never linked into Ring-1 Rust crates).");
+            let kicad_cli = std::process::Command::new("kicad-cli").arg("--version").output().ok().filter(|o| o.status.success());
+            match kicad_cli {
+                Some(out) => println!("[PASS] Ring-2 kicad-cli available for PCB export-step: {}", String::from_utf8_lossy(&out.stdout).trim()),
+                None => println!("[INFO] Ring-2 kicad-cli not present on PATH; workstation stepWorker handles browser-side STEP AP242 decoding."),
+            }
+        }
+
         "emc" => {
             if args.len() >= 4 && args[2] == "scan" {
                 let freq: f64 = args[3].parse().unwrap_or(40.0);

@@ -168,4 +168,193 @@ impl WireHarnessCompiler {
             bom_lines,
         }
     }
+
+    /// Clean-room MIT parser for WireViz-schema YAML harness specs (connectors/cables/connections).
+    pub fn parse_yaml_and_compile(harness_name: &str, yaml_text: &str) -> HarnessAssemblyReport {
+        #[derive(Default)]
+        struct TempCable {
+            gauge: Option<AwgGauge>,
+            length_m: f64,
+            colors: Vec<Iec60757Color>,
+        }
+        let mut section = "";
+        let mut cur_id = String::new();
+        let mut conn_pins: std::collections::BTreeMap<String, (String, usize)> = std::collections::BTreeMap::new();
+        let mut cables: std::collections::BTreeMap<String, TempCable> = std::collections::BTreeMap::new();
+        let mut conn_order: Vec<String> = Vec::new();
+        let mut wires_out: Vec<HarnessWire> = Vec::new();
+        let mut pending_from: Option<String> = None;
+        let mut pending_cable: Option<String> = None;
+
+        let parse_awg = |raw: &str| -> AwgGauge {
+            if raw.contains("18") { AwgGauge::Awg18 }
+            else if raw.contains("20") { AwgGauge::Awg20 }
+            else if raw.contains("22") { AwgGauge::Awg22 }
+            else if raw.contains("26") { AwgGauge::Awg26 }
+            else if raw.contains("28") { AwgGauge::Awg28 }
+            else if raw.contains("30") { AwgGauge::Awg30 }
+            else { AwgGauge::Awg24 }
+        };
+        let parse_color = |code: &str| -> Iec60757Color {
+            match code.trim() {
+                "BK" => Iec60757Color::Black,
+                "BN" => Iec60757Color::Brown,
+                "RD" => Iec60757Color::Red,
+                "OG" => Iec60757Color::Orange,
+                "YL" | "YE" => Iec60757Color::Yellow,
+                "GN" => Iec60757Color::Green,
+                "BU" => Iec60757Color::Blue,
+                "VT" => Iec60757Color::Violet,
+                "GY" => Iec60757Color::Grey,
+                _ => Iec60757Color::White,
+            }
+        };
+
+        for raw in yaml_text.lines() {
+            let trimmed = raw.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                continue;
+            }
+            let indent = raw.len() - raw.trim_start().len();
+            if indent == 0 && trimmed.ends_with(':') {
+                section = match trimmed.trim_end_matches(':') {
+                    "connectors" => "connectors",
+                    "cables" => "cables",
+                    "connections" => "connections",
+                    _ => "",
+                };
+                cur_id.clear();
+                continue;
+            }
+            match section {
+                "connectors" => {
+                    if indent == 2 && trimmed.ends_with(':') {
+                        cur_id = trimmed.trim_end_matches(':').to_string();
+                        conn_order.push(cur_id.clone());
+                        conn_pins.entry(cur_id.clone()).or_insert_with(|| (String::from("GENERIC"), 0));
+                    } else if let Some((k, v)) = trimmed.split_once(':') {
+                        if let Some(entry) = conn_pins.get_mut(&cur_id) {
+                            let val = v.trim();
+                            match k.trim() {
+                                "type" => entry.0 = val.to_string(),
+                                "pins" => {
+                                    let count = val.trim_matches(&['[', ']'][..]).split(',').filter(|s| !s.trim().is_empty()).count();
+                                    entry.1 = count;
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                "cables" => {
+                    if indent == 2 && trimmed.ends_with(':') {
+                        cur_id = trimmed.trim_end_matches(':').to_string();
+                        cables.entry(cur_id.clone()).or_default();
+                    } else if let Some((k, v)) = trimmed.split_once(':') {
+                        if let Some(cab) = cables.get_mut(&cur_id) {
+                            let val = v.trim();
+                            match k.trim() {
+                                "gauge" => cab.gauge = Some(parse_awg(val)),
+                                "length" => cab.length_m = val.parse::<f64>().unwrap_or(0.25),
+                                "colors" => {
+                                    cab.colors = val.trim_matches(&['[', ']'][..]).split(',').map(parse_color).collect();
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                "connections" => {
+                    if trimmed.starts_with("- ") {
+                        let item = trimmed.trim_start_matches("- ").trim();
+                        if let Some((node, _pins)) = item.split_once(':') {
+                            let node_name = node.trim().to_string();
+                            if cables.contains_key(&node_name) {
+                                pending_cable = Some(node_name);
+                            } else if pending_from.is_none() {
+                                pending_from = Some(node_name);
+                            } else if let (Some(from_c), Some(cab_name)) = (pending_from.take(), pending_cable.take()) {
+                                if let Some(cab) = cables.get(&cab_name) {
+                                    let pin_cnt = conn_pins.get(&from_c).map(|v| v.1).unwrap_or(1).max(cab.colors.len());
+                                    let len_mm = (cab.length_m * 1000.0).max(1.0);
+                                    let gauge = cab.gauge.unwrap_or(AwgGauge::Awg24);
+                                    for p in 1..=pin_cnt {
+                                        let color = cab.colors.get(p - 1).copied().unwrap_or(Iec60757Color::White);
+                                        wires_out.push(HarnessWire {
+                                            signal_name: format!("{}_{}", cab_name, p),
+                                            from_connector: from_c.clone(),
+                                            from_pin: p,
+                                            to_connector: node_name.clone(),
+                                            to_pin: p,
+                                            gauge,
+                                            color,
+                                            length_mm: len_mm,
+                                            rated_current_a: 1.0,
+                                            is_twisted_pair: false,
+                                            pair_partner_signal: None,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let connectors: Vec<HarnessConnector> = conn_order
+            .into_iter()
+            .filter_map(|id| {
+                conn_pins.get(&id).map(|(mpn, pc)| HarnessConnector {
+                    designator: id,
+                    mpn: mpn.clone(),
+                    pin_count: *pc,
+                })
+            })
+            .collect();
+
+        Self::compile(harness_name, &connectors, &wires_out)
+    }
+
+    /// Exports a pure-MIT clean-room SVG wiring diagram.
+    pub fn export_svg(report: &HarnessAssemblyReport) -> String {
+        let h = 100 + (report.wiring_table.len() * 28);
+        let mut svg = format!(
+            r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 {}" width="100%" style="background:#0B0E14;font-family:sans-serif;">"#,
+            h
+        );
+        svg.push_str(&format!(
+            r#"<text x="20" y="30" fill="#E6EDF7" font-size="14">Harness: {} ({} wires)</text>"#,
+            report.harness_name, report.total_wires_count
+        ));
+        for (i, w) in report.wiring_table.iter().enumerate() {
+            let y = 64 + (i * 28);
+            svg.push_str(&format!(
+                r#"<line x1="120" y1="{}" x2="540" y2="{}" stroke="#3B82F6" stroke-width="2"/><text x="20" y="{}" fill="#94A3B8" font-size="11">{}</text><text x="555" y="{}" fill="#E6EDF7" font-size="11">{} [{}] {:.0}mm</text>"#,
+                y, y, y + 4, w.from_endpoint, y + 4, w.to_endpoint, w.color_code, w.cut_length_mm
+            ));
+        }
+        svg.push_str("</svg>");
+        svg
+    }
+
+    /// Exports deterministic CSV cut-list for automated crimp/cut machinery.
+    pub fn export_cut_list_csv(report: &HarnessAssemblyReport) -> String {
+        let mut csv = String::from("index,signal,color,cut_length_mm,strip_length_mm,from,to,resistance_ohm\n");
+        for w in &report.wiring_table {
+            csv.push_str(&format!(
+                "{},{},{},{:.1},{:.1},{},{},{:.4}\n",
+                w.wire_index,
+                w.signal_name,
+                w.color_code,
+                w.cut_length_mm,
+                w.strip_length_mm,
+                w.from_endpoint,
+                w.to_endpoint,
+                w.calculated_resistance_ohms
+            ));
+        }
+        csv
+    }
 }

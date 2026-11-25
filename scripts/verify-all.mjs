@@ -530,6 +530,11 @@ step('[MFG/G5A] Rust Panelizer, RS-274X/EAGLE & Ring-2 KiKit Subprocess', () => 
   execSync('python scripts/test-g5a-manufacturing.py', { stdio: 'pipe' });
 });
 
+// 71. G5B Wire Harness YAML/SVG/CSV, Layer PCB Diff, i_triangle i64 & LGPL STEP Worker
+step('[CAD/G5B] Wire Harness, PCB Diff SVG, i_triangle i64 & STEP Worker', () => {
+  execSync('python scripts/test-g5b-engines.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');

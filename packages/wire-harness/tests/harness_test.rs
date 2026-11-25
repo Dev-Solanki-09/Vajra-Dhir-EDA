@@ -73,3 +73,22 @@ fn test_wire_harness_compiler() {
 
     assert_eq!(report.bom_lines.len(), 3);
 }
+
+#[test]
+fn test_wire_harness_yaml_fixture_svg_and_csv() {
+    let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let yml = std::fs::read_to_string(manifest_dir.join("../../tests/fixtures/wire-harness/spec_harness.yml"))
+        .expect("spec_harness.yml fixture missing");
+
+    let report = WireHarnessCompiler::parse_yaml_and_compile("SPEC_HARNESS", &yml);
+    assert_eq!(report.connectors_count, 2);
+    assert_eq!(report.total_wires_count, 4);
+    assert_eq!(report.wiring_table[0].color_code, "RD");
+
+    let svg = WireHarnessCompiler::export_svg(&report);
+    assert!(svg.contains("<svg") && svg.contains("SPEC_HARNESS"));
+
+    let csv = WireHarnessCompiler::export_cut_list_csv(&report);
+    assert!(csv.contains("index,signal,color,cut_length_mm"));
+    assert!(csv.contains("J1:1,J2:1"));
+}
