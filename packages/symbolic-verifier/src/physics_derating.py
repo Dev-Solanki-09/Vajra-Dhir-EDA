@@ -127,7 +127,7 @@ def calculate_ipc2152_trace_temp_rise(
     if area_sq_mils <= 0 or current_amps <= 0:
         return 0.0
 
-    lo, hi = 0.05, 500.0
+    lo, hi = 1e-4, 500.0
     while _ipc2152_interp_current(area_sq_mils, hi, is_external) < current_amps and hi < 10000.0:
         hi *= 2.0
     for _ in range(48):

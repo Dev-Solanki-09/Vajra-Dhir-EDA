@@ -1,4 +1,4 @@
-use cavalier_contours::polyline::{PlineCreation, PlineSource, Polyline};
+use cavalier_contours::polyline::{PlineSource, PlineSourceMut, Polyline};
 use thiserror::Error;
 
 pub type Nm = i64;

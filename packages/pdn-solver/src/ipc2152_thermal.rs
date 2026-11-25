@@ -120,7 +120,7 @@ impl Ipc2152ThermalEngine {
         let area_mil2 = w_mil * t_mil;
 
         let delta_temp_c = if area_mil2 > 0.0 && current_a > 0.0 {
-            let mut lo = 0.05_f64;
+            let mut lo = 1e-4_f64;
             let mut hi = 500.0_f64;
             while ipc2152_interp_current(area_mil2, hi, location) < current_a && hi < 10_000.0 {
                 hi *= 2.0;
