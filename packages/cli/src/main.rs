@@ -39,6 +39,7 @@ SUBCOMMANDS:
     worker list           List registered Ring 2 isolated OCI container worker packs
     worker run <pack>     Dispatch stateless job to isolated zero-egress worker
     asic c2p2b            Run Chip-to-Package-to-Board (C2P2B) pad-ring to ball-map bridge
+    step                  Inspect isolated LGPL STEP AP242 Web Worker and Ring-2 kicad-cli status
     emc scan <freq_mhz>   Harmonic collision scan against protected RF bands (Wi-Fi, GPS)
     emc esd               Audit connector-to-TVS distance in nanometers (<= 5.0 mm)
     cas put <file>        Store artifact in content-addressed store (cas://sha256/...)

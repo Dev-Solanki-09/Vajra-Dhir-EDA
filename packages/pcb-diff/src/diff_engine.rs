@@ -211,11 +211,14 @@ impl PcbDiffEngine {
             match by_id_b.get(id) {
                 Some(tb) => {
                     if ta.2 != tb.2 || ta.3 != tb.3 || ta.4 != tb.4 || ta.5 != tb.5 || ta.6 != tb.6 {
+                        let dx_nm = if tb.2 != ta.2 { tb.2 - ta.2 } else { tb.4 - ta.4 };
+                        let dy_nm = if tb.3 != ta.3 { tb.3 - ta.3 } else { tb.5 - ta.5 };
+                        *layer_added.entry(tb.1.clone()).or_insert(0) += 1;
                         changes.push(ComponentChange {
                             refdes: (*id).to_string(),
                             kind: ComponentChangeKind::Moved {
-                                dx_nm: tb.4 - ta.4,
-                                dy_nm: tb.5 - ta.5,
+                                dx_nm,
+                                dy_nm,
                                 drot_mdeg: 0,
                             },
                             details: format!("Trace modified on {}", tb.1),

@@ -1,6 +1,6 @@
 use vd_cad_geom::{
-    ArcVertexNm, CadSpatialIndex, DifferentialPairEngine, OffsetContourEngine,
-    PolygonBooleanEngine, SpatialElement, SpatialKind,
+    ArcVertexNm, CadSpatialIndex, CopperTriangulator, DifferentialPairEngine,
+    OffsetContourEngine, PolygonBooleanEngine, SpatialElement, SpatialKind,
 };
 
 #[test]

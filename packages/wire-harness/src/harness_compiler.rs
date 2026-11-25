@@ -265,7 +265,10 @@ impl WireHarnessCompiler {
                     }
                 }
                 "connections" => {
-                    if trimmed.starts_with("- ") {
+                    if trimmed == "-" {
+                        pending_from = None;
+                        pending_cable = None;
+                    } else if trimmed.starts_with("- ") {
                         let item = trimmed.trim_start_matches("- ").trim();
                         if let Some((node, _pins)) = item.split_once(':') {
                             let node_name = node.trim().to_string();
@@ -317,8 +320,14 @@ impl WireHarnessCompiler {
         Self::compile(harness_name, &connectors, &wires_out)
     }
 
-    /// Exports a pure-MIT clean-room SVG wiring diagram.
+    /// Exports a pure-MIT clean-room SVG wiring diagram with XML-escaped labels.
     pub fn export_svg(report: &HarnessAssemblyReport) -> String {
+        let esc = |s: &str| -> String {
+            s.replace('&', "&amp;")
+                .replace('<', "&lt;")
+                .replace('>', "&gt;")
+                .replace('"', "&quot;")
+        };
         let h = 100 + (report.wiring_table.len() * 28);
         let mut svg = format!(
             r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 {}" width="100%" style="background:#0B0E14;font-family:sans-serif;">"#,
@@ -326,13 +335,13 @@ impl WireHarnessCompiler {
         );
         svg.push_str(&format!(
             r#"<text x="20" y="30" fill="#E6EDF7" font-size="14">Harness: {} ({} wires)</text>"#,
-            report.harness_name, report.total_wires_count
+            esc(&report.harness_name), report.total_wires_count
         ));
         for (i, w) in report.wiring_table.iter().enumerate() {
             let y = 64 + (i * 28);
             svg.push_str(&format!(
                 r#"<line x1="120" y1="{}" x2="540" y2="{}" stroke="#3B82F6" stroke-width="2"/><text x="20" y="{}" fill="#94A3B8" font-size="11">{}</text><text x="555" y="{}" fill="#E6EDF7" font-size="11">{} [{}] {:.0}mm</text>"#,
-                y, y, y + 4, w.from_endpoint, y + 4, w.to_endpoint, w.color_code, w.cut_length_mm
+                y, y, y + 4, esc(&w.from_endpoint), y + 4, esc(&w.to_endpoint), esc(&w.color_code), w.cut_length_mm
             ));
         }
         svg.push_str("</svg>");
