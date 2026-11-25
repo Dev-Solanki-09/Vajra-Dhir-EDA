@@ -14,6 +14,9 @@ const SchematicElkCanvas = React.lazy(() =>
 const UplotScope = React.lazy(() =>
   import('./UplotScope').then((m) => ({ default: m.UplotScope }))
 );
+const VcdWaveformViewer = React.lazy(() =>
+  import('./VcdWaveformViewer').then((m) => ({ default: m.VcdWaveformViewer }))
+);
 
 export type WorkspaceViewState = 'loading' | 'empty' | 'error' | 'full';
 
@@ -506,6 +509,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
               yValues={simResult.bodeGainDb}
               strokeColor="#38BDF8"
             />
+            <VcdWaveformViewer />
           </Suspense>
         </div>
       )}

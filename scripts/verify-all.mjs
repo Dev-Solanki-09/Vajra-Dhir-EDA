@@ -585,6 +585,11 @@ step('[X2/COLLAB] Yjs CRDT Sync, Fail-Closed Peer Locks & hw.lock Digest', () =>
   execSync('node scripts/test-x2-collab-hwlock.mjs', { stdio: 'pipe' });
 });
 
+// 82. X3 Simulation & Field-Solver Bridges (Ring-2 Zero-Egress, Co-Sim & Pure-MIT VCD Viewer)
+step('[X3/SIM] Ring-2 Field Solvers, Renode Co-Sim & Pure-MIT VCD Track', () => {
+  execSync('python scripts/test-x3-sim-vcd.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
