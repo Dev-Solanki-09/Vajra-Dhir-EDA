@@ -1,0 +1,10 @@
+[package]
+name = "vd-silicon-pack"
+version.workspace = true
+edition.workspace = true
+license = "MIT OR Apache-2.0"
+description = "LibreLane Pack-2C Ring-2 contract and C2P2B chip-to-package-to-board pad bridge (i64 nm)"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }

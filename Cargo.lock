@@ -2463,6 +2463,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vd-silicon-pack"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "vd-sim-compat"
 version = "0.0.1"
 dependencies = [

@@ -8,6 +8,7 @@ pub mod echo_ring;
 pub mod kicad_sch;
 pub mod rs274x;
 pub mod sexpr;
+pub mod skidl_netlist;
 
 pub use eagle_xml::{EagleBoard, EagleBoardParser, EagleElement, EagleParseError, EagleWire};
 pub use echo_ring::{EchoSuppressionRing, DEFAULT_SUPPRESSION_WINDOW};
@@ -17,3 +18,6 @@ pub use rs274x::{
     GerberParser, GerberPlotter, GerberUnit,
 };
 pub use sexpr::{SExpr, SExprError};
+pub use skidl_netlist::{
+    SkidlComponent, SkidlImportedNetlist, SkidlNet, parse_skidl_sexpr_netlist,
+};

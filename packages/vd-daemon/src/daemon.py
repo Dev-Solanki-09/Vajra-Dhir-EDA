@@ -24,6 +24,7 @@ try:
     from .agent_routes import handle_agent_post
     from .x1_routes import handle_x1_post
     from .x3_routes import handle_x3_post
+    from .x4_routes import handle_x4_post
 except ImportError:
     _DAEMON_SRC_DIR = str(pathlib.Path(__file__).resolve().parent)
     if _DAEMON_SRC_DIR not in sys.path:
@@ -31,6 +32,7 @@ except ImportError:
     from agent_routes import handle_agent_post
     from x1_routes import handle_x1_post
     from x3_routes import handle_x3_post
+    from x4_routes import handle_x4_post
 
 PORT = 41900
 HOST = "127.0.0.1"
@@ -1608,6 +1610,9 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             return
 
         elif handle_x3_post(self, path, req):
+            return
+
+        elif handle_x4_post(self, path, req):
             return
 
         elif handle_agent_post(self, path, req, DB_DIR, write_autosave_shadow, maybe_checkpoint_wal):

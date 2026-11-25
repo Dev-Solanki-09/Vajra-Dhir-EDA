@@ -590,6 +590,11 @@ step('[X3/SIM] Ring-2 Field Solvers, Renode Co-Sim & Pure-MIT VCD Track', () => 
   execSync('python scripts/test-x3-sim-vcd.py', { stdio: 'pipe' });
 });
 
+// 83. X4 LibreLane Silicon/FPGA Pack, MCAD STEP 3D Clearance DRC, Gerber Preview & Supply Chain
+step('[X4/SILICON_MCAD] LibreLane Pack-2C, STEP 3D Clearance DRC, Gerber & Supply Chain', () => {
+  execSync('python scripts/test-x4-silicon-mcad.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');

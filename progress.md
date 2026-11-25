@@ -1,5 +1,12 @@
 # PROGRESS — Wave Log (orchestrator-maintained)
 
+## 2026-11-25 · X1–X4 COMPLETE (`v0.2.0` Release Packet PENDING Signoff)
+
+- **X1 ACCEPTED (`5441dbe`):** Pure-MIT clean-room Rust `vd-constraint-mgr` + `vd-bom-analytics` (`Cargo.lock`), `packages/dfm-dfa-safety/src/scorecard.py`, `packages/vd-daemon/src/x1_routes.py`, workstation Variant/BOM Risk/Constraint UI, and Gate 80 (`X1_CONSTRAINTS_BOM_SCORECARD_OK`).
+- **X2 ACCEPTED (`58128d4`):** Offline `yjs@13.6.33` MIT CRDT `@vajradhir/collab` (`3/3` tests) failing closed (`KERNEL_LOCK_VIOLATION`) across remote peers on `locked` entities, canonical `vd.hw.lock.v1` SHA-256 project digest (`packages/hw-ir/src/digest.rs`), lazy `hw.lock` readout in `WorkstationShell`, and Gate 81 (`X2_COLLAB_HWLOCK_OK`).
+- **X3 ACCEPTED (`eec2105`):** Pure-MIT IEEE-1364 VCD parser & 166k-sample min-max decimator (`vcdParser.ts` + lazy `VcdWaveformViewer.tsx` replacing EUPL `surfer`), `cosim_contract.rs` (`Renode`+`ngspice` lockstep), `x3_routes.py` enforcing Ring-2 HTTP `403 RING2_EGRESS_BLOCKED`, and Gate 82 (`X3_SIM_COSIM_VCD_MIT_OK`).
+- **X4 & v0.2.0 Packet:** Added pure-MIT `vd-silicon-pack` (LibreLane Pack-2C forbidding OpenLane + C2P2B balls), `cad-geom/src/mcad_clearance.rs` (`i64` nm 3D STEP/enclosure DRC), `cad-transcoder/src/skidl_netlist.rs`, pure-MIT RS-274X `gerberPreview.ts`, `x4_routes.py`, Gate 83 (`X4_SILICON_MCAD_SUPPLY_OK`), and authored `docs/RELEASE_PACKET_v0.2.0.md` (`82 PASS / 1 FAIL` on MSVC-absent Windows host, `0/3 Physically Fabricated`, `human_signoff: PENDING`).
+
 ## 2026-11-25 · P0–P5 ACCEPTED (Zero-Regression Optimization) · X1 READY
 
 - **P0 (`7fb0a61`) + P1–P5 (`VD-PERF-001`):**

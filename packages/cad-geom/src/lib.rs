@@ -11,6 +11,7 @@ pub mod diff_pair;
 pub mod drc_waiver_guard;
 pub mod interactive_router;
 pub mod length_tuning;
+pub mod mcad_clearance;
 pub mod offset;
 pub mod room_replication;
 pub mod spatial;
@@ -25,6 +26,7 @@ pub use interactive_router::{
     GeomKind, InteractiveSpatialKernel, LiveDrcHit, SnapResult, SpatialItem,
 };
 pub use length_tuning::{LengthTuningEngine, MeanderParams, MeanderStyle, TunedTraceResult};
+pub use mcad_clearance::{Box3dNm, Mcad3dClearanceEngine, Mcad3dClearanceReport, Mcad3dViolation};
 pub use offset::{ArcVertexNm, OffsetContourEngine, OffsetError};
 pub use room_replication::{
     ReplicatedComponent, ReplicatedRoomResult, ReplicatedTrace, RoomReplicationEngine,

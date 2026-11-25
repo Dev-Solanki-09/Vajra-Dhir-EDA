@@ -32,6 +32,7 @@ members = [
     "packages/compliance-hbom",
     "packages/constraint-mgr",
     "packages/bom-analytics",
+    "packages/silicon-pack",
     "packages/vd-daemon",
 ]
 

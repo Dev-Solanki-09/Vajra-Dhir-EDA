@@ -716,11 +716,37 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
 
       {workspace === 'mcad_3d' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
             <span className="vd-metric" style={{ fontSize: 12 }}>{stepStatus}</span>
-            <button type="button" className="vd-btn vd-btn-primary" onClick={runStepWorkerDecode}>
-              Verify STEP Worker Boundary
-            </button>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                type="button"
+                className="vd-btn"
+                onClick={() => {
+                  void fetch('/api/v1/mcad/clearance-drc', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      min_clearance_nm: 500000,
+                      pcb_boxes: [{ id: 'L1', min: [10000000, 10000000, 1600000], max: [14000000, 14000000, 3600000] }],
+                      enclosure_walls: [{ id: 'TOP_LID', min: [0, 0, 5000000], max: [50000000, 50000000, 6000000] }],
+                    }),
+                  })
+                    .then((r) => (r.ok ? r.json() : null))
+                    .then((res) => {
+                      if (res) {
+                        setStepStatus(`3D STEP Clearance DRC: ${res.passed ? 'PASS' : 'FAIL'} (${res.checked_pairs} pair checked)`);
+                      }
+                    })
+                    .catch(() => {});
+                }}
+              >
+                Run 3D Clearance DRC
+              </button>
+              <button type="button" className="vd-btn vd-btn-primary" onClick={runStepWorkerDecode}>
+                Verify STEP Worker Boundary
+              </button>
+            </div>
           </div>
           <svg viewBox="0 0 420 150" style={{ width: '100%', maxHeight: 160, backgroundColor: 'var(--vd-bg-panel)', borderRadius: 6, border: '1px solid var(--vd-border-subtle)' }} aria-label="4-layer FR4 and STEP extrusion stackup">
             <rect x="40" y="36" width="340" height="14" fill="var(--vd-layer-f-cu)" />
