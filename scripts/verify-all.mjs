@@ -545,6 +545,11 @@ step('[UI/G6A] Canonical apps/workstation, Design System & Dockview MIT Shell', 
   execSync('node scripts/test-g6a-workstation-shell.mjs', { stdio: 'pipe' });
 });
 
+// 74. G6B Engine Surface: WebGPU/WebGL2/Canvas2D + Geometry Worker + elkjs + CrossProbeBus <16ms
+step('[UI/G6B] Real WebGPU/Canvas2D Engine, elkjs & CrossProbeBus <16ms', () => {
+  execSync('node scripts/test-g6b-engines.mjs', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');

@@ -154,3 +154,17 @@ body,
   border-radius: 8px;
   padding: 16px;
 }
+
+.dockview-theme-dark {
+  --dv-background-color: var(--vd-bg-workbench);
+  --dv-group-view-background-color: var(--vd-bg-canvas);
+  --dv-tabs-and-actions-container-background-color: var(--vd-bg-panel);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--vd-bg-elevated);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--vd-bg-panel);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--vd-bg-panel);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--vd-bg-panel);
+  --dv-activegroup-visiblepanel-tab-color: var(--vd-text-primary);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--vd-text-secondary);
+  --dv-tab-divider-color: var(--vd-border-subtle);
+  --dv-separator-border: var(--vd-border-subtle);
+}

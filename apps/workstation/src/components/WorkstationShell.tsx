@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   DockviewReact,
   DockviewReadyEvent,
   IDockviewPanelProps,
 } from 'dockview-react';
 import 'dockview-react/dist/styles/dockview.css';
+import { globalCrossProbeBus } from '@vajradhir/crossprobe-bus';
 import {
   CLIENT_EDA_COMMANDS,
   EdaCommand,
@@ -13,6 +14,8 @@ import {
 } from '../commandBus';
 import { WorkbenchIcon } from './Icons';
 import { PanelErrorBoundary } from './PanelErrorBoundary';
+import { PcbEngineCanvas } from './PcbEngineCanvas';
+import { SchematicElkCanvas } from './SchematicElkCanvas';
 
 export type ToolMode = 'select' | 'route' | 'place' | 'inspect';
 
@@ -85,28 +88,15 @@ const ViewportPanel: React.FC<IDockviewPanelProps> = () => {
           </span>
         </div>
 
-        <div
-          style={{
-            flex: 1,
-            border: '1px solid var(--vd-border-subtle)',
-            borderRadius: 6,
-            backgroundColor: 'var(--vd-bg-workbench)',
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <svg viewBox="0 0 480 260" style={{ width: '92%', height: '86%' }} aria-label="Silicon Darkroom PCB preview">
-            <rect x="20" y="20" width="440" height="220" rx="6" fill="#0B0E14" stroke="#EAB308" strokeWidth="1.5" />
-            <path d="M90 120 L190 120 L230 160 L340 160" fill="none" stroke="#E05D44" strokeWidth="4" strokeLinecap="round" />
-            <circle cx="90" cy="120" r="14" fill="none" stroke="#FBBF24" strokeWidth="2.2" />
-            <rect x="74" y="104" width="32" height="32" rx="4" fill="#151A24" stroke="#FBBF24" strokeWidth="1.5" />
-            <text x="82" y="124" fill="#E6EDF7" fontSize="11" fontFamily="monospace">U2</text>
-            <rect x="330" y="144" width="36" height="32" rx="4" fill="#151A24" stroke="#8B5CF6" strokeWidth="1.5" strokeDasharray="4 2" />
-            <text x="340" y="164" fill="#E6EDF7" fontSize="11" fontFamily="monospace">L1</text>
-          </svg>
-        </div>
+        {ctx.activeWorkspace === 'schematic' ? (
+          <SchematicElkCanvas />
+        ) : (
+          <PcbEngineCanvas
+            layersVisible={ctx.layersVisible}
+            ratsnestVisible={ctx.ratsnestVisible}
+            lockRingsVisible={ctx.lockRingsVisible}
+          />
+        )}
       </div>
     </PanelErrorBoundary>
   );
@@ -114,6 +104,13 @@ const ViewportPanel: React.FC<IDockviewPanelProps> = () => {
 
 const ExplorerPanel: React.FC<IDockviewPanelProps> = () => {
   const ctx = React.useContext(ShellContext);
+  const components = [
+    { refdes: 'U1', detail: 'CH224K', locked: true, net: 'VBUS_12V' },
+    { refdes: 'U2', detail: 'TPS54302', locked: true, net: 'SW_NODE' },
+    { refdes: 'L1', detail: '4.7uH', locked: false, net: 'SW_NODE' },
+    { refdes: 'C1', detail: '22uF X7R', locked: false, net: '+3V3_OUT' },
+  ];
+
   return (
     <PanelErrorBoundary panelTitle="Explorer">
       <div style={{ padding: 12, height: '100%', backgroundColor: 'var(--vd-bg-panel)', fontSize: 13 }}>
@@ -127,18 +124,29 @@ const ExplorerPanel: React.FC<IDockviewPanelProps> = () => {
             </tr>
           </thead>
           <tbody className="vd-metric">
-            <tr>
-              <td style={{ padding: '4px 0' }}>U2 (TPS54302)</td>
-              <td style={{ color: 'var(--vd-human-lock)' }}>Locked</td>
-            </tr>
-            <tr>
-              <td style={{ padding: '4px 0' }}>L1 (4.7uH)</td>
-              <td style={{ color: 'var(--vd-pass)' }}>Unlocked</td>
-            </tr>
-            <tr>
-              <td style={{ padding: '4px 0' }}>J1 (USB-C PD)</td>
-              <td style={{ color: 'var(--vd-human-lock)' }}>Locked</td>
-            </tr>
+            {components.map((item) => {
+              const selected = ctx.selectedRefdes === item.refdes;
+              return (
+                <tr
+                  key={item.refdes}
+                  style={{
+                    backgroundColor: selected ? 'var(--vd-bg-elevated)' : 'transparent',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => {
+                    globalCrossProbeBus.select([item.refdes], 'tree');
+                    globalCrossProbeBus.highlightNet(item.net, 'tree');
+                  }}
+                >
+                  <td style={{ padding: '4px 4px' }}>
+                    {item.refdes} ({item.detail})
+                  </td>
+                  <td style={{ color: item.locked ? 'var(--vd-human-lock)' : 'var(--vd-pass)' }}>
+                    {item.locked ? 'Locked' : 'Unlocked'}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -148,12 +156,21 @@ const ExplorerPanel: React.FC<IDockviewPanelProps> = () => {
 
 const InspectorPanel: React.FC<IDockviewPanelProps> = () => {
   const ctx = React.useContext(ShellContext);
+  const probe = useSyncExternalStore(
+    globalCrossProbeBus.subscribeSnapshot,
+    globalCrossProbeBus.getSnapshot
+  );
+
   return (
     <PanelErrorBoundary panelTitle="Inspector">
       <div style={{ padding: 12, height: '100%', backgroundColor: 'var(--vd-bg-panel)', fontSize: 13 }}>
         <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Inspector & lock guards</p>
-        <p style={{ margin: '0 0 10px', color: 'var(--vd-text-secondary)' }}>
+        <p style={{ margin: '0 0 8px', color: 'var(--vd-text-secondary)' }}>
           Mode: {ctx.toolMode} | Locked entities: <span className="vd-metric">{ctx.lockedCount}</span>
+        </p>
+        <p className="vd-metric" style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--vd-border-active)' }}>
+          Probe: {probe.selection.entityIds.join(', ') || ctx.selectedRefdes} · Net:{' '}
+          {probe.activeHighlight.netId ?? 'none'} ({probe.lastLatencyMs.toFixed(2)} ms)
         </p>
         <div style={{ marginTop: 12 }}>
           <p style={{ margin: '0 0 6px', fontWeight: 600 }}>Thought stream</p>
@@ -184,7 +201,7 @@ export const WorkstationShell: React.FC = () => {
   const [lockRingsVisible, setLockRingsVisible] = useState(true);
   const [projectName, setProjectName] = useState('board-1-buck-pd');
   const [dirty, setDirty] = useState(false);
-  const [autosaveAvailable, setAutosaveAvailable] = useState(true);
+  const [autosaveAvailable, setAutosaveAvailable] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
@@ -192,6 +209,29 @@ export const WorkstationShell: React.FC = () => {
   const [fps, setFps] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState('Loopback 127.0.0.1:41900 ready');
   const frameCountRef = useRef(0);
+
+  const probeSnapshot = useSyncExternalStore(
+    globalCrossProbeBus.subscribeSnapshot,
+    globalCrossProbeBus.getSnapshot
+  );
+
+  useEffect(() => {
+    globalCrossProbeBus.select(['U2'], 'tree');
+    let cancelled = false;
+    fetch('/api/v1/project')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data && data.autosave_present) {
+          setAutosaveAvailable(true);
+        }
+      })
+      .catch(() => {
+        /* Daemon offline or unit preview */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let rafId = 0;
@@ -212,6 +252,12 @@ export const WorkstationShell: React.FC = () => {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowTemplates(false);
+        setShowShortcuts(false);
+        setShowPalette(false);
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         setShowPalette((prev) => !prev);
@@ -279,7 +325,7 @@ export const WorkstationShell: React.FC = () => {
     lockRingsVisible,
     projectName,
     lockedCount: 2,
-    selectedRefdes: 'U2',
+    selectedRefdes: probeSnapshot.selection.entityIds[0] ?? 'U2',
     thoughtLog: [
       `Active workspace: ${activeWorkspace}`,
       'SQLite HW-IR WAL & _tx_actor_ctx lock triggers armed',
@@ -304,19 +350,35 @@ export const WorkstationShell: React.FC = () => {
               <button
                 key={mode}
                 type="button"
+                aria-pressed={toolMode === mode}
                 className={`vd-btn ${toolMode === mode ? 'vd-btn-primary' : ''}`}
                 onClick={() => setToolMode(mode)}
               >
                 {mode[0].toUpperCase() + mode.slice(1)}
               </button>
             ))}
-            <button type="button" className="vd-btn" onClick={() => setLayersVisible((v) => !v)}>
+            <button
+              type="button"
+              aria-pressed={layersVisible}
+              className="vd-btn"
+              onClick={() => setLayersVisible((v) => !v)}
+            >
               {layersVisible ? 'Hide layers' : 'Show layers'}
             </button>
-            <button type="button" className="vd-btn" onClick={() => setRatsnestVisible((v) => !v)}>
+            <button
+              type="button"
+              aria-pressed={ratsnestVisible}
+              className="vd-btn"
+              onClick={() => setRatsnestVisible((v) => !v)}
+            >
               {ratsnestVisible ? 'Ratsnest on' : 'Ratsnest off'}
             </button>
-            <button type="button" className="vd-btn vd-btn-lock" onClick={() => setLockRingsVisible((v) => !v)}>
+            <button
+              type="button"
+              aria-pressed={lockRingsVisible}
+              className="vd-btn vd-btn-lock"
+              onClick={() => setLockRingsVisible((v) => !v)}
+            >
               {lockRingsVisible ? 'Locks visible' : 'Locks hidden'}
             </button>
             <button type="button" className="vd-btn" onClick={() => setShowTemplates(true)}>
@@ -339,6 +401,7 @@ export const WorkstationShell: React.FC = () => {
                 type="button"
                 className="vd-activity-btn"
                 data-active={activeWorkspace === tab.id}
+                aria-current={activeWorkspace === tab.id ? 'page' : undefined}
                 title={tab.title}
                 aria-label={tab.title}
                 onClick={() => setActiveWorkspace(tab.id)}
@@ -396,12 +459,13 @@ export const WorkstationShell: React.FC = () => {
           <div style={{ display: 'flex', gap: 14 }} className="vd-metric">
             <span style={{ color: 'var(--vd-dlp-airgap)' }}>NDA_AIRGAPPED</span>
             <span style={{ color: 'var(--vd-human-lock)' }}>Human locks active</span>
+            <span>CrossProbe: {probeSnapshot.lastLatencyMs.toFixed(2)} ms</span>
             <span>Measured FPS: {fps}</span>
           </div>
         </footer>
 
         {showTemplates && (
-          <div className="vd-modal-backdrop" role="dialog" aria-label="New project from template">
+          <div className="vd-modal-backdrop" role="dialog" aria-modal="true" aria-label="New project from template">
             <div className="vd-modal-panel">
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
                 <strong>New project from template</strong>
@@ -431,7 +495,7 @@ export const WorkstationShell: React.FC = () => {
         )}
 
         {showShortcuts && (
-          <div className="vd-modal-backdrop" role="dialog" aria-label="Keyboard shortcuts">
+          <div className="vd-modal-backdrop" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
             <div className="vd-modal-panel">
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
                 <strong>Keyboard shortcuts ({CLIENT_EDA_COMMANDS.length} commands)</strong>
@@ -454,11 +518,13 @@ export const WorkstationShell: React.FC = () => {
         )}
 
         {showPalette && (
-          <div className="vd-modal-backdrop" role="dialog" aria-label="Command palette">
+          <div className="vd-modal-backdrop" role="dialog" aria-modal="true" aria-label="Command palette">
             <div className="vd-modal-panel">
               <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                 <input
                   type="text"
+                  autoFocus
+                  aria-label="Filter hardware commands"
                   value={paletteQuery}
                   onChange={(e) => setPaletteQuery(e.target.value)}
                   placeholder="Type a hardware command..."

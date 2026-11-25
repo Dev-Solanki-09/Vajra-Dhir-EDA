@@ -37,11 +37,11 @@ export class WebGpuCadEngine {
     zoomFactor: 1.0,
     rotationMdeg: 0,
   };
-  private targetFps: number = 60;
+  private targetFps = 60;
   private activeNetHighlight: string | null = null;
   private activeComponentHighlight: string | null = null;
 
-  constructor(hasWebGpuSupport: boolean = false, hasWebGL2Support: boolean = true) {
+  constructor(hasWebGpuSupport = false, hasWebGL2Support = true) {
     if (hasWebGpuSupport) {
       this.backend = "webgpu";
       this.targetFps = 120;
@@ -77,7 +77,12 @@ export class WebGpuCadEngine {
     }
   }
 
-  public handleCrossProbeEvent(event: { type: string; payload: any }): void {
+  public setRotationMdeg(mdeg: number): void {
+    const normalized = ((Math.round(mdeg) % 360_000) + 360_000) % 360_000;
+    this.viewport.rotationMdeg = normalized;
+  }
+
+  public handleCrossProbeEvent(event: { type: string; payload: { netId?: string; componentId?: string } }): void {
     switch (event.type) {
       case "HighlightNet":
         this.activeNetHighlight = event.payload.netId || null;
@@ -92,21 +97,36 @@ export class WebGpuCadEngine {
     }
   }
 
-  public getActiveHighlights() {
+  public getActiveHighlights(): { netId: string | null; componentId: string | null } {
     return {
       netId: this.activeNetHighlight,
       componentId: this.activeComponentHighlight,
     };
   }
 
-  public transformCoordinatesNmToPixels(xNm: bigint, yNm: bigint, screenWidthPx: number, screenHeightPx: number): [number, number] {
-    // 1 mm = 1,000,000 nm. Center is at (screenWidth/2, screenHeight/2)
-    const nmPerPx = 100000.0 / this.viewport.zoomFactor; // Base scale: 100 um per pixel at zoom 1.0
+  public transformCoordinatesNmToPixels(
+    xNm: bigint,
+    yNm: bigint,
+    screenWidthPx: number,
+    screenHeightPx: number
+  ): [number, number] {
+    const nmPerPx = 100000.0 / this.viewport.zoomFactor;
     const relX = Number(xNm - this.viewport.panXNm) / nmPerPx;
     const relY = Number(yNm - this.viewport.panYNm) / nmPerPx;
-
     const screenX = screenWidthPx / 2 + relX;
-    const screenY = screenHeightPx / 2 - relY; // Y inverted for standard canvas
+    const screenY = screenHeightPx / 2 - relY;
     return [screenX, screenY];
+  }
+
+  public screenPixelsToNm(
+    screenX: number,
+    screenY: number,
+    screenWidthPx: number,
+    screenHeightPx: number
+  ): [bigint, bigint] {
+    const nmPerPx = 100000.0 / this.viewport.zoomFactor;
+    const relXNm = BigInt(Math.round((screenX - screenWidthPx / 2) * nmPerPx));
+    const relYNm = BigInt(Math.round((screenHeightPx / 2 - screenY) * nmPerPx));
+    return [this.viewport.panXNm + relXNm, this.viewport.panYNm + relYNm];
   }
 }
