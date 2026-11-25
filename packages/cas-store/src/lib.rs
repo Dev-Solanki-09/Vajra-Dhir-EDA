@@ -102,7 +102,9 @@ impl CasStore {
         }
         if !zst_path.exists() {
             let compressed = zstd::encode_all(Cursor::new(data), zstd::DEFAULT_COMPRESSION_LEVEL)?;
-            fs::write(&zst_path, &compressed)?;
+            let tmp_path = zst_path.with_extension("zst.tmp");
+            fs::write(&tmp_path, &compressed)?;
+            fs::rename(&tmp_path, &zst_path)?;
         }
         Ok(format!("cas+zst://sha256/{}", digest))
     }

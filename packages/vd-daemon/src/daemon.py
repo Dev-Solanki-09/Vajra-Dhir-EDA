@@ -236,8 +236,14 @@ STUDIO_CSP = (
 
 
 def resolve_studio_static_asset(req_path: str) -> dict:
-    """Serves compiled apps/workstation or apps/prototype-gui static assets with strict CSP."""
-    rel = urllib.parse.unquote(req_path or "/").split("?", 1)[0].lstrip("/")
+    """Serves compiled apps/workstation or apps/prototype-gui static assets with strict CSP & traversal guard."""
+    decoded = urllib.parse.unquote(req_path or "/").split("?", 1)[0]
+    if "\\" in decoded or "\x00" in decoded or ":" in decoded:
+        return {"status": 404, "content_type": "text/plain", "csp": STUDIO_CSP, "body": b"Not Found"}
+    parts = [p for p in decoded.split("/") if p]
+    if ".." in parts or "." in parts:
+        return {"status": 404, "content_type": "text/plain", "csp": STUDIO_CSP, "body": b"Not Found"}
+    rel = "/".join(parts)
     if not rel or rel == "index.html":
         rel = "index.html"
 
@@ -249,7 +255,7 @@ def resolve_studio_static_asset(req_path: str) -> dict:
         if root.is_dir():
             root_resolved = root.resolve()
             target = (root_resolved / rel).resolve()
-            if str(target).startswith(str(root_resolved)) and target.is_file():
+            if target.is_relative_to(root_resolved) and target.is_file():
                 ctype, _ = mimetypes.guess_type(str(target))
                 return {
                     "status": 200,
@@ -1010,11 +1016,17 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                 lamport = cur.execute("SELECT rev_lamport, id FROM projects LIMIT 1").fetchone()
 
                 cur.execute("""
+                    DELETE FROM hardware_patches WHERE project_id = ? AND undone = 1
+                """, (lamport[1],))
+
+                cur.execute("""
                     INSERT INTO hardware_patches (patch_id, project_id, actor_kind, actor_id, lamport_ts, summary, forward_ops_json, inverse_ops_json, undone, applied_at_utc)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
                 """, (patch_id, lamport[1], actor_kind, actor_id, lamport[0], summary, json.dumps(ops), json.dumps(inv_ops), "2026-11-24T00:00:00Z"))
 
                 self.con.commit()
+                maybe_checkpoint_wal(self.con, lamport[0], idle=False)
+                write_autosave_shadow(str(DB_DIR / "board.vd.autosave.jsonl"), ops)
                 res = {
                     "applied": True,
                     "patch_id": patch_id,
@@ -1597,6 +1609,11 @@ def run_server(port: int = PORT):
         except KeyboardInterrupt:
             print("\nShutting down daemon cleanly...")
             httpd.shutdown()
+        finally:
+            try:
+                maybe_checkpoint_wal(con, 0, idle=True)
+            except Exception:
+                pass
 
 if __name__ == "__main__":
     _ensure_utf8_console()

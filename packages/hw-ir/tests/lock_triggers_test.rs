@@ -333,4 +333,19 @@ fn test_undo_restores_exact_sha256_fingerprint() {
     // 6. WAL checkpoint ladder (PASSIVE every 250 patches, TRUNCATE on idle)
     store.checkpoint_wal_ladder(250, false).expect("PASSIVE WAL checkpoint failed");
     store.checkpoint_wal_ladder(251, true).expect("TRUNCATE WAL checkpoint failed");
+
+    // 7. Fail-closed checked undo: non-human actor cannot undo against a human-locked component
+    store
+        .with_actor_transaction(Provenance::Human, false, |tx| {
+            tx.execute(
+                "UPDATE components SET locked = 1 WHERE id = ?1;",
+                rusqlite::params![comp_id],
+            )?;
+            Ok(())
+        })
+        .expect("Human lock failed");
+    let undo_err = store
+        .undo_last_patch_checked(&project_id, Provenance::Agent)
+        .expect_err("Agent checked undo MUST fail closed on locked component");
+    assert!(matches!(undo_err, HwIrError::LockViolation(_)));
 }

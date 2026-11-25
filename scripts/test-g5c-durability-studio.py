@@ -64,6 +64,16 @@ def test_daemon_autosave_wal_and_static_route() -> None:
     _require("text/html" in asset["content_type"], "GET / must return text/html")
     _require("default-src 'self'" in asset["csp"], "Static route must enforce strict CSP")
 
+    # Path traversal & sibling-prefix bypass negative checks -> MUST return 404
+    for bad_path in (
+        "/../dist-secrets/secret.txt",
+        "/..\\..\\Windows\\win.ini",
+        "/%2e%2e/Cargo.toml",
+        "/..%5cCargo.toml",
+    ):
+        trav = mod.resolve_studio_static_asset(bad_path)
+        _require(trav["status"] == 404, f"Path traversal {bad_path} was NOT blocked: {trav}")
+
 
 def test_rust_durability_and_studio_cli() -> None:
     with open("packages/cas-store/src/lib.rs", "r", encoding="utf-8") as f:

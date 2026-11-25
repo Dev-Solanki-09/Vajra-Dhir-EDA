@@ -159,6 +159,11 @@ impl HwIrStore {
             let inv_json = serde_json::to_string(inverse_to_store)?;
 
             tx.execute(
+                "DELETE FROM hardware_patches WHERE project_id = ?1 AND undone = 1;",
+                params![project_id],
+            )?;
+
+            tx.execute(
                 "INSERT INTO hardware_patches (
                     patch_id, project_id, actor_kind, actor_id,
                     lamport_ts, forward_ops_json, inverse_ops_json,
