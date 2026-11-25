@@ -1,0 +1,10 @@
+[package]
+name = "vd-bom-analytics"
+version.workspace = true
+edition.workspace = true
+license = "MIT OR Apache-2.0"
+description = "Clean-room MIT Rust BOM analytics, assembly variants, feeder fee & lifecycle risk scorer"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }

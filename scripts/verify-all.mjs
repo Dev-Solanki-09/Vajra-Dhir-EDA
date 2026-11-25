@@ -575,6 +575,11 @@ step('[PERF/P0] Sequential Perf Baselines & CrossProbe <16ms Budget', () => {
   execSync('python scripts/test-p0-perf-budgets.py', { stdio: 'pipe' });
 });
 
+// 80. X1 Constraint Manager, Assembly Variants, BOM Analytics & DFM/DFA/PI Scorecard
+step('[X1/CONSTRAINTS] Netclass Rules, Assembly Variants, BOM Risk & DFM Scorecard', () => {
+  execSync('python scripts/test-x1-constraints-bom.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');

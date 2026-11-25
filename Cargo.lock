@@ -2162,6 +2162,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vd-bom-analytics"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "vd-cad-geom"
 version = "0.0.1"
 dependencies = [
@@ -2248,6 +2256,15 @@ dependencies = [
  "sha2",
  "tempfile",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "vd-constraint-mgr"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "vd-cad-geom",
 ]
 
 [[package]]

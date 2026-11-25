@@ -30,6 +30,8 @@ members = [
     "packages/solver-recovery",
     "packages/control-loop",
     "packages/compliance-hbom",
+    "packages/constraint-mgr",
+    "packages/bom-analytics",
     "packages/vd-daemon",
 ]
 

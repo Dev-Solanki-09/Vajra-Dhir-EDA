@@ -234,6 +234,13 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
   const transientSwV = useMemo(() => [0.1, 11.8, 12.1, 11.9, 0.2, 0.1, 11.9, 12.0, 0.15], []);
 
   const [bomQuery, setBomQuery] = useState('');
+  const [bomVariant, setBomVariant] = useState<'DEFAULT' | 'PROTO_NO_CAN'>('DEFAULT');
+  const [bomAnalytics, setBomAnalytics] = useState<string>(
+    'BOM Readiness: 95/100 · Extended Feeder Fees: $3.00 · DFM/DFA/PI Grade: A (100/100/100)'
+  );
+  const [constraintSummary, setConstraintSummary] = useState<string>(
+    'Netclass USB_HS: PASS (skew 80 um <= 250 um)'
+  );
   const [bomRows, setBomRows] = useState([
     { refdes: 'U2', mpn: 'TPS54302DDCR', pkg: 'SOT-23-6', feeder: 'Extended (+$3)', qty: 1, side: 'top' },
     { refdes: 'U1', mpn: 'CH224K', pkg: 'ESSOP-10', feeder: 'Basic ($0)', qty: 1, side: 'top' },
@@ -355,6 +362,22 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
           }
         })
         .catch(() => {});
+    } else if (workspace === 'pcb_layout') {
+      fetch('/api/v1/constraints/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          netclasses: [{ name: 'USB_HS', min_width_nm: 150000, min_clearance_nm: 150000, max_skew_nm: 250000 }],
+          nets: [{ name: 'USB_D', netclass: 'USB_HS', width_nm: 180000, clearance_nm: 180000, p_length_nm: 28080000, n_length_nm: 28000000, er_eff: 3.8 }],
+        }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((c) => {
+          if (c) {
+            setConstraintSummary(`Netclass Check: ${c.passed ? 'PASS' : 'FAIL'} (${c.checked_nets} nets, ${c.violations?.length ?? 0} violations)`);
+          }
+        })
+        .catch(() => {});
     } else if (workspace === 'mcad_3d') {
       fetch('/api/v1/stackup')
         .then((r) => (r.ok ? r.json() : null))
@@ -440,11 +463,16 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
       errorHint={currentMeta.errHint}
     >
       {workspace === 'pcb_layout' && (
-        <PcbEngineCanvas
-          layersVisible={layersVisible}
-          ratsnestVisible={ratsnestVisible}
-          lockRingsVisible={lockRingsVisible}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%' }}>
+          <div className="vd-metric" style={{ fontSize: 11, color: 'var(--vd-text-secondary)', padding: '2px 4px' }}>
+            {constraintSummary}
+          </div>
+          <PcbEngineCanvas
+            layersVisible={layersVisible}
+            ratsnestVisible={ratsnestVisible}
+            lockRingsVisible={lockRingsVisible}
+          />
+        </div>
       )}
 
       {workspace === 'schematic' && (
@@ -484,7 +512,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
 
       {workspace === 'library_bom' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <input
               type="text"
               aria-label="Filter parts by MPN"
@@ -500,7 +528,57 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
                 borderRadius: 4,
               }}
             />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }} className="vd-metric">
+              Variant
+              <select
+                aria-label="Assembly Variant"
+                value={bomVariant}
+                onChange={(e) => {
+                  const next = e.target.value as 'DEFAULT' | 'PROTO_NO_CAN';
+                  setBomVariant(next);
+                  void fetch('/api/v1/bom/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      board_count: 5,
+                      variant: { name: next, dnp_refdes: next === 'PROTO_NO_CAN' ? ['C1'] : [] },
+                      items: bomRows.map((r) => ({
+                        refdes: r.refdes,
+                        mpn: r.mpn,
+                        package: r.pkg,
+                        feeder_fee_type: r.feeder.includes('$0') ? 'Basic' : 'Extended',
+                        stock_qty: 250,
+                        unit_price_usd: 0.45,
+                        lifecycle: 'Active',
+                        qty: r.qty,
+                        alternate_mpns: ['ALT-STD'],
+                      })),
+                    }),
+                  })
+                    .then((res) => (res.ok ? res.json() : null))
+                    .then((a) => {
+                      if (a) {
+                        setBomAnalytics(
+                          `Variant ${a.variant_name}: Score ${a.supply_readiness_score}/100 · Extended Fee $${a.extended_feeder_fees_usd} · DNP ${a.dnp_excluded_count}`
+                        );
+                      }
+                    })
+                    .catch(() => {});
+                }}
+                style={{
+                  padding: '4px 6px',
+                  backgroundColor: 'var(--vd-bg-panel)',
+                  color: 'var(--vd-text-primary)',
+                  border: '1px solid var(--vd-border-subtle)',
+                  borderRadius: 4,
+                }}
+              >
+                <option value="DEFAULT">DEFAULT</option>
+                <option value="PROTO_NO_CAN">PROTO_NO_CAN</option>
+              </select>
+            </label>
           </div>
+          <div className="vd-metric" style={{ fontSize: 11, color: 'var(--vd-pass)' }}>{bomAnalytics}</div>
           <div className="vd-metric" style={{ fontSize: 11, color: 'var(--vd-text-secondary)' }}>{datasheetInfo}</div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }} className="vd-metric">
             <thead>
