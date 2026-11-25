@@ -1,5 +1,6 @@
 use vd_cad_geom::{
-    CadSpatialIndex, DifferentialPairEngine, PolygonBooleanEngine, SpatialElement, SpatialKind,
+    ArcVertexNm, CadSpatialIndex, DifferentialPairEngine, OffsetContourEngine,
+    PolygonBooleanEngine, SpatialElement, SpatialKind,
 };
 
 #[test]
@@ -74,4 +75,21 @@ fn test_differential_pair_coupled_trajectory() {
     assert_eq!(diff_pair.target_impedance_zdiff_ohm, 90.0);
     assert!(diff_pair.p_length_nm > 0);
     assert!(diff_pair.n_length_nm > 0);
+}
+
+#[test]
+fn test_cavalier_contours_arc_preserving_offset() {
+    // Closed rounded triangle with a curved arc segment (bulge = 0.5)
+    let rounded_tri = vec![
+        ArcVertexNm { x_nm: 0, y_nm: 0, bulge: 0.5 },
+        ArcVertexNm { x_nm: 10_000_000, y_nm: 0, bulge: 0.0 },
+        ArcVertexNm { x_nm: 5_000_000, y_nm: 8_000_000, bulge: 0.0 },
+    ];
+    let offsets = OffsetContourEngine::parallel_offset_nm(&rounded_tri, true, -500_000)
+        .expect("cavalier_contours offset should succeed");
+    assert!(!offsets.is_empty(), "Expected at least one offset contour");
+    assert!(
+        offsets[0].iter().any(|v| v.bulge.abs() > 0.01),
+        "Arc bulge must be preserved after parallel offset"
+    );
 }
