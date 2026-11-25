@@ -4,9 +4,12 @@
 //! constraint, and firmware pinmux models, with kernel-level human-lock protection triggers
 //! and deterministic atomic `HardwarePatch` undo/redo journal.
 
+pub mod digest;
 pub mod model;
 pub mod model_v001;
 pub mod store;
+
+pub use digest::{HwLockDigest, HwLockEntityProjection, compute_hw_lock_sha256, verify_hw_lock_sha256};
 
 pub use model::*;
 pub use model_v001::{

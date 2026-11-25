@@ -219,6 +219,7 @@ export const WorkstationShell: React.FC = () => {
   const [paletteQuery, setPaletteQuery] = useState('');
   const [fps, setFps] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState('Loopback 127.0.0.1:41900 ready');
+  const [hwLockShort, setHwLockShort] = useState('hw.lock:pending');
   const [boardComponents, setBoardComponents] = useState<BoardComponentMeta[]>(DEFAULT_COMPONENTS);
   const frameCountRef = useRef(0);
 
@@ -257,6 +258,37 @@ export const WorkstationShell: React.FC = () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    void import('@vajradhir/collab')
+      .then(({ HwIrCrdtSession, computeHwLockDigest }) => {
+        if (!active) return;
+        const session = new HwIrCrdtSession('studio-human', 'human');
+        boardComponents.forEach((comp, idx) => {
+          session.upsertEntity('human', {
+            id: `01950000-0000-7000-8000-0000000000${idx.toString().padStart(2, '0')}`,
+            refdes: comp.refdes,
+            x_nm: (idx + 1) * 10_000_000,
+            y_nm: 15_000_000,
+            rot_mdeg: 0,
+            locked: comp.locked,
+          });
+        });
+        const lock = computeHwLockDigest({
+          symbols: [],
+          footprints: [],
+          spice_models: [],
+          constraints: [{ name: 'USB_HS', min_width_nm: 150_000, min_clearance_nm: 150_000 }],
+          entities: session.listEntities(),
+        });
+        setHwLockShort(`hw.lock:${lock.digest_sha256.slice(0, 8)}`);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [boardComponents]);
 
   useEffect(() => {
     let rafId = 0;
@@ -490,6 +522,7 @@ export const WorkstationShell: React.FC = () => {
           <div style={{ display: 'flex', gap: 14 }} className="vd-metric">
             <span style={{ color: 'var(--vd-dlp-airgap)' }}>NDA_AIRGAPPED</span>
             <span style={{ color: 'var(--vd-human-lock)' }}>Human locks active</span>
+            <span>{hwLockShort}</span>
             <span>CrossProbe: {probeSnapshot.lastLatencyMs.toFixed(2)} ms</span>
             <span>Measured FPS: {fps}</span>
           </div>

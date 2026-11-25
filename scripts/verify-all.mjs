@@ -580,6 +580,11 @@ step('[X1/CONSTRAINTS] Netclass Rules, Assembly Variants, BOM Risk & DFM Scoreca
   execSync('python scripts/test-x1-constraints-bom.py', { stdio: 'pipe' });
 });
 
+// 81. X2 Real-Time Yjs CRDT Collab, Fail-Closed Peer Locks, hw.lock Digest & <16ms CrossProbe
+step('[X2/COLLAB] Yjs CRDT Sync, Fail-Closed Peer Locks & hw.lock Digest', () => {
+  execSync('node scripts/test-x2-collab-hwlock.mjs', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');

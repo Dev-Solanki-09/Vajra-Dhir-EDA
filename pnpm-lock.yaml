@@ -141,6 +141,9 @@ importers:
 
   apps/workstation:
     dependencies:
+      '@vajradhir/collab':
+        specifier: workspace:*
+        version: link:../../packages/collab
       '@vajradhir/crossprobe-bus':
         specifier: workspace:*
         version: link:../../packages/crossprobe-bus
@@ -178,6 +181,16 @@ importers:
       vite:
         specifier: ^6.2.0
         version: 6.4.6(@types/node@24.19.2)
+
+  packages/collab:
+    dependencies:
+      yjs:
+        specifier: 13.6.33
+        version: 13.6.33
+    devDependencies:
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
 
   packages/command-bus:
     devDependencies:

@@ -19,6 +19,7 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes('node_modules/elkjs')) return 'vendor-elk';
           if (id.includes('node_modules/uplot')) return 'vendor-uplot';
+          if (id.includes('node_modules/yjs') || id.includes('node_modules/lib0')) return 'vendor-yjs';
           if (id.includes('node_modules/dockview')) return 'vendor-dockview';
           if (id.includes('node_modules/react')) return 'vendor-react';
           return undefined;
