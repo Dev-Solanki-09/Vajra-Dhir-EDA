@@ -1,0 +1,156 @@
+/* Hallmark · v2.0.0 · genre: modern-minimal · brand: silicon-darkroom (kept) · shape: app screen · redesign: full · scope: app · built: the project */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--vd-bg-workbench);
+  color: var(--vd-text-primary);
+  font-family: var(--vd-font-ui);
+  font-size: 16px;
+  line-height: 1.4;
+  overflow-x: clip;
+  overflow-y: hidden;
+}
+
+.vd-metric {
+  font-family: var(--vd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.vd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 10px;
+  background-color: var(--vd-bg-elevated);
+  color: var(--vd-text-primary);
+  border: 1px solid var(--vd-border-subtle);
+  border-radius: 4px;
+  font-family: var(--vd-font-ui);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color var(--vd-dur-micro) ease, background-color var(--vd-dur-micro) ease;
+}
+
+.vd-btn:hover {
+  border-color: var(--vd-border-active);
+}
+
+.vd-btn-primary {
+  background-color: var(--vd-border-active);
+  border-color: var(--vd-border-active);
+  color: var(--vd-layer-silk);
+}
+
+.vd-btn-lock {
+  border-color: var(--vd-human-lock);
+  color: var(--vd-human-lock);
+}
+
+.vd-btn-agent {
+  border-color: var(--vd-agent-pulse);
+  color: var(--vd-text-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--vd-border-active);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
+
+.vd-shell {
+  display: grid;
+  grid-template-rows: 40px 1fr 28px;
+  height: 100%;
+  width: 100%;
+}
+
+.vd-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background-color: var(--vd-bg-panel);
+  border-bottom: 1px solid var(--vd-border-subtle);
+}
+
+.vd-main {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.vd-activity-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  background-color: var(--vd-bg-panel);
+  border-right: 1px solid var(--vd-border-subtle);
+}
+
+.vd-activity-btn {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--vd-text-secondary);
+  cursor: pointer;
+}
+
+.vd-activity-btn[data-active="true"] {
+  background-color: var(--vd-bg-elevated);
+  border-color: var(--vd-border-active);
+  color: var(--vd-text-primary);
+}
+
+.vd-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  font-size: 12px;
+  background-color: var(--vd-bg-panel);
+  border-top: 1px solid var(--vd-border-subtle);
+  color: var(--vd-text-secondary);
+}
+
+.vd-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(11, 14, 20, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.vd-modal-panel {
+  width: min(640px, 92vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  background-color: var(--vd-bg-panel);
+  border: 1px solid var(--vd-border-subtle);
+  border-radius: 8px;
+  padding: 16px;
+}

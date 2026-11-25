@@ -540,6 +540,11 @@ step('[DURABILITY/G5C] CAS zstd, WAL Ladder, Supervision & vd studio', () => {
   execSync('python scripts/test-g5c-durability-studio.py', { stdio: 'pipe' });
 });
 
+// 73. G6A Workstation Consolidation, Hallmark Tokens & Real Dockview MIT Shell
+step('[UI/G6A] Canonical apps/workstation, Design System & Dockview MIT Shell', () => {
+  execSync('node scripts/test-g6a-workstation-shell.mjs', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');

@@ -1,0 +1,30 @@
+/* Hallmark · v2.0.0 · genre: modern-minimal · brand: silicon-darkroom (kept) · shape: app screen · redesign: full · scope: app · built: the project */
+/* Silicon Darkroom unified design tokens (single source for apps/workstation) */
+
+:root[data-theme="silicon-darkroom"] {
+  --vd-bg-canvas:        #0B0E14;
+  --vd-bg-workbench:     #10141C;
+  --vd-bg-panel:         #151A24;
+  --vd-bg-elevated:      #1C2331;
+  --vd-border-subtle:    #232B3B;
+  --vd-border-active:    #3B82F6;
+  --vd-font-ui:          "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --vd-font-mono:        "JetBrains Mono", "Cascadia Code", ui-monospace, monospace;
+  --vd-text-primary:     #E6EDF7;
+  --vd-text-secondary:   #94A3B8;
+  --vd-text-muted:       #64748B;
+  --vd-pass:             #10B981;
+  --vd-warn:             #F59E0B;
+  --vd-fail:             #EF4444;
+  --vd-agent-pulse:      #8B5CF6;
+  --vd-human-lock:       #FBBF24;
+  --vd-dlp-airgap:       #06B6D4;
+  --vd-layer-f-cu:       #E05D44;
+  --vd-layer-b-cu:       #3B82F6;
+  --vd-layer-in1-cu:     #D0A020;
+  --vd-layer-in2-cu:     #10B981;
+  --vd-layer-silk:       #F8FAFC;
+  --vd-layer-courtyard:  #A855F7;
+  --vd-dur-micro:        90ms;
+  --vd-dur-short:        160ms;
+}
