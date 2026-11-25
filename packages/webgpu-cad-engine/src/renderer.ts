@@ -82,6 +82,49 @@ export interface Canvas2dLikeContext {
   restore(): void;
 }
 
+export interface WebGl2LikeContext {
+  VERTEX_SHADER: number;
+  FRAGMENT_SHADER: number;
+  ARRAY_BUFFER: number;
+  DYNAMIC_DRAW: number;
+  FLOAT: number;
+  LINES: number;
+  TRIANGLES: number;
+  COLOR_BUFFER_BIT: number;
+  COMPILE_STATUS: number;
+  LINK_STATUS: number;
+  createShader(type: number): unknown;
+  shaderSource(shader: unknown, source: string): void;
+  compileShader(shader: unknown): void;
+  getShaderParameter(shader: unknown, pname: number): unknown;
+  createProgram(): unknown;
+  attachShader(program: unknown, shader: unknown): void;
+  linkProgram(program: unknown): void;
+  getProgramParameter(program: unknown, pname: number): unknown;
+  useProgram(program: unknown): void;
+  createBuffer(): unknown;
+  bindBuffer(target: number, buffer: unknown): void;
+  bufferData(target: number, data: ArrayBufferView, usage: number): void;
+  getAttribLocation(program: unknown, name: string): number;
+  getUniformLocation(program: unknown, name: string): unknown;
+  enableVertexAttribArray(index: number): void;
+  vertexAttribPointer(index: number, size: number, type: number, normalized: boolean, stride: number, offset: number): void;
+  uniform2f(loc: unknown, x: number, y: number): void;
+  uniform4f(loc: unknown, r: number, g: number, b: number, a: number): void;
+  viewport(x: number, y: number, w: number, h: number): void;
+  clearColor(r: number, g: number, b: number, a: number): void;
+  clear(mask: number): void;
+  drawArrays(mode: number, first: number, count: number): void;
+}
+
+export interface WebGl2PipelineHandle {
+  program: unknown;
+  vbo: unknown;
+  posLoc: number;
+  resLoc: unknown;
+  colorLoc: unknown;
+}
+
 export function detectRenderCapabilities(scope: { navigator?: unknown; WebGL2RenderingContext?: unknown } = globalThis as {
   navigator?: unknown;
   WebGL2RenderingContext?: unknown;
@@ -196,7 +239,6 @@ export function renderSceneToCanvas2d(
   ctx.fillStyle = '#0B0E14';
   ctx.fillRect(0, 0, widthPx, heightPx);
 
-  // Subtle nanometer grid
   ctx.strokeStyle = '#18202D';
   ctx.lineWidth = 1;
   const gridStep = Math.max(20, Math.round(40 * Math.min(2.5, viewport.zoomFactor)));
@@ -213,7 +255,6 @@ export function renderSceneToCanvas2d(
     ctx.stroke();
   }
 
-  // Board outline (Edge.Cuts)
   const halfW = scene.boardWidthNm / 2n;
   const halfH = scene.boardHeightNm / 2n;
   const [bx1, by1] = engine.transformCoordinatesNmToPixels(-halfW, halfH, widthPx, heightPx);
@@ -222,7 +263,6 @@ export function renderSceneToCanvas2d(
   ctx.lineWidth = 1.5;
   ctx.strokeRect(bx1, by1, Math.max(10, bx2 - bx1), Math.max(10, by2 - by1));
 
-  // Traces
   if (flags.layersVisible) {
     scene.traces.forEach((tr, idx) => {
       const base = idx * 5;
@@ -244,7 +284,6 @@ export function renderSceneToCanvas2d(
     });
   }
 
-  // Ratsnest
   if (flags.ratsnestVisible) {
     ctx.globalAlpha = 0.75;
     ctx.strokeStyle = '#94A3B8';
@@ -260,7 +299,6 @@ export function renderSceneToCanvas2d(
     ctx.setLineDash([]);
   }
 
-  // Pads & Component Labels
   scene.pads.forEach((pad, i) => {
     const base = i * 4;
     const x = buffers.padInstances[base];
@@ -282,7 +320,6 @@ export function renderSceneToCanvas2d(
     ctx.fillText(pad.refdes, x + 4, y + Math.max(12, h / 2 + 4));
   });
 
-  // Amber Lock Rings
   if (flags.lockRingsVisible) {
     ctx.strokeStyle = '#FBBF24';
     ctx.lineWidth = 2;
@@ -304,12 +341,137 @@ export function renderSceneToCanvas2d(
   return buffers;
 }
 
-export function renderSceneToWebGl2(gl: {
-  clearColor(r: number, g: number, b: number, a: number): void;
-  clear(mask: number): void;
-  COLOR_BUFFER_BIT: number;
-}, buffers: GpuFrameBuffers): number {
+const VERT_SHADER_300 = `#version 300 es
+in vec2 a_pos;
+uniform vec2 u_res;
+void main() {
+  vec2 clip = vec2((a_pos.x / u_res.x) * 2.0 - 1.0, 1.0 - (a_pos.y / u_res.y) * 2.0);
+  gl_Position = vec4(clip, 0.0, 1.0);
+}`;
+
+const FRAG_SHADER_300 = `#version 300 es
+precision mediump float;
+uniform vec4 u_color;
+out vec4 outColor;
+void main() {
+  outColor = u_color;
+}`;
+
+export function initWebGl2Pipeline(gl: WebGl2LikeContext): WebGl2PipelineHandle | null {
+  const vs = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vs, VERT_SHADER_300);
+  gl.compileShader(vs);
+  if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) return null;
+
+  const fs = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fs, FRAG_SHADER_300);
+  gl.compileShader(fs);
+  if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) return null;
+
+  const program = gl.createProgram();
+  gl.attachShader(program, vs);
+  gl.attachShader(program, fs);
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
+
+  const vbo = gl.createBuffer();
+  return {
+    program,
+    vbo,
+    posLoc: gl.getAttribLocation(program, 'a_pos'),
+    resLoc: gl.getUniformLocation(program, 'u_res'),
+    colorLoc: gl.getUniformLocation(program, 'u_color'),
+  };
+}
+
+export function renderSceneToWebGl2(
+  gl: WebGl2LikeContext,
+  pipeline: WebGl2PipelineHandle,
+  buffers: GpuFrameBuffers,
+  widthPx: number,
+  heightPx: number
+): number {
+  gl.viewport(0, 0, widthPx, heightPx);
   gl.clearColor(0.043, 0.055, 0.078, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
-  return buffers.traceCount + buffers.padCount + buffers.ratsnestCount;
+  gl.useProgram(pipeline.program);
+  gl.uniform2f(pipeline.resLoc, widthPx, heightPx);
+  gl.bindBuffer(gl.ARRAY_BUFFER, pipeline.vbo);
+  gl.enableVertexAttribArray(pipeline.posLoc);
+  gl.vertexAttribPointer(pipeline.posLoc, 2, gl.FLOAT, false, 0, 0);
+
+  let primitivesDrawn = 0;
+
+  // Draw pad rectangles as triangle pairs
+  if (buffers.padCount > 0) {
+    const padVerts = new Float32Array(buffers.padCount * 12);
+    for (let i = 0; i < buffers.padCount; i++) {
+      const b = i * 4;
+      const x = buffers.padInstances[b];
+      const y = buffers.padInstances[b + 1];
+      const w = buffers.padInstances[b + 2];
+      const h = buffers.padInstances[b + 3];
+      padVerts.set([x, y, x + w, y, x, y + h, x + w, y, x + w, y + h, x, y + h], i * 12);
+    }
+    gl.uniform4f(pipeline.colorLoc, 0.082, 0.102, 0.141, 1.0);
+    gl.bufferData(gl.ARRAY_BUFFER, padVerts, gl.DYNAMIC_DRAW);
+    gl.drawArrays(gl.TRIANGLES, 0, buffers.padCount * 6);
+    primitivesDrawn += buffers.padCount;
+  }
+
+  // Draw copper traces as lines
+  if (buffers.traceCount > 0) {
+    const traceVerts = new Float32Array(buffers.traceCount * 4);
+    for (let i = 0; i < buffers.traceCount; i++) {
+      const b = i * 5;
+      traceVerts.set(
+        [
+          buffers.traceInstances[b],
+          buffers.traceInstances[b + 1],
+          buffers.traceInstances[b + 2],
+          buffers.traceInstances[b + 3],
+        ],
+        i * 4
+      );
+    }
+    gl.uniform4f(pipeline.colorLoc, 0.878, 0.365, 0.267, 0.9);
+    gl.bufferData(gl.ARRAY_BUFFER, traceVerts, gl.DYNAMIC_DRAW);
+    gl.drawArrays(gl.LINES, 0, buffers.traceCount * 2);
+    primitivesDrawn += buffers.traceCount;
+  }
+
+  // Draw ratsnest guides as cool gray lines
+  if (buffers.ratsnestCount > 0) {
+    gl.uniform4f(pipeline.colorLoc, 0.58, 0.64, 0.72, 0.7);
+    gl.bufferData(gl.ARRAY_BUFFER, buffers.ratsnestInstances, gl.DYNAMIC_DRAW);
+    gl.drawArrays(gl.LINES, 0, buffers.ratsnestCount * 2);
+    primitivesDrawn += buffers.ratsnestCount;
+  }
+
+  // Draw lock rings around locked components (amber line loops approximated by 16 segments)
+  if (buffers.lockRingCount > 0) {
+    const segs = 16;
+    const lockVerts = new Float32Array(buffers.lockRingCount * segs * 4);
+    let idx = 0;
+    for (let i = 0; i < buffers.lockRingCount; i++) {
+      const b = i * 3;
+      const cx = buffers.lockRingInstances[b];
+      const cy = buffers.lockRingInstances[b + 1];
+      const r = buffers.lockRingInstances[b + 2];
+      for (let s = 0; s < segs; s++) {
+        const a1 = (s / segs) * Math.PI * 2;
+        const a2 = ((s + 1) / segs) * Math.PI * 2;
+        lockVerts[idx++] = cx + Math.cos(a1) * r;
+        lockVerts[idx++] = cy + Math.sin(a1) * r;
+        lockVerts[idx++] = cx + Math.cos(a2) * r;
+        lockVerts[idx++] = cy + Math.sin(a2) * r;
+      }
+    }
+    gl.uniform4f(pipeline.colorLoc, 0.984, 0.749, 0.141, 1.0);
+    gl.bufferData(gl.ARRAY_BUFFER, lockVerts, gl.DYNAMIC_DRAW);
+    gl.drawArrays(gl.LINES, 0, buffers.lockRingCount * segs * 2);
+    primitivesDrawn += buffers.lockRingCount;
+  }
+
+  return primitivesDrawn;
 }

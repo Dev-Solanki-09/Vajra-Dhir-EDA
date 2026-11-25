@@ -115,11 +115,15 @@ export class CrossProbeBus {
     const targetName = channelName ?? 'vajradhir-crossprobe-bus';
     if (channelFactory) {
       this.channel = channelFactory(targetName);
-    } else if (channelName && typeof BroadcastChannel !== 'undefined') {
+    } else if (channelName && typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
       this.channel = new BroadcastChannel(channelName);
     }
 
     if (this.channel) {
+      const maybeUnref = (this.channel as unknown as { unref?: () => void }).unref;
+      if (typeof maybeUnref === 'function') {
+        maybeUnref.call(this.channel);
+      }
       this.channel.onmessage = (msg: { data: unknown }) => {
         const envelope = msg.data as WireBroadcastEnvelope | undefined;
         if (!envelope || envelope.originId === this.instanceId) return;
@@ -288,4 +292,4 @@ export class CrossProbeBus {
   }
 }
 
-export const globalCrossProbeBus = new CrossProbeBus();
+export const globalCrossProbeBus = new CrossProbeBus('vajradhir-crossprobe-bus');

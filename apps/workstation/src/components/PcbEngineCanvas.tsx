@@ -4,9 +4,12 @@ import {
   createSampleBuckScene,
   createGpuFrameBuffers,
   detectRenderCapabilities,
+  initWebGl2Pipeline,
   renderSceneToCanvas2d,
   renderSceneToWebGl2,
   runGeometryWorkerTask,
+  WebGl2LikeContext,
+  WebGl2PipelineHandle,
 } from '@vajradhir/webgpu-cad-engine';
 import { globalCrossProbeBus } from '@vajradhir/crossprobe-bus';
 
@@ -21,7 +24,9 @@ export const PcbEngineCanvas: React.FC<PcbEngineCanvasProps> = ({
   ratsnestVisible,
   lockRingsVisible,
 }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const glPipelineRef = useRef<WebGl2PipelineHandle | null>(null);
   const snapshot = useSyncExternalStore(
     globalCrossProbeBus.subscribeSnapshot,
     globalCrossProbeBus.getSnapshot
@@ -34,42 +39,74 @@ export const PcbEngineCanvas: React.FC<PcbEngineCanvasProps> = ({
 
   const scene = useMemo(() => createSampleBuckScene(), []);
   const [zoomUi, setZoomUi] = useState(1.0);
-  const [renderPath, setRenderPath] = useState<string>(engine.getBackend());
+  const [canvasSize, setCanvasSize] = useState<{ w: number; h: number }>({ w: 640, h: 340 });
+  const [renderPath, setRenderPath] = useState<string>('Canvas2D');
   const [bufferSummary, setBufferSummary] = useState<string>('0 traces / 0 pads');
 
   useEffect(() => {
-    const selected = snapshot.selection.entityIds[0] ?? null;
-    if (selected) {
-      engine.handleCrossProbeEvent({ type: 'SelectComponent', payload: { componentId: selected } });
-    }
+    const selected = snapshot.selection.entityIds[0] ?? '';
+    engine.handleCrossProbeEvent({
+      type: 'SelectComponent',
+      payload: { componentId: selected },
+    });
     engine.handleCrossProbeEvent({
       type: 'HighlightNet',
-      payload: { netId: snapshot.activeHighlight.netId ?? undefined },
+      payload: { netId: snapshot.activeHighlight.netId ?? '' },
     });
   }, [engine, snapshot.selection.entityIds, snapshot.activeHighlight.netId]);
 
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (!rect || rect.width < 32 || rect.height < 32) return;
+      const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+      setCanvasSize({
+        w: Math.max(160, Math.round(rect.width * dpr)),
+        h: Math.max(120, Math.round(rect.height * dpr)),
+      });
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const width = canvas.width;
-    const height = canvas.height;
+    const width = canvasSize.w;
+    const height = canvasSize.h;
+    canvas.width = width;
+    canvas.height = height;
+
     const flags = { layersVisible, ratsnestVisible, lockRingsVisible };
     const buffers = createGpuFrameBuffers(scene, engine.getViewport(), width, height, flags);
+
+    const gl2 =
+      engine.getBackend() !== 'software_canvas'
+        ? (canvas.getContext('webgl2') as unknown as WebGl2LikeContext | null)
+        : null;
+
+    if (gl2) {
+      if (!glPipelineRef.current) {
+        glPipelineRef.current = initWebGl2Pipeline(gl2);
+      }
+      if (glPipelineRef.current) {
+        renderSceneToWebGl2(gl2, glPipelineRef.current, buffers, width, height);
+        setRenderPath('webgl2');
+        setBufferSummary(`${buffers.traceCount} traces / ${buffers.padCount} pads / ${buffers.lockRingCount} locks`);
+        return;
+      }
+    }
 
     const ctx2d = canvas.getContext('2d');
     if (ctx2d) {
       renderSceneToCanvas2d(ctx2d, engine, scene, width, height, flags);
-      setRenderPath(engine.getBackend() === 'software_canvas' ? 'Canvas2D' : `${engine.getBackend()}+Canvas2D`);
-    } else {
-      const gl2 = canvas.getContext('webgl2');
-      if (gl2) {
-        renderSceneToWebGl2(gl2, buffers);
-        setRenderPath('webgl2');
-      }
+      setRenderPath('Canvas2D');
     }
 
     setBufferSummary(`${buffers.traceCount} traces / ${buffers.padCount} pads / ${buffers.lockRingCount} locks`);
-  }, [engine, scene, layersVisible, ratsnestVisible, lockRingsVisible, zoomUi, snapshot]);
+  }, [engine, scene, canvasSize, layersVisible, ratsnestVisible, lockRingsVisible, zoomUi, snapshot]);
 
   const handleCanvasClick = async (event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -92,6 +129,9 @@ export const PcbEngineCanvas: React.FC<PcbEngineCanvasProps> = ({
       if (result.net) {
         globalCrossProbeBus.highlightNet(result.net, 'pcb');
       }
+    } else {
+      globalCrossProbeBus.select([], 'pcb');
+      globalCrossProbeBus.highlightNet(null, 'pcb');
     }
   };
 
@@ -132,9 +172,10 @@ export const PcbEngineCanvas: React.FC<PcbEngineCanvasProps> = ({
       </div>
 
       <div
+        ref={containerRef}
         style={{
           flex: 1,
-          minHeight: 0,
+          minHeight: 200,
           border: '1px solid var(--vd-border-subtle)',
           borderRadius: 6,
           backgroundColor: 'var(--vd-bg-canvas)',
@@ -146,11 +187,11 @@ export const PcbEngineCanvas: React.FC<PcbEngineCanvasProps> = ({
       >
         <canvas
           ref={canvasRef}
-          width={640}
-          height={340}
+          width={canvasSize.w}
+          height={canvasSize.h}
           data-testid="pcb-engine-canvas"
           onClick={handleCanvasClick}
-          style={{ width: '100%', height: '100%', maxHeight: 360, cursor: 'crosshair', display: 'block' }}
+          style={{ width: '100%', height: '100%', cursor: 'crosshair', display: 'block' }}
           aria-label="Interactive Silicon Darkroom PCB Canvas"
         />
       </div>

@@ -22,6 +22,8 @@ const {
   decodeStepBufferInWorker,
   createSampleBuckScene,
   createGpuFrameBuffers,
+  initWebGl2Pipeline,
+  renderSceneToWebGl2,
   renderSceneToCanvas2d,
   detectRenderCapabilities,
   runGeometryWorkerTask,
@@ -120,6 +122,57 @@ test('GPU Instance Buffers, Software Canvas2D Draw Trace, and Geometry Worker Hi
     toleranceNm: 2_000_000n,
   });
   assert.equal(hit.refdes, scene.pads[0].refdes);
+
+  const bbox = await runGeometryWorkerTask({
+    kind: 'COMPUTE_BBOX',
+    scene,
+  });
+  assert.equal(bbox.kind, 'COMPUTE_BBOX');
+  assert.equal(bbox.padCount, scene.pads.length);
+  assert.equal(bbox.traceCount, scene.traces.length);
+
+  // Real WebGL2 shader pipeline test
+  const glCalls = [];
+  const mockGl = {
+    VERTEX_SHADER: 0x8b31,
+    FRAGMENT_SHADER: 0x8b30,
+    ARRAY_BUFFER: 0x8892,
+    DYNAMIC_DRAW: 0x88e8,
+    FLOAT: 0x1406,
+    LINES: 0x0001,
+    TRIANGLES: 0x0004,
+    COLOR_BUFFER_BIT: 0x4000,
+    COMPILE_STATUS: 0x8b81,
+    LINK_STATUS: 0x8b82,
+    createShader: () => ({}),
+    shaderSource: () => {},
+    compileShader: () => {},
+    getShaderParameter: () => true,
+    createProgram: () => ({}),
+    attachShader: () => {},
+    linkProgram: () => {},
+    getProgramParameter: () => true,
+    useProgram: () => glCalls.push('useProgram'),
+    createBuffer: () => ({}),
+    bindBuffer: () => {},
+    bufferData: (_t, data) => glCalls.push(`bufferData:${data.length}`),
+    getAttribLocation: () => 0,
+    getUniformLocation: () => ({}),
+    enableVertexAttribArray: () => {},
+    vertexAttribPointer: () => {},
+    uniform2f: () => {},
+    uniform4f: () => {},
+    viewport: () => {},
+    clearColor: () => {},
+    clear: () => glCalls.push('clear'),
+    drawArrays: (mode, _first, count) => glCalls.push(`draw:${mode}:${count}`),
+  };
+  const pipeline = initWebGl2Pipeline(mockGl);
+  assert.ok(pipeline);
+  const drawn = renderSceneToWebGl2(mockGl, pipeline, buffers, 800, 480);
+  assert.ok(drawn >= buffers.padCount + buffers.traceCount);
+  assert.ok(glCalls.some((c) => c.startsWith('draw:4:')));
+  assert.ok(glCalls.some((c) => c.startsWith('draw:1:')));
 });
 
 test('LGPL-2.1-with-OCCT-exception Isolated STEP Web Worker Boundary', () => {

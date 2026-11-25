@@ -44,8 +44,13 @@ export function solveGeometryWorkerRequest(req: GeometryWorkerTaskRequest): Geom
     for (const pad of req.scene.pads) {
       const dx = pad.xNm - tx;
       const dy = pad.yNm - ty;
+      const absDx = dx < 0n ? -dx : dx;
+      const absDy = dy < 0n ? -dy : dy;
+      const halfW = pad.widthNm / 2n + req.toleranceNm;
+      const halfH = pad.heightNm / 2n + req.toleranceNm;
       const distSq = dx * dx + dy * dy;
-      if (distSq <= tolSq && (bestDistSq === null || distSq < bestDistSq)) {
+      const insideExpandedBox = absDx <= halfW && absDy <= halfH;
+      if ((insideExpandedBox || distSq <= tolSq) && (bestDistSq === null || distSq < bestDistSq)) {
         bestDistSq = distSq;
         bestPadId = pad.id;
         bestRefdes = pad.refdes;
@@ -66,11 +71,19 @@ export function solveGeometryWorkerRequest(req: GeometryWorkerTaskRequest): Geom
   let maxX = req.scene.boardWidthNm / 2n;
   let minY = req.scene.boardHeightNm / -2n;
   let maxY = req.scene.boardHeightNm / 2n;
+  const expandPoint = (x: bigint, y: bigint) => {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  };
   for (const pad of req.scene.pads) {
-    if (pad.xNm < minX) minX = pad.xNm;
-    if (pad.xNm > maxX) maxX = pad.xNm;
-    if (pad.yNm < minY) minY = pad.yNm;
-    if (pad.yNm > maxY) maxY = pad.yNm;
+    expandPoint(pad.xNm - pad.widthNm / 2n, pad.yNm - pad.heightNm / 2n);
+    expandPoint(pad.xNm + pad.widthNm / 2n, pad.yNm + pad.heightNm / 2n);
+  }
+  for (const trace of req.scene.traces) {
+    expandPoint(trace.x1Nm, trace.y1Nm);
+    expandPoint(trace.x2Nm, trace.y2Nm);
   }
   return {
     kind: 'COMPUTE_BBOX',
@@ -83,7 +96,6 @@ export function solveGeometryWorkerRequest(req: GeometryWorkerTaskRequest): Geom
   };
 }
 
-// Web Worker entrypoint guard when loaded as a dedicated Worker module
 if (typeof self !== 'undefined' && typeof (self as { document?: unknown }).document === 'undefined') {
   const workerScope = self as unknown as {
     onmessage: ((event: MessageEvent<GeometryWorkerTaskRequest>) => void) | null;
