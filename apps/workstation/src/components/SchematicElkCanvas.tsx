@@ -64,7 +64,7 @@ export const SchematicElkCanvas: React.FC = () => {
       <div
         style={{
           flex: 1,
-          minHeight: 0,
+          minHeight: 240,
           border: '1px solid var(--vd-border-subtle)',
           borderRadius: 6,
           backgroundColor: 'var(--vd-bg-canvas)',

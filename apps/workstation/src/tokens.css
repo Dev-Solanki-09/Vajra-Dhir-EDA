@@ -6,6 +6,7 @@
   --vd-bg-workbench:     #10141C;
   --vd-bg-panel:         #151A24;
   --vd-bg-elevated:      #1C2331;
+  --vd-bg-backdrop:      rgba(11, 14, 20, 0.78);
   --vd-border-subtle:    #232B3B;
   --vd-border-active:    #3B82F6;
   --vd-font-ui:          "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;

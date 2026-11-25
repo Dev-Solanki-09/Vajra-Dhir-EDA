@@ -555,6 +555,11 @@ step('[UI/G6C] Agent SSE, Fail-Closed Locks, 7 Workspaces & uPlot', () => {
   execSync('python scripts/test-g6c-agent-and-workspaces.py', { stdio: 'pipe' });
 });
 
+// 76. G6D Headless Browser 5 Golden E2E Journeys, Hallmark Floor & WCAG AA
+step('[UI/G6D] Playwright 5 Golden E2E Journeys, Hallmark & WCAG AA', () => {
+  execSync('python scripts/test-g6d-e2e-golden-journeys.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');

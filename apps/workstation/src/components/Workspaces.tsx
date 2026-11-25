@@ -336,14 +336,16 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
         .then((b) => {
           if (Array.isArray(b?.components) && b.components.length) {
             setBomRows(
-              b.components.map((c: { refdes: string; mpn: string; footprint?: string; side?: string; locked?: number }) => ({
-                refdes: c.refdes,
-                mpn: c.mpn || c.refdes,
-                pkg: c.footprint || 'SMD',
-                feeder: c.locked ? 'Locked / BOM' : 'Basic ($0)',
-                qty: 1,
-                side: c.side || 'top',
-              }))
+              b.components.map(
+                (c: { refdes: string; mpn?: string; package_name?: string; footprint_ref?: string; side?: string; locked?: number | boolean }) => ({
+                  refdes: c.refdes,
+                  mpn: c.mpn || c.refdes,
+                  pkg: c.package_name || c.footprint_ref || 'SMD',
+                  feeder: c.locked ? 'Locked / BOM' : 'Basic ($0)',
+                  qty: 1,
+                  side: c.side || 'top',
+                })
+              )
             );
           }
         })
@@ -566,9 +568,9 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }} className="vd-metric">
               <thead>
                 <tr style={{ textAlign: 'left', color: 'var(--vd-text-secondary)', borderBottom: '1px solid var(--vd-border-subtle)' }}>
-                  <th style={{ padding: '6px 4px' }}>Wire ID</th>
-                  <th style={{ padding: '6px 4px' }}>From → To</th>
-                  <th style={{ padding: '6px 4px' }}>Gauge</th>
+                  <th style={{ padding: '6px 4px' }}>Wire Item</th>
+                  <th style={{ padding: '6px 4px' }}>Wire Spec</th>
+                  <th style={{ padding: '6px 4px' }}>Terminal</th>
                   <th style={{ padding: '6px 4px', textAlign: 'right' }}>Cut Length (mm)</th>
                 </tr>
               </thead>

@@ -119,7 +119,13 @@ export const AgentDockPanel: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
       });
-      const body = await res.json();
+      const rawBody = await res.text();
+      let body: { message?: string; error?: string } = {};
+      try {
+        body = rawBody ? (JSON.parse(rawBody) as { message?: string; error?: string }) : {};
+      } catch {
+        body = { error: rawBody || `HTTP ${res.status}` };
+      }
       if (res.status === 409) {
         setProposals((prev) =>
           prev.map((p) =>
