@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vajradhir.eda/schemas/system-architecture.schema.json",
+  "title": "Vajra-Dhir Canonical system.yaml Architecture Schema",
+  "type": "object",
+  "required": ["project", "version", "purpose", "blocks", "buses"],
+  "properties": {
+    "project": { "type": "string", "minLength": 1 },
+    "version": { "type": "string" },
+    "purpose": { "type": "string" },
+    "requirements": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "blocks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "kind", "role", "voltage_v", "tolerance", "member_refdes"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "kind": { "enum": ["power_source", "regulator", "mcu", "sbc", "premade_module", "sensor", "custom_subcircuit"] },
+          "template_id": { "type": "string" },
+          "role": { "type": "string" },
+          "voltage_v": { "type": "number", "minimum": 0 },
+          "max_output_ma": { "type": "number", "minimum": 0 },
+          "draw_ma": { "type": "number", "minimum": 0 },
+          "tolerance": { "enum": ["3.3V_NON_5V_TOLERANT", "5V_TOLERANT", "HIGH_VOLTAGE_POWER", "ISOLATED"] },
+          "builtin_pullups": { "type": "boolean" },
+          "bootstrap_notes": { "type": "string" },
+          "mounting_footprint": { "type": "string" },
+          "step_model_ref": { "type": "string" },
+          "kicad_sheet_uuid": { "type": "string" },
+          "member_refdes": { "type": "array", "items": { "type": "string" } },
+          "x": { "type": "number" },
+          "y": { "type": "number" }
+        }
+      }
+    },
+    "buses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "source", "target", "protocol"],
+        "properties": {
+          "id": { "type": "string" },
+          "source": { "type": "string" },
+          "target": { "type": "string" },
+          "protocol": { "enum": ["PowerRail", "I2C", "SPI", "UART", "CAN", "USB", "PWM", "ADC", "GPIO"] },
+          "rail_voltage_v": { "type": "number", "minimum": 0 },
+          "expected_ma": { "type": "number", "minimum": 0 },
+          "net_names": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

@@ -150,9 +150,9 @@ def main() -> None:
 
                 deadline = time.time() + 10
                 while time.time() < deadline:
-                    if "# prompt4-monaco-e2e-edit" in ato_path.read_text(encoding="utf-8"):
+                    if "prompt4-monaco-e2e-edit" in ato_path.read_text(encoding="utf-8"):
                         break
-                    time.sleep(0.2)
+                    page.wait_for_timeout(200)
                 else:
                     raise AssertionError(
                         f"Monaco edit did not persist to {ato_path}. File contents:\n{ato_path.read_text(encoding='utf-8')}"

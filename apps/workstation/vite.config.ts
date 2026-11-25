@@ -37,6 +37,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (id.includes('node_modules/@xyflow')) return 'vendor-xyflow';
           if (id.includes('node_modules/monaco-editor')) return 'vendor-monaco';
           if (id.includes('node_modules/@xterm')) return 'vendor-xterm';
           if (id.includes('node_modules/three')) return 'vendor-three';

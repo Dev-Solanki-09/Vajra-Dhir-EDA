@@ -215,6 +215,9 @@ const LazyCodeEditorPanel = React.lazy(() =>
 const LazyTerminalPanel = React.lazy(() =>
   import('./TerminalPanel').then((m) => ({ default: m.TerminalPanel }))
 );
+const LazyArchitecturePlannerPanel = React.lazy(() =>
+  import('./ArchitecturePlannerPanel').then((m) => ({ default: m.ArchitecturePlannerPanel }))
+);
 
 const DockViewport3DPanel: React.FC<IDockviewPanelProps> = () => (
   <PanelErrorBoundary panelTitle="Viewport 3D (STEP)">
@@ -249,6 +252,16 @@ const DockTerminalPanel: React.FC<IDockviewPanelProps> = () => (
     <div style={{ padding: 8, height: '100%', backgroundColor: 'var(--vd-bg-canvas)' }}>
       <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading PTY Terminal...</div>}>
         <LazyTerminalPanel />
+      </Suspense>
+    </div>
+  </PanelErrorBoundary>
+);
+
+const DockArchitecturePlannerPanel: React.FC<IDockviewPanelProps> = () => (
+  <PanelErrorBoundary panelTitle="System Architecture (xyflow)">
+    <div style={{ padding: 8, height: '100%', backgroundColor: 'var(--vd-bg-canvas)' }}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading xyflow System Architecture...</div>}>
+        <LazyArchitecturePlannerPanel />
       </Suspense>
     </div>
   </PanelErrorBoundary>
@@ -290,6 +303,7 @@ const DOCK_COMPONENTS = {
   fileExplorer: DockFileExplorerPanel,
   codeEditor: DockCodeEditorPanel,
   terminal: DockTerminalPanel,
+  architecture: DockArchitecturePlannerPanel,
   explorer: ExplorerPanel,
   inspector: InspectorPanel,
 };
@@ -471,6 +485,12 @@ export const WorkstationShell: React.FC = () => {
       id: 'terminal_panel',
       component: 'terminal',
       title: 'Terminal (PTY)',
+      position: { referencePanel: center, direction: 'within' },
+    });
+    event.api.addPanel({
+      id: 'architecture_panel',
+      component: 'architecture',
+      title: 'Architecture (xyflow)',
       position: { referencePanel: center, direction: 'within' },
     });
     center.api.setActive();

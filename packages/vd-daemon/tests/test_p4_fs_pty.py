@@ -100,7 +100,7 @@ def _ws_read_text(sock: socket.socket, timeout_sec: float = 5.0) -> str:
 
 def test_fs_api_traversal_and_conpty_ws() -> None:
     port = _free_port()
-    with tempfile.TemporaryDirectory(prefix="vd_p4_test_") as tmp_dir:
+    with tempfile.TemporaryDirectory(prefix="vd_p4_test_", ignore_cleanup_errors=True) as tmp_dir:
         tmp = pathlib.Path(tmp_dir)
         proj = tmp / "proj"
         shutil.copytree("fixtures/golden-buck-mcu", proj)

@@ -29,6 +29,9 @@ const CodeEditorPanel = React.lazy(() =>
 const TerminalPanel = React.lazy(() =>
   import('./TerminalPanel').then((m) => ({ default: m.TerminalPanel }))
 );
+const ArchitecturePlannerPanel = React.lazy(() =>
+  import('./ArchitecturePlannerPanel').then((m) => ({ default: m.ArchitecturePlannerPanel }))
+);
 const UplotScope = React.lazy(() =>
   import('./UplotScope').then((m) => ({ default: m.UplotScope }))
 );
@@ -272,7 +275,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
 
   const [mfgSubTab, setMfgSubTab] = useState<'panel' | 'diff' | 'harness' | 'ibom'>('panel');
   const [pcbEngineMode, setPcbEngineMode] = useState<'kicanvas' | 'webgpu'>('kicanvas');
-  const [schEngineMode, setSchEngineMode] = useState<'kicanvas' | 'elkjs'>('kicanvas');
+  const [schEngineMode, setSchEngineMode] = useState<'kicanvas' | 'elkjs' | 'architecture'>('kicanvas');
   const [panelPreview, setPanelPreview] = useState<string>(
     `(kicad_pcb (version 20240108) (generator "vd-panelizer-mit")\n  (layers (0 "F.Cu" signal) (31 "B.Cu" signal) (44 "Edge.Cuts" user))\n  ;; 2x2 Matrix · 5.0 mm breakaway rails · 8 mouse-bites · 3 tooling holes\n)`
   );
@@ -533,6 +536,14 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
             <button
               type="button"
+              className={`vd-btn ${schEngineMode === 'architecture' ? 'vd-btn-primary' : ''}`}
+              style={{ minHeight: 22, padding: '2px 7px', fontSize: 11 }}
+              onClick={() => setSchEngineMode('architecture')}
+            >
+              System Architecture (xyflow)
+            </button>
+            <button
+              type="button"
               className={`vd-btn ${schEngineMode === 'kicanvas' ? 'vd-btn-primary' : ''}`}
               style={{ minHeight: 22, padding: '2px 7px', fontSize: 11 }}
               onClick={() => setSchEngineMode('kicanvas')}
@@ -548,7 +559,11 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
               ELK Flow
             </button>
           </div>
-          {schEngineMode === 'kicanvas' ? (
+          {schEngineMode === 'architecture' ? (
+            <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading xyflow System Architecture Planner...</div>}>
+              <ArchitecturePlannerPanel />
+            </Suspense>
+          ) : schEngineMode === 'kicanvas' ? (
             <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading KiCanvas schematic renderer...</div>}>
               <Schematic2DPanel />
             </Suspense>

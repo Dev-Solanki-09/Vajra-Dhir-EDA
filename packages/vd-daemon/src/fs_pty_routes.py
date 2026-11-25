@@ -39,18 +39,77 @@ _STARTER_ATO = '''module Buck3V3:
 
 _STARTER_SYSTEM_YAML = '''project: golden-buck-mcu
 version: "0.0.5"
+purpose: "USB-C PD 12V -> 3.3V Sync Buck Regulator + MCU/PD Controller Carrier"
+requirements:
+  - "Deliver regulated +3V3_OUT rail up to 3.0A with < 40 mVpp ripple"
+  - "Protect 3.3V-only MCU & SBC headers against 5V/12V overvoltage hazards"
+  - "Enforce locked placement on J1 (USB-C input) and U2 (buck IC)"
 blocks:
   - id: blk-power-in
-    refdes: J1
+    name: "12V USB-C PD Source"
+    kind: power_source
     role: "12V DC Input Header (human-locked)"
+    voltage_v: 12
+    max_output_ma: 3000
+    draw_ma: 0
+    tolerance: HIGH_VOLTAGE_POWER
+    builtin_pullups: false
+    bootstrap_notes: "ESD TVS + 12V VBUS fuse input boundary"
+    mounting_footprint: "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical"
+    step_model_ref: ""
+    kicad_sheet_uuid: "01950000-0000-7000-8000-000000000001"
+    member_refdes: [J1]
+    x: 40
+    y: 160
   - id: blk-sync-buck
-    refdes: U2
-    role: "TPS54302 3A Buck Regulator"
-    members: [U2, L1, C1, C2, R1, R2]
+    name: "TPS54302 3.3V Buck"
+    kind: regulator
+    template_id: generic-buck-5v-3v3-module
+    role: "TPS54302 3A Sync Buck Regulator + L1 4.7uH + C1 10uF"
+    voltage_v: 3.3
+    max_output_ma: 3000
+    draw_ma: 30
+    tolerance: HIGH_VOLTAGE_POWER
+    builtin_pullups: false
+    bootstrap_notes: "SW node loop minimized; L1 & C1 decoupled near VIN"
+    mounting_footprint: "Package_TO_SOT_SMD:SOT-23-6"
+    step_model_ref: ""
+    kicad_sheet_uuid: "01950000-0000-7000-8000-000000000002"
+    member_refdes: [U2, L1, C1]
+    x: 340
+    y: 160
   - id: blk-mcu
-    refdes: U1
-    role: "STM32/CH224K Control Core"
-    members: [U1, C3, C4, R3]
+    name: "MCU & PD Controller"
+    kind: mcu
+    template_id: stm32g4-core
+    role: "STM32/CH224K Control Core (3.3V logic)"
+    voltage_v: 3.3
+    max_output_ma: 150
+    draw_ma: 180
+    tolerance: 3.3V_NON_5V_TOLERANT
+    builtin_pullups: false
+    bootstrap_notes: "NRST pulled high via R3; SWD exposed on header"
+    mounting_footprint: "Package_SO:SOIC-16_3.9x9.9mm_P1.27mm"
+    step_model_ref: ""
+    kicad_sheet_uuid: "01950000-0000-7000-8000-000000000003"
+    member_refdes: [U1, R3]
+    x: 660
+    y: 160
+buses:
+  - id: bus-vbus-12v
+    source: blk-power-in
+    target: blk-sync-buck
+    protocol: PowerRail
+    rail_voltage_v: 12
+    expected_ma: 1200
+    net_names: [VBUS_12V, +12V]
+  - id: bus-3v3-mcu
+    source: blk-sync-buck
+    target: blk-mcu
+    protocol: PowerRail
+    rail_voltage_v: 3.3
+    expected_ma: 180
+    net_names: [+3.3V, +3V3_OUT]
 '''
 
 _STARTER_PINS_H = '''/* Vajra-Dhir EDA — golden-buck-mcu Firmware Pinmux */
