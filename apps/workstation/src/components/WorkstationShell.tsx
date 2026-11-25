@@ -218,6 +218,9 @@ const LazyTerminalPanel = React.lazy(() =>
 const LazyArchitecturePlannerPanel = React.lazy(() =>
   import('./ArchitecturePlannerPanel').then((m) => ({ default: m.ArchitecturePlannerPanel }))
 );
+const LazyComponentLibraryPanel = React.lazy(() =>
+  import('./ComponentLibraryPanel').then((m) => ({ default: m.ComponentLibraryPanel }))
+);
 
 const DockViewport3DPanel: React.FC<IDockviewPanelProps> = () => (
   <PanelErrorBoundary panelTitle="Viewport 3D (STEP)">
@@ -267,6 +270,16 @@ const DockArchitecturePlannerPanel: React.FC<IDockviewPanelProps> = () => (
   </PanelErrorBoundary>
 );
 
+const DockComponentLibraryPanel: React.FC<IDockviewPanelProps> = () => (
+  <PanelErrorBoundary panelTitle="Component Knowledge Graph">
+    <div style={{ padding: 8, height: '100%', backgroundColor: 'var(--vd-bg-canvas)', overflowY: 'auto' }}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading DuckDB Knowledge Graph...</div>}>
+        <LazyComponentLibraryPanel />
+      </Suspense>
+    </div>
+  </PanelErrorBoundary>
+);
+
 const DockPcb2DPanel: React.FC<IDockviewPanelProps> = () => {
   const ctx = React.useContext(ShellContext);
   return (
@@ -304,6 +317,7 @@ const DOCK_COMPONENTS = {
   codeEditor: DockCodeEditorPanel,
   terminal: DockTerminalPanel,
   architecture: DockArchitecturePlannerPanel,
+  componentLibrary: DockComponentLibraryPanel,
   explorer: ExplorerPanel,
   inspector: InspectorPanel,
 };

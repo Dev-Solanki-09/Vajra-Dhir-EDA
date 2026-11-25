@@ -28,6 +28,7 @@ try:
     from .agent_routes import handle_agent_post
     from .atopile_engine import handle_ato_get, handle_ato_post
     from .fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
+    from .kg_routes import handle_kg_get, handle_kg_post
     from .kicad_bridge import ensure_external_id_map
     from .kicad_routes import (
         handle_kicad_get,
@@ -47,6 +48,7 @@ except ImportError:
     from agent_routes import handle_agent_post
     from atopile_engine import handle_ato_get, handle_ato_post
     from fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
+    from kg_routes import handle_kg_get, handle_kg_post
     from kicad_bridge import ensure_external_id_map
     from kicad_routes import (
         handle_kicad_get,
@@ -1016,6 +1018,8 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                     return
                 if handle_ato_get(self, path, full_path=self.path, con=self.con):
                     return
+                if handle_kg_get(self, path, full_path=self.path):
+                    return
             if not path.startswith("/api/") and not path.startswith("/stitch/") and not path.startswith("/ws/"):
                 asset = resolve_studio_static_asset(path)
                 if asset["status"] == 200:
@@ -1834,6 +1838,9 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             return
 
         elif handle_ato_post(self, path, req, self.con):
+            return
+
+        elif handle_kg_post(self, path, req, self.con):
             return
 
         elif handle_x1_post(self, path, req):

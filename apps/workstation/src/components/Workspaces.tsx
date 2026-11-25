@@ -32,6 +32,9 @@ const TerminalPanel = React.lazy(() =>
 const ArchitecturePlannerPanel = React.lazy(() =>
   import('./ArchitecturePlannerPanel').then((m) => ({ default: m.ArchitecturePlannerPanel }))
 );
+const ComponentLibraryPanel = React.lazy(() =>
+  import('./ComponentLibraryPanel').then((m) => ({ default: m.ComponentLibraryPanel }))
+);
 const UplotScope = React.lazy(() =>
   import('./UplotScope').then((m) => ({ default: m.UplotScope }))
 );
@@ -607,6 +610,16 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
 
       {workspace === 'library_bom' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading DuckDB Knowledge Graph &amp; Derating Viewer...</div>}>
+            <ComponentLibraryPanel
+              onPartPlaced={({ refdes, mpn }) => {
+                setBomRows((prev) => [
+                  ...prev,
+                  { refdes, mpn, pkg: 'Imported', feeder: 'Basic ($0)', qty: 1, side: 'top' },
+                ]);
+              }}
+            />
+          </Suspense>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <input
               type="text"
