@@ -1,0 +1,16 @@
+{
+  "provenance": "spec-derived",
+  "standard": "KiCad PCB S-expression + IPC-7525B Panel Rails",
+  "units": "nanometers_i64",
+  "panel_matrix": [2, 2],
+  "board_width_nm": 40000000,
+  "board_height_nm": 30000000,
+  "spacing_x_nm": 2000000,
+  "spacing_y_nm": 2000000,
+  "rail_width_nm": 5000000,
+  "expected_panel_width_nm": 82000000,
+  "expected_panel_height_nm": 72000000,
+  "expected_tooling_holes": 4,
+  "expected_fiducials": 3,
+  "separation_method": "mouse_bites"
+}

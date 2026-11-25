@@ -18,8 +18,10 @@ for arg in "$@"; do
   esac
 done
 
-# Ensure gitignored mirror roots exist BEFORE any cloning
-mkdir -p vendor/ring1-refs vendor/quarantine workers/sources plugins/sources evalops/sources tools/local-mcps
+# Ensure gitignored mirror roots exist BEFORE any cloning (skip mkdir during --dry-run)
+if [ "$DRY_RUN" -eq 0 ]; then
+  mkdir -p vendor/ring1-refs vendor/quarantine workers/sources plugins/sources evalops/sources tools/local-mcps
+fi
 
 # Forbidden AGPL / Non-Commercial / EUPL deny-list (never clone into Ring 1 or mirrors)
 FORBIDDEN_PATTERN="(PyMuPDF|KiBot|Konnect|Part-DB-server|pypsa-app|OpenModelica|surfer-project/surfer|serde_kicad_sexpr)"
@@ -29,7 +31,8 @@ clone_shallow() {
   local url="$2"
   local license_class="${3:-unknown}"
   local name
-  name="$(basename "$url" .git)"
+  name="${url##*/}"
+  name="${name%.git}"
 
   if [[ "$url" =~ $FORBIDDEN_PATTERN ]]; then
     echo "[DENY] Blocked forbidden/excluded repo: $url" >&2

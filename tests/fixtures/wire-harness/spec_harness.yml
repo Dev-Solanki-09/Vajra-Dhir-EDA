@@ -1,0 +1,21 @@
+connectors:
+  J1:
+    type: JST-GH-4
+    pins: [1, 2, 3, 4]
+    pinlabels: [VCC, SDA, SCL, GND]
+  J2:
+    type: Molex-PicoBlade-4
+    pins: [1, 2, 3, 4]
+    pinlabels: [VCC, SDA, SCL, GND]
+
+cables:
+  W1:
+    gauge: 24 AWG
+    length: 0.25
+    colors: [RD, BU, YL, BK]
+
+connections:
+  -
+    - J1: [1-4]
+    - W1: [1-4]
+    - J2: [1-4]

@@ -1,0 +1,13 @@
+{
+  "provenance": "spec-derived",
+  "standard": "IEC 60757 color codes + AWG 24 wire cut-list schema",
+  "expected_connectors": ["J1", "J2"],
+  "expected_cables": ["W1"],
+  "expected_wire_count": 4,
+  "expected_total_wire_length_mm": 1000,
+  "expected_bom_rows": [
+    {"id": "J1", "qty": 1},
+    {"id": "J2", "qty": 1},
+    {"id": "W1", "qty": 4, "awg": 24, "length_mm": 250}
+  ]
+}
