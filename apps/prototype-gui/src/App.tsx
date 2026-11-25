@@ -10,6 +10,7 @@ import {
   undoPatch,
 } from "./api";
 import { CLIENT_EDA_COMMANDS, WORKSPACE_TABS, type EdaCommand } from "./commandBus";
+import { createDropViaPatch, createExplicitLockPatch, uuidv7 } from "./manualEditorFsm";
 import { PcbCanvas } from "./PcbCanvas";
 import { LayerManager, type LayerDef } from "./components/LayerManager";
 import { StackupEditor } from "./components/StackupEditor";
@@ -152,13 +153,15 @@ export const App: React.FC = () => {
   const handleToggleLock = async (compId: string, nextLock: boolean) => {
     const comp = snapshot.components.find((c) => c.id === compId);
     if (!comp) return;
-    const res = await applyPatch({
-      expected_lamport: snapshot.project.rev_lamport,
-      actor_kind: "human",
-      actor_id: "engineer",
-      summary: `${nextLock ? "Lock" : "Unlock"} ${comp.refdes}`,
-      ops: [{ op: "SET_LOCK", entity_type: "component", entity_id: compId, locked: nextLock, reason: nextLock ? "human_explicit_lock" : null }],
-    });
+    const res = await applyPatch(
+      createExplicitLockPatch({
+        entityType: "component",
+        entityId: compId,
+        locked: nextLock,
+        expectedLamport: snapshot.project.rev_lamport,
+        reason: nextLock ? "human_explicit_lock" : null,
+      })
+    );
     setBanner({ kind: res.applied ? "ok" : "err", text: res.message });
     await refreshAll();
   };
@@ -179,7 +182,7 @@ export const App: React.FC = () => {
       ops.push({
         op: "ADD_TRACE",
         trace: {
-          id: crypto.randomUUID(),
+          id: uuidv7(),
           board_id: snapshot.board.id,
           net_id: netId,
           layer_name: layer,
@@ -207,30 +210,16 @@ export const App: React.FC = () => {
 
   const handleDropVia = async (xNm: Nm, yNm: Nm, netId: string) => {
     const nextLayer = activeLayer === "F.Cu" ? "B.Cu" : "F.Cu";
-    await applyPatch({
-      expected_lamport: snapshot.project.rev_lamport,
-      actor_kind: "human",
-      actor_id: "engineer",
-      summary: `Dropped locked through-via (${activeLayer} -> ${nextLayer})`,
-      ops: [{
-        op: "ADD_VIA",
-        via: {
-          id: crypto.randomUUID(),
-          board_id: snapshot.board.id,
-          net_id: netId,
-          x_nm: xNm,
-          y_nm: yNm,
-          drill_nm: 300_000,
-          diameter_nm: 600_000,
-          start_layer: "F.Cu",
-          end_layer: "B.Cu",
-          via_kind: "through",
-          provenance: "human",
-          locked: true,
-          rev_lamport: snapshot.project.rev_lamport + 1,
-        },
-      }],
-    });
+    await applyPatch(
+      createDropViaPatch({
+        boardId: snapshot.board.id,
+        netId,
+        xNm,
+        yNm,
+        activeLayer,
+        expectedLamport: snapshot.project.rev_lamport,
+      })
+    );
     setActiveLayer(nextLayer);
     await refreshAll();
   };
