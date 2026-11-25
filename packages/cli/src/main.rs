@@ -40,6 +40,7 @@ SUBCOMMANDS:
     worker run <pack>     Dispatch stateless job to isolated zero-egress worker
     asic c2p2b            Run Chip-to-Package-to-Board (C2P2B) pad-ring to ball-map bridge
     step                  Inspect isolated LGPL STEP AP242 Web Worker and Ring-2 kicad-cli status
+    studio [project]      Launch or attach Vajra-Dhir Studio on loopback 127.0.0.1:41900
     emc scan <freq_mhz>   Harmonic collision scan against protected RF bands (Wi-Fi, GPS)
     emc esd               Audit connector-to-TVS distance in nanometers (<= 5.0 mm)
     cas put <file>        Store artifact in content-addressed store (cas://sha256/...)
@@ -251,6 +252,21 @@ fn main() {
             match kicad_cli {
                 Some(out) => println!("[PASS] Ring-2 kicad-cli available for PCB export-step: {}", String::from_utf8_lossy(&out.stdout).trim()),
                 None => println!("[INFO] Ring-2 kicad-cli not present on PATH; workstation stepWorker handles browser-side STEP AP242 decoding."),
+            }
+        }
+
+        "studio" => {
+            let project_arg = args.get(2).map(|s| s.as_str()).unwrap_or(".");
+            println!("[*] vd studio: Launching Silicon Darkroom Workstation on http://127.0.0.1:41900");
+            println!("[*] Project workspace: {}", project_arg);
+            let daemon_up = std::net::TcpStream::connect_timeout(
+                &std::net::SocketAddr::from(([127, 0, 0, 1], 41900)),
+                std::time::Duration::from_millis(200),
+            ).is_ok();
+            if daemon_up {
+                println!("[PASS] Loopback daemon active at http://127.0.0.1:41900 (GET / serves static UI bundle).");
+            } else {
+                println!("[INFO] Start daemon via `python packages/vd-daemon/src/daemon.py` -> open http://127.0.0.1:41900");
             }
         }
 

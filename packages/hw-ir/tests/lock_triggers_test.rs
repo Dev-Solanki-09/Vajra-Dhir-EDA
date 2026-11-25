@@ -318,4 +318,19 @@ fn test_undo_restores_exact_sha256_fingerprint() {
         baseline_hash, restored_hash,
         "Design state after undo must match exact pre-patch SHA-256 fingerprint"
     );
+
+    // 5. Redo the undone patch and assert mutated hash is restored
+    let redone = store
+        .redo_last_patch(&project_id, Provenance::Agent)
+        .expect("Redo failed");
+    assert!(redone.is_some(), "Redo should return patch ID");
+    assert_eq!(
+        mutated_hash,
+        store.compute_design_hash(&project_id).expect("Hash failed"),
+        "Design hash after redo must match mutated state"
+    );
+
+    // 6. WAL checkpoint ladder (PASSIVE every 250 patches, TRUNCATE on idle)
+    store.checkpoint_wal_ladder(250, false).expect("PASSIVE WAL checkpoint failed");
+    store.checkpoint_wal_ladder(251, true).expect("TRUNCATE WAL checkpoint failed");
 }

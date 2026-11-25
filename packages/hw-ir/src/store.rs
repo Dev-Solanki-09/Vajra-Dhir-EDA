@@ -219,6 +219,86 @@ impl HwIrStore {
         }
     }
 
+    /// Undo the most recent non-undone patch while strictly honoring fail-closed locks for the given actor.
+    pub fn undo_last_patch_checked(
+        &mut self,
+        project_id: &str,
+        actor: Provenance,
+    ) -> Result<Option<String>, HwIrError> {
+        let query = "SELECT patch_id, inverse_ops_json
+                     FROM hardware_patches
+                     WHERE project_id = ?1 AND undone = 0
+                     ORDER BY seq_id DESC LIMIT 1;";
+        let row_opt = self
+            .conn
+            .query_row(query, params![project_id], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .optional()?;
+
+        if let Some((patch_id, inv_json)) = row_opt {
+            let inverse_ops: Vec<HardwarePatchOp> = serde_json::from_str(&inv_json)?;
+            self.with_actor_transaction(actor, false, |tx| {
+                for op in &inverse_ops {
+                    apply_single_op(tx, op)?;
+                }
+                tx.execute(
+                    "UPDATE hardware_patches SET undone = 1 WHERE patch_id = ?1;",
+                    params![patch_id],
+                )?;
+                Ok(())
+            })?;
+            Ok(Some(patch_id))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Redo the earliest undone patch (Ctrl+Shift+Z) while strictly honoring fail-closed locks.
+    pub fn redo_last_patch(
+        &mut self,
+        project_id: &str,
+        actor: Provenance,
+    ) -> Result<Option<String>, HwIrError> {
+        let query = "SELECT patch_id, forward_ops_json
+                     FROM hardware_patches
+                     WHERE project_id = ?1 AND undone = 1
+                     ORDER BY seq_id ASC LIMIT 1;";
+        let row_opt = self
+            .conn
+            .query_row(query, params![project_id], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .optional()?;
+
+        if let Some((patch_id, fwd_json)) = row_opt {
+            let forward_ops: Vec<HardwarePatchOp> = serde_json::from_str(&fwd_json)?;
+            self.with_actor_transaction(actor, false, |tx| {
+                for op in &forward_ops {
+                    apply_single_op(tx, op)?;
+                }
+                tx.execute(
+                    "UPDATE hardware_patches SET undone = 0 WHERE patch_id = ?1;",
+                    params![patch_id],
+                )?;
+                Ok(())
+            })?;
+            Ok(Some(patch_id))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Execute SQLite WAL checkpoint ladder: PASSIVE every 250 patches, TRUNCATE on idle.
+    pub fn checkpoint_wal_ladder(&self, patch_count: usize, idle: bool) -> Result<(), HwIrError> {
+        if idle {
+            self.conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")?;
+        } else if patch_count > 0 && patch_count % 250 == 0 {
+            self.conn.execute_batch("PRAGMA wal_checkpoint(PASSIVE);")?;
+        }
+        Ok(())
+    }
+
     /// Compute a deterministic SHA-256 fingerprint of the current board/design state.
     pub fn compute_design_hash(&self, project_id: &str) -> Result<String, HwIrError> {
         let mut hasher = Sha256::new();
