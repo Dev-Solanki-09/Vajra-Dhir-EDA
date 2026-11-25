@@ -16,7 +16,7 @@ vd-sim-compat = { path = "../sim-compat" }
 vd-cam-pnp = { path = "../cam-pnp" }
 vd-nine-gates = { path = "../nine-gates" }
 vd-symbolic-verifier = { path = "../symbolic-verifier" }
-vd-hw-dlp = { path = "../hw-dlp" }
+vd-hw-dlp = { package = "vd-dlp", path = "../hw-dlp" }
 vd-pdn-solver = { path = "../pdn-solver" }
 vd-pcb-diff = { path = "../pcb-diff" }
 vd-wire-harness = { path = "../wire-harness" }
