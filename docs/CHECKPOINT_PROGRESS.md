@@ -90,7 +90,7 @@ All three reference hardware designs are software blueprints checked via offline
 
 ---
 
-## 4. Automated Classified Verification Suite (Gates 1..77)
+## 4. Automated Classified Verification Suite (Gates 1..78)
 
 To verify the repository offline (`BEHAVIORAL` + `STRUCTURAL_CONTRACT` classified gates), run:
 ```bash

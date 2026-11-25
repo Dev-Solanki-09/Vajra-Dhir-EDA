@@ -9,7 +9,7 @@
 ---
 
 ## 1. Executive Gate Summary (78 Classified Gates)
-- **`node scripts/verify-all.mjs`:** **`77 PASS / 1 FAIL`** (`51 BEHAVIORAL`, `27 STRUCTURAL_CONTRACT`, `78 total`).
+- **`node scripts/verify-all.mjs`:** **`77 PASS / 1 FAIL`** (`50 BEHAVIORAL`, `28 STRUCTURAL_CONTRACT`, `78 total`).
   - **Sole Windows host failure:** Gate 53 (`scripts/test-cad-perfection.py` running `cargo test -p vd-cad-geom`) fails on this Windows workstation strictly due to missing MSVC `link.exe` (`linker 'link.exe' not found`), not code failure. Full Rust workspace test compilation executes on `ubuntu-24.04` CI (`rust: 1.100.0`).
   - **`cargo metadata --format-version 1 --locked`:** PASS (exit `0`).
 - **G8 Specific Verifications (All PASS on HEAD):**
