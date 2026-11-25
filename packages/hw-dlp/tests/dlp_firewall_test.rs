@@ -89,3 +89,11 @@ fn test_budget_circuit_breaker_trips() {
         other => panic!("Expected CapExceeded error, got {:?}", other),
     }
 }
+
+#[test]
+fn test_dlp_firewall_check_egress_loopback_vs_external() {
+    assert!(DlpFirewall::check_egress(DlpClass::NdaAirgapped, "http://127.0.0.1:11434/api/chat").is_ok());
+    assert!(DlpFirewall::check_egress(DlpClass::NdaAirgapped, "offline").is_ok());
+    let blocked = DlpFirewall::check_egress(DlpClass::NdaAirgapped, "https://telemetry.example.invalid/collect");
+    assert!(matches!(blocked, Err(DlpError::EgressBlocked(_))));
+}

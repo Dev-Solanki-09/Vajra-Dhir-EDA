@@ -8,9 +8,19 @@ console.log('  Standards: ISO/IEC/IEEE 42010, SLSA v1.2, OWASP Agentic AI');
 console.log('================================================================\n');
 
 let failed = false;
+let totalSteps = 0;
+let behavioralSteps = 0;
+let structuralSteps = 0;
 
-function step(title, fn) {
-  process.stdout.write(`[*] ${title.padEnd(52, '.')} `);
+function step(title, fn, kind = 'BEHAVIORAL') {
+  totalSteps += 1;
+  if (kind === 'STRUCTURAL_CONTRACT') {
+    structuralSteps += 1;
+  } else {
+    behavioralSteps += 1;
+  }
+  const tag = `[${kind}]`;
+  process.stdout.write(`[*] ${tag} ${title.padEnd(56, '.')} `);
   try {
     fn();
     console.log('[ PASS ]');
@@ -63,7 +73,7 @@ step('Canonical HW-IR SQLite DDL & Lock Triggers', () => {
   if (!perfSql.includes('layout_rooms') || !perfSql.includes('variants')) {
     throw new Error('Missing layout_rooms or variants table');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 6. DLP Firewall & Budget Circuit Breaker
 step('DLP Firewall & Budget Circuit Breaker Policy', () => {
@@ -74,15 +84,15 @@ step('DLP Firewall & Budget Circuit Breaker Policy', () => {
   if (!budgetJson.circuit_breakers.stop_on_budget_exceeded) {
     throw new Error('Circuit breaker stop_on_budget_exceeded must be true');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
-// 7. Wasmtime 50 Sandbox WIT & Memory Ceilings
-step('Wasmtime 50 Sandbox WIT & Memory Ceilings', () => {
+// 7. Wasmtime >=51 Sandbox WIT & Memory Ceilings
+step('Wasmtime >=51 Sandbox WIT & Memory Ceilings', () => {
   const wit = fs.readFileSync('packages/wasm-sandbox/wit/codemode.wit', 'utf8');
   if (!wit.includes('max-memory-bytes') || !wit.includes('code-mode-runner')) {
     throw new Error('Invalid or incomplete codemode.wit specification');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 8. 3-Way Hardware Merge Driver & Git Attributes
 step('Semantic 3-Way Merge Driver (.gitattributes)', () => {
@@ -90,7 +100,7 @@ step('Semantic 3-Way Merge Driver (.gitattributes)', () => {
   if (!gitattr.includes('*.vd-ir.jsonl merge=hwir')) {
     throw new Error('Missing *.vd-ir.jsonl merge=hwir gitattributes binding');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 9. KiCad 10 Transcoder & Echo Suppression Ring
 step('KiCad 10 Transcoder & 5s Echo Suppression', () => {
@@ -98,7 +108,7 @@ step('KiCad 10 Transcoder & 5s Echo Suppression', () => {
   if (!echoRing.includes('DEFAULT_SUPPRESSION_WINDOW') || !echoRing.includes('should_suppress')) {
     throw new Error('Missing EchoSuppressionRing implementation');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 10. Threat Model & CVE Floor Audit
 step('Threat Model & Security Floor (Nov 2026)', () => {
@@ -106,7 +116,7 @@ step('Threat Model & Security Floor (Nov 2026)', () => {
   if (!threatModel.includes('ASI01') || !threatModel.includes('CVE-2026-115889')) {
     throw new Error('Missing OWASP Agentic AI threat model mappings');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 11. Component Knowledge Graph & MLCC Derating
 step('Component Knowledge Graph & Physics Calculations', () => {
@@ -114,7 +124,7 @@ step('Component Knowledge Graph & Physics Calculations', () => {
   if (!kgLib.includes('mlcc_derating') || !kgLib.includes('inductor_saturation')) {
     throw new Error('Missing component-kg physics engines');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 12. Open-CUBO Parametric Synthesizers
 step('Open-CUBO Parametric Synthesizers (Buck, LDO, USB-PD, ESD)', () => {
@@ -122,7 +132,7 @@ step('Open-CUBO Parametric Synthesizers (Buck, LDO, USB-PD, ESD)', () => {
   if (!cuboLib.includes('BuckSynthesizer') || !cuboLib.includes('LdoSynthesizer') || !cuboLib.includes('UsbPdSynthesizer') || !cuboLib.includes('EsdSynthesizer')) {
     throw new Error('Missing Open-CUBO circuit block synthesizers');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 13. Symbolic Verifier & 10 EE Footguns
 step('Symbolic Verifier & 10 EE Footguns Engine', () => {
@@ -133,7 +143,7 @@ step('Symbolic Verifier & 10 EE Footguns Engine', () => {
       throw new Error(`Missing EE Footgun #${i}`);
     }
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 14. 9-Gate Fail-Closed Pipeline State Machine
 step('9-Gate Fail-Closed State Machine & Execution Proof', () => {
@@ -146,7 +156,7 @@ step('Forward/Back-Annotation ECO Engine (vd-eco-engine)', () => {
   if (!ecoLib.includes('GeographicalReannotator') || !ecoLib.includes('ForwardEcoEngine')) {
     throw new Error('Missing ECO engine modules');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 16. Real-World SPICE Compatibility & Dialect Transpiler
 step('Vendor SPICE Compatibility & Dialect Transpiler', () => {
@@ -154,7 +164,7 @@ step('Vendor SPICE Compatibility & Dialect Transpiler', () => {
   if (!simLib.includes('DialectTranspiler') || !simLib.includes('EncryptedModelDetector')) {
     throw new Error('Missing SPICE compatibility modules');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 17. Solder Paste Stencil DFM & Pick-and-Place
 step('IPC-7525B Stencil DFM & Pick-and-Place Generator', () => {
@@ -162,7 +172,7 @@ step('IPC-7525B Stencil DFM & Pick-and-Place Generator', () => {
   if (!camLib.includes('StencilDfmEngine') || !camLib.includes('PnpGenerator')) {
     throw new Error('Missing CAM / PnP modules');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 18. Vajra-Dhīr Unified CLI (vd)
 step('Vajra-Dhīr Unified CLI Engine (`vd`)', () => {
@@ -170,7 +180,7 @@ step('Vajra-Dhīr Unified CLI Engine (`vd`)', () => {
   if (!cliSrc.includes('reannotate-geo') || !cliSrc.includes('G1_SPEC_LOCK')) {
     throw new Error('Missing CLI subcommands');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 19. 2.5D DC Power Integrity & IPC-2152 Thermal PDN Solver
 step('2.5D DC Power Integrity & IPC-2152 PDN Solver', () => {
@@ -178,7 +188,7 @@ step('2.5D DC Power Integrity & IPC-2152 PDN Solver', () => {
   if (!pdnLib.includes('PdnIrDropSolver') || !pdnLib.includes('Ipc2152ThermalEngine')) {
     throw new Error('Missing PDN solver modules');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 20. Pure-MIT Visual Layer-by-Layer PCB Diff & ECO Visualizer
 step('Pure-MIT Visual Layer-by-Layer PCB Diff Engine', () => {
@@ -186,7 +196,7 @@ step('Pure-MIT Visual Layer-by-Layer PCB Diff Engine', () => {
   if (!diffLib.includes('PcbDiffEngine')) {
     throw new Error('Missing PCB diff engine modules');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 21. Pure-MIT Cable, Wire Harness & Interconnect Compiler
 step('Pure-MIT Wire Harness & Multi-Board Interconnect Compiler', () => {
@@ -194,7 +204,7 @@ step('Pure-MIT Wire Harness & Multi-Board Interconnect Compiler', () => {
   if (!harnessLib.includes('WireHarnessCompiler') || !harnessLib.includes('AwgGauge')) {
     throw new Error('Missing Wire Harness compiler modules');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 22. Pure-MIT Automated PCB Panelization & Stencil Engine
 step('Pure-MIT Automated PCB Panelization & Stencil Engine', () => {
@@ -202,7 +212,7 @@ step('Pure-MIT Automated PCB Panelization & Stencil Engine', () => {
   if (!panelLib.includes('PanelizerEngine') || !panelLib.includes('SeparationMethod')) {
     throw new Error('Missing Panelizer engine modules');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 23. Hardware Exit: 3 Physical Boards & Kernel Lock Invariants
 step('Hardware Exit: 3 Physical Boards & Kernel Locks', () => {
@@ -224,7 +234,7 @@ step('Hardware-Firmware Co-Design Parity & DT Overlays', () => {
   if (!b3H.includes('PIN_FDCAN1_RX') || !b3H.includes('PIN_MOTOR_A_IN1')) {
     throw new Error('Board 3 board_pins.h missing CAN-FD or motor PWM definitions');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 25. Ring 2 OCI Container Isolation & Zero-Egress Compose
 step('Ring 2 OCI Container Isolation & Zero-Egress Compose', () => {
@@ -239,7 +249,7 @@ step('Ring 2 OCI Container Isolation & Zero-Egress Compose', () => {
   if (!df2a.includes('vdworker') || !df2b.includes('openhtf') || !df2c.includes('verilator')) {
     throw new Error('Missing worker definitions in Dockerfiles');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 26. Ring 2 Stateless Worker SDK & Job Contract Dispatcher
 step('Ring 2 Stateless Worker SDK & Job Contract Dispatcher', () => {
@@ -260,7 +270,7 @@ step('Multi-Region Fab Registry (Global & India EMS)', () => {
   if (!jlc.includes('min_trace_width_nm') || !lion.includes('India Domestic EMS') || !pcbPower.includes('INR')) {
     throw new Error('Fab registry profiles missing capability or regional fields');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 29. EMI/EMC Regulatory Pre-Compliance & Harmonic Matrix
 step('EMI/EMC Regulatory Pre-Compliance & Harmonic Matrix', () => {
@@ -268,7 +278,7 @@ step('EMI/EMC Regulatory Pre-Compliance & Harmonic Matrix', () => {
   if (!emcSrc.includes('CRITICAL_RF_BANDS') || !emcSrc.includes('scan_harmonics') || !emcSrc.includes('EsdPlacementAuditor')) {
     throw new Error('Missing EMC Workbench harmonic or ESD modules');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 30. Local Content-Addressed Binary Artifact Store (CAS)
 step('Local Content-Addressed Binary Artifact Store (CAS)', () => {
@@ -276,15 +286,15 @@ step('Local Content-Addressed Binary Artifact Store (CAS)', () => {
   if (!casSrc.includes('put_bytes') || !casSrc.includes('get_bytes') || !casSrc.includes('pin_digest')) {
     throw new Error('Missing CAS store modules');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 31. Vajra-Dhīr Diagnostics Preflight (vd doctor)
 step('Vajra-Dhīr Diagnostics Preflight (`vd doctor`)', () => {
   const cliSrc = fs.readFileSync('packages/cli/src/main.rs', 'utf8');
-  if (!cliSrc.includes('doctor') || !cliSrc.includes('GPU Driver Stability Blocklist') || !cliSrc.includes('emc')) {
-    throw new Error('Missing doctor or diagnostics commands in CLI');
+  if (!cliSrc.includes('doctor') || !cliSrc.includes('Cargo.lock') || !cliSrc.includes('127.0.0.1') || !cliSrc.includes('emc')) {
+    throw new Error('Missing real doctor preflight checks or diagnostics commands in CLI');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 32. 5-Stage Semantic Schematic Beautifier Engine
 step('5-Stage Semantic Schematic Beautifier Engine', () => {
@@ -296,7 +306,7 @@ step('5-Stage Semantic Schematic Beautifier Engine', () => {
     !beautifierSrc.includes('export_kicad10_sexpr')) {
     throw new Error('Missing 5-stage schematic beautifier pipeline stages');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 33. Autorouter Orchestrator Bridge & Copper Lock Guard
 step('Autorouter Orchestrator Bridge & Copper Lock Guard', () => {
@@ -308,7 +318,7 @@ step('Autorouter Orchestrator Bridge & Copper Lock Guard', () => {
     !routerSrc.includes('CopperLockViolation')) {
     throw new Error('Missing autorouter bridge or locked copper guard');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 34. IPC-7351B Parametric Footprint & Land Pattern Synthesizer
 step('IPC-7351B Footprint Synthesizer (.kicad_mod)', () => {
@@ -331,7 +341,7 @@ step('Solver Convergence & Failure-Recovery Middleware', () => {
     !recoverySrc.includes('gmin_stepping')) {
     throw new Error('Missing solver recovery ladders');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 36. SMPS Control-Loop Stability & Compensator Synthesizer
 step('SMPS Control-Loop Stability & Compensator Math', () => {
@@ -342,7 +352,7 @@ step('SMPS Control-Loop Stability & Compensator Math', () => {
     !controlSrc.includes('frhpz_hz')) {
     throw new Error('Missing control-loop synthesis modules');
   }
-});
+}, 'STRUCTURAL_CONTRACT');
 
 // 37. V-Model Requirements Traceability & CycloneDX 1.6 HBOM
 step('V-Model Traceability & CycloneDX 1.6 HBOM Generator', () => {
@@ -490,12 +500,32 @@ step('[MFG/DIFF] Manufacturing Center, KiKit Panelizer & Wire Harness Studio (ki
   execSync('python scripts/test-v004-mfg-and-harness.py', { stdio: 'pipe' });
 });
 
+// 65. HW-IR PatchOp TS/Python/Rust Parity Contract
+step('[CONTRACT] HW-IR PatchOp Cross-Language Parity', () => {
+  execSync('python packages/hw-ir/tests/test_patch_op_parity.py', { stdio: 'pipe' });
+});
+
+// 66. Git Merge Driver Registration Test
+step('[GIT/MERGE] Semantic hwir Merge Driver Registration', () => {
+  execSync('python packages/hw-merge/tests/test_merge_driver_registration.py', { stdio: 'pipe' });
+});
+
+// 67. EE Footgun Contract Parity
+step('[SYMBOLIC] 10 EE Footgun Contract Parity', () => {
+  execSync('python packages/symbolic-verifier/tests/test_footgun_contract.py', { stdio: 'pipe' });
+});
+
+// 68. Manual CAD Interactive Editor FSM (Same-Hands + Explicit Lock)
+step('[GUI/FSM] Manual CAD Interactive FSM (Same-Hands Law)', () => {
+  execSync('node --test apps/prototype-gui/tests/manualEditorFsm.test.mjs', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');
   process.exit(1);
 } else {
-  console.log('  ALL 64 VERIFICATION GATES PASSED CLEANLY (100% SUCCESS).');
+  console.log(`  ALL ${totalSteps} VERIFICATION GATES PASSED CLEANLY (${behavioralSteps} BEHAVIORAL, ${structuralSteps} STRUCTURAL_CONTRACT).`);
   console.log('  Full Industrial Baseline, Reference Hardware & Ground-Truth Audit Certified.');
   console.log('----------------------------------------------------------------\n');
 }

@@ -3,7 +3,7 @@ name = "vd-wasm-sandbox"
 version = "0.0.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-description = "Deterministic Wasmtime 50 Component Model Sandbox for Code Mode Execution"
+description = "Deterministic Wasmtime 51+ Component Model Sandbox for Code Mode Execution"
 
 [dependencies]
 wasmtime = { workspace = true }

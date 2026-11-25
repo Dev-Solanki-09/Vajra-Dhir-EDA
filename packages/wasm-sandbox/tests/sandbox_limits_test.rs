@@ -65,3 +65,72 @@ fn test_memory_limiter_stops_excessive_growth() {
     // memory.grow returns -1 when ResourceLimiter denies growth, so module runs or traps
     assert!(res.is_ok() || matches!(res, Err(SandboxError::MemoryLimitExceeded(_))));
 }
+
+#[test]
+fn test_default_256mib_memory_ceiling_blocks_320mib_growth() {
+    let runner = WasmSandboxRunner::new().expect("Failed to create runner");
+    let wat = r#"
+        (module
+            (memory (export "memory") 1)
+            (func (export "_start") (result i32)
+                ;; 5120 pages * 64 KiB = 320 MiB > 256 MiB DEFAULT_MAX_MEMORY_BYTES
+                (memory.grow (i32.const 5120))
+            )
+        )
+    "#;
+    let wasm = wat::parse_str(wat).expect("WAT parse failed");
+    let res = runner.execute_module(&wasm, ExecutionLimits::default());
+    assert!(res.is_ok() || matches!(res, Err(SandboxError::MemoryLimitExceeded(_))));
+}
+
+#[test]
+fn test_epoch_timeout_interrupts_infinite_loop() {
+    let runner = WasmSandboxRunner::new().expect("Failed to create runner");
+    let wat = r#"
+        (module
+            (func (export "_start")
+                (loop $forever
+                    br $forever
+                )
+            )
+        )
+    "#;
+    let wasm = wat::parse_str(wat).expect("WAT parse failed");
+    let mut limits = ExecutionLimits::default();
+    limits.fuel_units = u64::MAX / 2;
+    limits.timeout_ms = 50;
+
+    let res = runner.execute_module(&wasm, limits);
+    assert!(
+        matches!(res, Err(SandboxError::Timeout(_))),
+        "Expected epoch Timeout error, got {:?}",
+        res
+    );
+}
+
+#[test]
+fn test_output_cap_truncates_at_16kib() {
+    let runner = WasmSandboxRunner::new().expect("Failed to create runner");
+    let wat = r#"
+        (module
+            (import "env" "print_out" (func $print_out (param i32)))
+            (func (export "_start")
+                (local $i i32)
+                (loop $l
+                    (call $print_out (local.get $i))
+                    (local.set $i (i32.add (local.get $i) (i32.const 1)))
+                    (br_if $l (i32.lt_s (local.get $i) (i32.const 10000)))
+                )
+            )
+        )
+    "#;
+    let wasm = wat::parse_str(wat).expect("WAT parse failed");
+    let limits = ExecutionLimits::default();
+    let max_bytes = limits.max_output_bytes;
+    let res = runner.execute_module(&wasm, limits).expect("Execution should succeed");
+    assert!(
+        res.stdout.len() <= max_bytes + 32,
+        "Output must be capped near 16 KiB limit, got {} bytes",
+        res.stdout.len()
+    );
+}

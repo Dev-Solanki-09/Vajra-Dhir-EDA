@@ -98,7 +98,7 @@ pub struct WasmSandboxRunner {
 }
 
 impl WasmSandboxRunner {
-    /// Create a new WasmSandboxRunner with Wasmtime 50 hardened configuration.
+    /// Create a new WasmSandboxRunner with Wasmtime 51+ hardened configuration.
     pub fn new() -> Result<Self, SandboxError> {
         let mut config = Config::new();
         config.consume_fuel(true);
