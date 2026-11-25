@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use thiserror::Error;
 use wasmtime::{
-    Config, Engine, Instance, Linker, Module, Mutex, ResourceLimiter, Store,
+    Config, Engine, Linker, Module, ResourceLimiter, Store, Trap,
 };
 
 pub const DEFAULT_MAX_MEMORY_BYTES: usize = 256 * 1024 * 1024; // 256 MiB
@@ -152,30 +152,41 @@ impl WasmSandboxRunner {
         let max_out = limits.max_output_bytes;
         linker
             .func_wrap("env", "print_out", move |val: i32| {
-                let mut buf = stdout_cb.lock();
+                let mut buf = stdout_cb.lock().unwrap_or_else(|e| e.into_inner());
                 if buf.len() < max_out {
                     buf.extend_from_slice(format!("{}\n", val).as_bytes());
                 }
             })
             .map_err(|e| SandboxError::Engine(e.to_string()))?;
 
-        // Watchdog background epoch ticker
+        // Cancellable watchdog background epoch ticker (never leaks past execution)
         let engine_clone = self.engine.clone();
         let timeout_ms = limits.timeout_ms;
         let timed_out_flag = timed_out.clone();
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let cancelled_flag = cancelled.clone();
         let watchdog_handle = std::thread::spawn(move || {
-            std::thread::sleep(Duration::from_millis(timeout_ms));
-            timed_out_flag.store(true, Ordering::SeqCst);
-            engine_clone.increment_epoch();
+            let step = Duration::from_millis(10);
+            let deadline = Instant::now() + Duration::from_millis(timeout_ms);
+            while !cancelled_flag.load(Ordering::SeqCst) {
+                let now = Instant::now();
+                if now >= deadline {
+                    timed_out_flag.store(true, Ordering::SeqCst);
+                    engine_clone.increment_epoch();
+                    break;
+                }
+                std::thread::sleep((deadline - now).min(step));
+            }
         });
 
-        let instance_res = Instance::new(&mut store, &module, linker.into_iter(&mut store).map(|(n, item)| (n.to_string(), item)));
-        
+        let instance_res = linker.instantiate(&mut store, &module);
+
         let run_res = match instance_res {
             Ok(instance) => {
-                // If the module exports a "_start" or "run" or "main" function, call it
                 if let Ok(func) = instance.get_typed_func::<(), ()>(&mut store, "_start") {
                     func.call(&mut store, ()).map(|_| 0)
+                } else if let Ok(func) = instance.get_typed_func::<(), i32>(&mut store, "_start") {
+                    func.call(&mut store, ())
                 } else if let Ok(func) = instance.get_typed_func::<(), i32>(&mut store, "main") {
                     func.call(&mut store, ())
                 } else {
@@ -185,7 +196,8 @@ impl WasmSandboxRunner {
             Err(e) => Err(e),
         };
 
-        drop(watchdog_handle);
+        cancelled.store(true, Ordering::SeqCst);
+        let _ = watchdog_handle.join();
 
         let duration_ms = start_time.elapsed().as_millis() as u64;
         let remaining_fuel = store.get_fuel().unwrap_or(0);
@@ -197,8 +209,8 @@ impl WasmSandboxRunner {
 
         match run_res {
             Ok(code) => {
-                let stdout_bytes = stdout_buf.lock().clone();
-                let stderr_bytes = stderr_buf.lock().clone();
+                let stdout_bytes = stdout_buf.lock().unwrap_or_else(|e| e.into_inner()).clone();
+                let stderr_bytes = stderr_buf.lock().unwrap_or_else(|e| e.into_inner()).clone();
                 Ok(ExecutionOutput {
                     stdout: String::from_utf8_lossy(&stdout_bytes).to_string(),
                     stderr: String::from_utf8_lossy(&stderr_bytes).to_string(),
@@ -208,6 +220,13 @@ impl WasmSandboxRunner {
                 })
             }
             Err(trap) => {
+                if let Some(kind) = trap.downcast_ref::<Trap>() {
+                    match kind {
+                        Trap::OutOfFuel => return Err(SandboxError::FuelExhausted),
+                        Trap::Interrupt => return Err(SandboxError::Timeout(limits.timeout_ms)),
+                        _ => {}
+                    }
+                }
                 let trap_str = trap.to_string();
                 if trap_str.contains("all fuel consumed") {
                     Err(SandboxError::FuelExhausted)

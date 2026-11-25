@@ -80,7 +80,14 @@ fn test_default_256mib_memory_ceiling_blocks_320mib_growth() {
     "#;
     let wasm = wat::parse_str(wat).expect("WAT parse failed");
     let res = runner.execute_module(&wasm, ExecutionLimits::default());
-    assert!(res.is_ok() || matches!(res, Err(SandboxError::MemoryLimitExceeded(_))));
+    match res {
+        Ok(out) => assert_eq!(
+            out.exit_code, -1,
+            "memory.grow exceeding 256 MiB must return -1 when ResourceLimiter denies growth"
+        ),
+        Err(SandboxError::MemoryLimitExceeded(_)) => {}
+        Err(other) => panic!("Unexpected error under 256 MiB ceiling: {:?}", other),
+    }
 }
 
 #[test]

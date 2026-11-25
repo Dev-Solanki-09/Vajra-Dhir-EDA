@@ -437,8 +437,17 @@ fn main() {
                 .filter(|o| o.status.success())
                 .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
             match rust_ver {
-                Some(ref v) if v.contains("1.100.") => println!("[ PASS ] Rust toolchain: {}", v),
-                Some(v) => { println!("[ WARN ] Rust toolchain below floor (1.100.0): {}", v); failures += 1; }
+                Some(ref v) => {
+                    let ver_token = v.split_whitespace().nth(1).unwrap_or("");
+                    let parts: Vec<u32> = ver_token.split('.').filter_map(|p| p.parse().ok()).collect();
+                    let ok = parts.len() >= 2 && (parts[0] > 1 || (parts[0] == 1 && parts[1] >= 100));
+                    if ok {
+                        println!("[ PASS ] Rust toolchain (>=1.100.0): {}", v);
+                    } else {
+                        println!("[ WARN ] Rust toolchain below floor (1.100.0): {}", v);
+                        failures += 1;
+                    }
+                }
                 None => { println!("[ FAIL ] Rust toolchain not found on PATH"); failures += 1; }
             }
 

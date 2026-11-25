@@ -122,13 +122,27 @@ def test_schema_and_triggers():
         except sqlite3.DatabaseError as e:
             assert "KERNEL_LOCK_VIOLATION" in str(e), f"{tbl}: Unexpected error message: {e}"
 
-    # Attempt deletion by agent on locked component -> MUST FAIL
-    try:
-        conn.execute("DELETE FROM components WHERE id = '018e0000-0000-7000-8000-000000000003'")
-        print("FAIL: Agent was able to delete locked component!")
-        sys.exit(1)
-    except sqlite3.DatabaseError as e:
-        assert "KERNEL_LOCK_VIOLATION" in str(e), f"Unexpected error message: {e}"
+    # Attempt deletion by agent across ALL 11 lockable tables -> MUST FAIL with KERNEL_LOCK_VIOLATION
+    locked_deletes = [
+        ("firmware_pinmux", "DELETE FROM firmware_pinmux WHERE id = '018e0000-0000-7000-8000-00000000000c'"),
+        ("electrical_constraints", "DELETE FROM electrical_constraints WHERE id = '018e0000-0000-7000-8000-00000000000b'"),
+        ("layout_rooms", "DELETE FROM layout_rooms WHERE id = '018e0000-0000-7000-8000-00000000000d'"),
+        ("copper_zones", "DELETE FROM copper_zones WHERE id = '018e0000-0000-7000-8000-00000000000a'"),
+        ("vias", "DELETE FROM vias WHERE id = '018e0000-0000-7000-8000-000000000009'"),
+        ("traces", "DELETE FROM traces WHERE id = '018e0000-0000-7000-8000-000000000008'"),
+        ("pin_net_bindings", "DELETE FROM pin_net_bindings WHERE id = '018e0000-0000-7000-8000-000000000007'"),
+        ("nets", "DELETE FROM nets WHERE id = '018e0000-0000-7000-8000-000000000005'"),
+        ("components", "DELETE FROM components WHERE id = '018e0000-0000-7000-8000-000000000003'"),
+        ("net_classes", "DELETE FROM net_classes WHERE id = '018e0000-0000-7000-8000-000000000004'"),
+        ("boards", "DELETE FROM boards WHERE id = '018e0000-0000-7000-8000-000000000002'"),
+    ]
+    for tbl, stmt in locked_deletes:
+        try:
+            conn.execute(stmt)
+            print(f"FAIL: Agent was able to delete locked {tbl}!")
+            sys.exit(1)
+        except sqlite3.DatabaseError as e:
+            assert "KERNEL_LOCK_VIOLATION" in str(e), f"{tbl} DELETE: Unexpected error message: {e}"
 
     # Set human actor
     conn.execute("UPDATE _tx_actor_ctx SET actor_kind = 'human' WHERE singleton = 1")
