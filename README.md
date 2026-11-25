@@ -29,7 +29,7 @@ We publish our complete, frozen industrial architecture and executable contracts
 | **Master Architecture & ADRs** | **Frozen (`VD-SAD-001 Rev 2.0`)** | [`docs/VD-SAD-001-ARCHITECTURE.md`](docs/VD-SAD-001-ARCHITECTURE.md), [`docs/ADDENDUM_01_PRODUCTION_ESSENTIALS.md`](docs/ADDENDUM_01_PRODUCTION_ESSENTIALS.md) |
 | **Canonical `HW-IR` Schema** | **Frozen & CI-Tested** | [`packages/hw-ir/schema/001_init.sql`](packages/hw-ir/schema/001_init.sql), [`packages/hw-ir/schema/002_manual_perfection.sql`](packages/hw-ir/schema/002_manual_perfection.sql) |
 | **Protocols & Security Model** | **Frozen & Schema-Validated** | [`schemas/mcp-v2-12verbs.json`](schemas/mcp-v2-12verbs.json), [`schemas/worker_contract.v1.json`](schemas/worker_contract.v1.json), [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) |
-| **Milestone 1 (Ring 1 Lean PCB Core)** | **Active Build (`T1.01`–`T1.20`)** | Gated by **3 real physical PCB fabrications** before any Ring 2 expansion |
+| **Milestone 1 (Ring 1 Lean PCB Core)** | **Software Reference Blueprints (0/3 Physically Fabricated)** | Software gates & E2E verified; gated by **3 real physical PCB fabrications** before production Tier-4 claims |
 | **Rings 2–4 (Multi-Physics / IC / Power / EvalOps)** | **Planned Plugin Packs** | Isolated behind `WorkerContract` OCI / `gVisor` boundaries |
 
 ---
@@ -55,12 +55,12 @@ We publish our complete, frozen industrial architecture and executable contracts
 flowchart TB
     subgraph UI["Layer 1: Hybrid IDE & Manual CAD (Chromium · React 19 · Dockview · WebGPU/WebGL2)"]
         A["Monaco Code IDE + LSP/DAP"] <-->|CrossProbeBus <16ms| B["WebGPU PCB / Schematic / 3D Canvas"]
-        B <-->|MCP Apps ui:// Strict CSP| C["Virtual Lab: ngspice-wasm / Surfer / HIL"]
+        B <-->|MCP Apps ui:// Strict CSP| C["Virtual Lab: ngspice-wasm / uPlot VCD+FST / HIL"]
         D["Right ACP Agent Dock + xterm PTY"] <--> A
     end
 
     subgraph CORE["Layer 2–3: Ring 1 Core Daemon (Rust · MIT/Apache-2.0 · CPU-First)"]
-        E["12-Verb Harness MCP v2 + Wasmtime 50 Code Mode"]
+        E["12-Verb Harness MCP v2 + Wasmtime 51 Code Mode"]
         F["Canonical HW-IR: SQLite WAL · i64 nm · UUIDv7 · Human Lock Triggers · hw-merge"]
         G["vd-cad-geom: rstar · i_overlay · iTriangle · cavalier_contours"]
         H["vd-placer SA + KiCadRoutingTools / fastroute + 3-Channel KiCad 10 Bridge"]
@@ -87,7 +87,7 @@ flowchart TB
 
 ## Milestone 1 Hardware Exit Gates (No Ring 2 Until These 3 Real PCBs Work)
 
-Before expanding into Ring 2 containers or `Code-OSS` packaging, **Milestone 1 (Months 1–3, Tasks `T1.01`–`T1.20`)** is strictly gated on autonomously designing, verifying, fabricating, and physically bench-testing **three real Revision-1 boards**:
+Before expanding into Ring 2 containers or `Code-OSS` packaging, **Milestone 1 (Software Reference Blueprints: `0/3` Physically Fabricated)** is strictly gated on fabricated and physically bench-tested **three Revision-1 boards**:
 
 - [ ] **Board 1 — USB-C PD 12V→3.3V / 3A Synchronous Buck (2-Layer):** Negotiates 12 V on first plug-in, `3.30 V ± 2%` across `0–3 A`, ripple `< 40 mVpp`, peak IC `< 75 °C`.
 - [ ] **Board 2 — ESP32-S3 Sensor Node (4-Layer):** Flashes auto-synced `board_pins.h` firmware cleanly on Rev 1, reads BME280 over I²C, connects 2.4 GHz Wi-Fi `> -65 dBm` RSSI.
@@ -105,7 +105,7 @@ vajra-dhir-eda/
 │   ├── hw-ir/                              # Canonical SQLite WAL Kernel, UUIDv7, i64 nm, Lock Triggers
 │   ├── hw-merge/                           # 3-Way Semantic Merge Driver for *.vd-ir.jsonl
 │   ├── hw-dlp/                             # DLP Firewall, Secret Sanitizer, NDA Airgap Broker
-│   ├── wasm-sandbox/                       # Wasmtime 50 Component Model Sandbox (Code Mode)
+│   ├── wasm-sandbox/                       # Wasmtime 51 Component Model Sandbox (Code Mode)
 │   ├── cad-geom/                           # High-precision R-Tree spatial index & differential pairs
 │   ├── placement-router/                   # Multi-threaded Rayon Simulated Annealing Placer
 │   ├── cad-transcoder/                     # KiCad 10 3-Channel IPC Bridge & 5s Echo Suppression
@@ -125,8 +125,9 @@ vajra-dhir-eda/
 │   ├── cli/                                # Unified `vd` Developer Command Line Tool
 │   └── ui-apps/                            # Portable MCP UI (Waveform & Interactive Lenses)
 ├── apps/
-│   └── desktop/                            # Silicon Darkroom Desktop UI (React 19, Dockview, WebGPU)
-├── scripts/                                # 22-Gate Comprehensive Verification & Audit Harnesses
+│   ├── workstation/                        # Canonical Silicon Darkroom Studio (`vd studio`, React 19, Dockview MIT, WebGL2/Canvas2D, elkjs, uPlot)
+│   └── desktop/                            # Compatibility Desktop Package Target (React 19, Dockview)
+├── scripts/                                # 77-Gate Classified Verification & Playwright E2E Harnesses
 └── .github/workflows/                      # Automated DDL, Schema, DCO & License Firewall CI
 ```
 

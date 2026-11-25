@@ -3,11 +3,11 @@
 | Metadata Field | Value |
 |---|---|
 | **Document ID** | `VD-CHK-001` · Rev 7.0 |
-| **Date & Timestamp** | 2026-11-24T02:00:00+05:30 |
+| **Date & Timestamp** | 2026-11-25T14:20:00+05:30 |
 | **Git Baseline Branch** | `main` |
 | **Standards Compliance** | ISO/IEC/IEEE 42010, ISO/IEC/IEEE 15288, SLSA v1.2, OWASP Agentic AI (ASI01–ASI10) |
-| **Verification Status** | **37/37 Gates Passing Cleanly (100% Certified)** |
-| **Milestone 1 Hardware Exit**| **COMPLETE — All 3 Physical Boards Certified & Verified** |
+| **Verification Status** | **Classified 77-Gate Suite (Behavioral + Structural Contract)** |
+| **Milestone 1 Hardware Exit**| **0/3 Physically Fabricated (Software Reference Blueprints; Human Signoff PENDING)** |
 | **Ring 2 Container Isolation**| **ACTIVE — OCI Workers (Pack 2A/2B/2C), Worker SDK, WebGPU Canvas** |
 | **Production Addendum Scope**| **ACTIVE — Multi-Region Fab Registry, EMC Workbench, CAS Store, `vd doctor`** |
 | **CAD & Verification Core**| **ACTIVE — Schematic Beautifier, Autorouter, Footprints, Recovery, Control, HBOM** |
@@ -36,7 +36,7 @@ All 26 core packages below are active, tested, and passing deterministic verific
 | **`hw-ir`** | `packages/hw-ir` | Rust / SQLite WAL / TS | Canonical SQLite database schema, 24 tables, `_tx_actor_ctx`, human lock triggers, Lamport logical timestamps. |
 | **`hw-merge`** | `packages/hw-merge` | Rust | Semantic 3-way merge driver for `*.vd-ir.jsonl` git attributes. |
 | **`hw-dlp`** | `packages/hw-dlp` | Rust | Hardware DLP firewall, regex secret sanitizer, $5.00 budget circuit breaker, NDA airgap router. |
-| **`wasm-sandbox`** | `packages/wasm-sandbox` | Rust / Wasmtime 50 | 256 MiB memory ceiling, fuel-metered execution sandbox for untrusted scripts and external plugins. |
+| **`wasm-sandbox`** | `packages/wasm-sandbox` | Rust / Wasmtime 51 | 256 MiB memory ceiling, fuel & epoch timeout watchdog, 16 KiB stdout cap |
 | **`cad-geom`** | `packages/cad-geom` | Rust / `rstar` / `i_overlay` | 2D CAD kernel, R-Tree spatial index, differential pair geometry, boolean polygon operations. |
 | **`placement-router`**| `packages/placement-router`| Rust / `rayon` | Multi-threaded simulated annealing component placer with HPWL, overlap penalty, and thermal centroid balance. |
 | **`cad-transcoder`** | `packages/cad-transcoder` | Rust / KiCad S-Expr | KiCad 10 3-channel bidirectional bridge with 5-second SHA-256 echo suppression ring. |
@@ -54,7 +54,7 @@ All 26 core packages below are active, tested, and passing deterministic verific
 | **`wire-harness`** | `packages/wire-harness` | Rust | Pure-MIT declarative cable, wire harness compiler, AWG/IEC 60757 tables, and voltage drop calculator. |
 | **`panelizer`** | `packages/panelizer` | Rust | Pure-MIT automated $M \times N$ PCB panelization with rails, mouse bites, tooling holes, and fiducials. |
 | **`worker-sdk`** | `packages/worker-sdk` | Rust | Stateless Ring 2 worker dispatcher conforming to `worker_contract.v1.json`, input staging, and SHA-256 evidence hashing. |
-| **`webgpu-cad-engine`**| `packages/webgpu-cad-engine`| TypeScript / WebGPU | 120 FPS WebGPU PCB canvas with WebGL2 fallback, Silicon Darkroom palette, and CrossProbeBus synchronization. |
+| **`webgpu-cad-engine`**| `packages/webgpu-cad-engine`| TypeScript / WebGL2+2D | WebGPU/WebGL2 GLSL ES 3.00 + Software Canvas2D renderer, Geometry Worker nm hit-testing, Silicon Darkroom palette |
 | **`emc-workbench`** | `packages/emc-workbench` | Rust | Harmonic collision matrix ($1f..15f$ vs protected RF bands), connector ESD proximity auditor ($< 5.0\text{ mm}$). |
 | **`cas-store`** | `packages/cas-store` | Rust | Content-addressed artifact store (`cas://sha256/...`), SHA-256 verification, and digest pinning. |
 | **`schematic-beautifier`** | `packages/schematic-beautifier` | Rust | 5-stage semantic layout engine: power rail hierarchy (+V up, GND down), L-to-R signal flow, multi-unit symbol splitting, net label collision avoidance, and KiCad 10 S-expression export. |
@@ -65,13 +65,13 @@ All 26 core packages below are active, tested, and passing deterministic verific
 | **`compliance-hbom`** | `packages/compliance-hbom` | Rust | StrictDoc V-Model requirements traceability matrix and automated CycloneDX 1.6 Hardware BOM with RoHS 3, REACH, and lifecycle metadata. |
 | **`cli`** | `packages/cli` | Rust (`vd`) | Unified command-line interface (`vd eco`, `vd gate`, `vd sim`, `vd cam`, `vd dlp`, `vd pdn`, `vd diff`, `vd harness`, `vd panel`, `vd worker`, `vd asic`, `vd emc`, `vd cas`, `vd beautify`, `vd route`, `vd footprint`, `vd recovery`, `vd control`, `vd hbom`, `vd doctor`). |
 | **`ui-apps`** | `packages/ui-apps` | HTML / Strict CSP | Portable interactive MCP UI apps (waveform viewer, interactive inspection lenses). |
-| **`desktop`** | `apps/desktop` | React 19 / Dockview | Silicon Darkroom spatial desktop IDE with WebGPU/WebGL2 viewport and high-contrast accessible theme. |
+| **`desktop` / `workstation`** | `apps/workstation` | React 19 / Dockview | Canonical Silicon Darkroom Studio (`vd studio`, Dockview MIT, `elkjs`, `uPlot`, WebGL2/Canvas2D); `apps/desktop` kept compatible |
 
 ---
 
-## 3. Milestone 1 Hardware Exit Verification (3 Physical Boards)
+## 3. Milestone 1 Hardware Exit Verification (`0/3` Physically Fabricated · Software Blueprints)
 
-All three reference hardware designs are 100% complete with full CAD, BOM, Pick-and-Place, and deterministic firmware co-design bindings:
+All three reference hardware designs are software blueprints checked via offline DRC/verification scripts and fail-closed `verification_report.json` (`release_authorized: false`, `human_signoff: PENDING`; zero physical fab runs completed):
 
 ### Board 1 — USB-C PD 12V $\to$ 3.3V / 3A Synchronous Buck (2-Layer)
 - **Directory:** [`designs/board-1-buck-pd`](../designs/board-1-buck-pd)
@@ -90,9 +90,9 @@ All three reference hardware designs are 100% complete with full CAD, BOM, Pick-
 
 ---
 
-## 4. Automated 31-Gate Verification Suite
+## 4. Automated Classified Verification Suite (Gates 1..77)
 
-To verify the entire repository offline, run:
+To verify the repository offline (`BEHAVIORAL` + `STRUCTURAL_CONTRACT` classified gates), run:
 ```bash
 node scripts/verify-all.mjs
 ```
@@ -104,7 +104,7 @@ All 31 verification gates:
 4. `Silicon Darkroom Theme & Contrast` — WCAG AAA contrast audit
 5. `Canonical HW-IR SQLite DDL & Triggers` — `001_init.sql` & `002_manual_perfection.sql`
 6. `DLP Firewall & Budget Circuit Breaker Policy` — `budget.json` audit
-7. `Wasmtime 50 Sandbox WIT & Memory Ceilings` — `codemode.wit` audit
+7. `Wasmtime 51 Sandbox WIT & Memory Ceilings` — `codemode.wit` & 256 MiB / epoch limits audit
 8. `Semantic 3-Way Merge Driver` — `.gitattributes` binding
 9. `KiCad 10 Transcoder & 5s Echo Suppression` — Echo suppression ring audit
 10. `Threat Model & Security Floor (Nov 2026)` — STRIDE & OWASP ASI01–ASI10 mapping

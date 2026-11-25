@@ -560,6 +560,11 @@ step('[UI/G6D] Playwright 5 Golden E2E Journeys, Hallmark & WCAG AA', () => {
   execSync('python scripts/test-g6d-e2e-golden-journeys.py', { stdio: 'pipe' });
 });
 
+// 77. G7 Claims Truth, F-19 Real LF-SHA256 Artifact Hashes & Footgun Alignment
+step('[AUDIT/G7] Claims Truth, Real Artifact SHA-256 & Footgun Alignment', () => {
+  execSync('python scripts/test-g7-claims-and-hashes.py', { stdio: 'pipe' });
+});
+
 console.log('\n----------------------------------------------------------------');
 if (failed) {
   console.error('  VERIFICATION FAILED: See errors above.');

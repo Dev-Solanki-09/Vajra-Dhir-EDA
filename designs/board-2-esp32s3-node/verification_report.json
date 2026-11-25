@@ -4,33 +4,36 @@
   "revision": "1.0",
   "verification_date": "2026-11-24T00:45:00Z",
   "auditor_id": "vajra-dhir-milestone1-harness",
-  "all_gates_passed": true,
   "highest_passed_gate": "G8_MANUFACTURING_CAM",
   "gate_verdicts": {
     "G1_SPEC_LOCK": {
       "passed": true,
-      "evidence_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "evidence_hash": "d5804347dcf22f58ef4d5c39c9769e635128efdfa143cbd7758b0f68af9c71c1",
       "metrics": {
-        "target_budget_usd": 6.80,
+        "target_budget_usd": 6.8,
         "max_allowed_budget_usd": 8.0,
         "layer_count": 4,
         "board_width_mm": 50.0,
         "board_height_mm": 30.0
-      }
+      },
+      "evidence_artifact": "designs/board-2-esp32s3-node/README.md",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G2_SCHEMATIC_FORMAL": {
       "passed": true,
-      "evidence_hash": "b1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef1",
+      "evidence_hash": "1bb1816509ede9b117e5fc04872fec12d4bea83e16c85eeaf9deada084a85df1",
       "metrics": {
         "unconnected_nets": 0,
         "multi_driver_contentions": 0,
         "power_short_detected": false,
         "pinmux_conflicts": 0
-      }
+      },
+      "evidence_artifact": "designs/board-2-esp32s3-node/board.kicad_sch",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G3_PHYSICS_SANITY": {
       "passed": true,
-      "evidence_hash": "c2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef12",
+      "evidence_hash": "145671a5ee7d0101840e00d8693db578c32dd9ef0ca2197d07f8ead9bfc8db8c",
       "metrics": {
         "ldo_power_dissipation_w": 0.425,
         "ldo_junction_temp_c": 63.3,
@@ -41,48 +44,58 @@
         "reset_min_delay_us": 50.0,
         "fatal_footguns_count": 0,
         "error_footguns_count": 0
-      }
+      },
+      "evidence_artifact": "designs/board-2-esp32s3-node/board.vd-ir.jsonl",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G4_PLACEMENT_SOLVED": {
       "passed": true,
-      "evidence_hash": "d3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef123",
+      "evidence_hash": "369b4ee084c8185454c93058a5b032af946240d910858903652b3cbd1d9cbd6c",
       "metrics": {
         "overlap_violations": 0,
         "antenna_keepout_violations": 0,
         "thermal_hotspots_detected": 0
-      }
+      },
+      "evidence_artifact": "designs/board-2-esp32s3-node/pnp_centroids.csv",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G5_ROUTING_COMPLETE": {
       "passed": true,
-      "evidence_hash": "e4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef1234",
+      "evidence_hash": "8fd58b31ba1ac16265773cef47a0770db858ee68b65fc96eb8bf92b76d290305",
       "metrics": {
         "unrouted_airwires": 0,
         "rf_cpwg_impedance_ohms": 50.2,
         "usb_diff_impedance_ohms": 89.8,
         "drc_clearance_violations": 0
-      }
+      },
+      "evidence_artifact": "designs/board-2-esp32s3-node/board.kicad_pcb",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G6_MULTIFIELD_SOLVER": {
       "passed": true,
-      "evidence_hash": "f5e6f708293a4b5c6d7e8f90123456789abcdef0123456789abcdef12345",
+      "evidence_hash": "145671a5ee7d0101840e00d8693db578c32dd9ef0ca2197d07f8ead9bfc8db8c",
       "metrics": {
         "vbus_max_ir_drop_mv": 18.4,
         "vbus_allowable_drop_mv": 100.0,
         "max_temperature_rise_c": 12.1
-      }
+      },
+      "evidence_artifact": "designs/board-2-esp32s3-node/board.vd-ir.jsonl",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G7_FIRMWARE_BIND": {
       "passed": true,
-      "evidence_hash": "06e7f809293a4b5c6d7e8f90123456789abcdef0123456789abcdef123456",
+      "evidence_hash": "3f4ce5a5a8c456e85ab7a5c5c0637b4d5ba6222fea424c6083bf732eda1e04aa",
       "metrics": {
         "board_pins_header_synced": true,
         "dts_overlay_synced": true,
         "hardware_firmware_parity_errors": 0
-      }
+      },
+      "evidence_artifact": "designs/board-2-esp32s3-node/firmware/include/board_pins.h",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     },
     "G8_MANUFACTURING_CAM": {
       "passed": true,
-      "evidence_hash": "17e8f90a293a4b5c6d7e8f90123456789abcdef0123456789abcdef1234567",
+      "evidence_hash": "88601fd68cfff0b13c4f4f19d38f57ec100dd4b86e6e2b58b3d392eb4e3b6ff6",
       "metrics": {
         "gerber_layer_count": 10,
         "drill_holes_count": 48,
@@ -90,7 +103,18 @@
         "min_annular_ring_mm": 0.15,
         "stencil_apertures_compliant": true,
         "pnp_components_count": 24
-      }
+      },
+      "evidence_artifact": "designs/board-2-esp32s3-node/bom.csv",
+      "evidence_scope": "SOFTWARE_ARTIFACT_ONLY"
     }
-  }
+  },
+  "physical_fabrication_status": "NOT_FABRICATED_0_OF_3",
+  "release_authorized": false,
+  "release_status": "NOT_RELEASED_PENDING_HUMAN_SIGNOFF",
+  "human_signoff": {
+    "status": "PENDING",
+    "actor": null,
+    "token": null
+  },
+  "all_software_gates_passed": true
 }
