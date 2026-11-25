@@ -243,8 +243,8 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
   );
   const [diffSummary, setDiffSummary] = useState<string>('vd-pcb-diff: compare rev 1 -> rev 2 via POST /api/v1/diff/compare');
   const [harnessRows, setHarnessRows] = useState([
-    { wire: 'W1', route: 'J1:1 -> J2:1', gauge: '18 AWG', lenMm: 1220 },
-    { wire: 'W2', route: 'J1:2 -> J2:2', gauge: '18 AWG', lenMm: 1220 },
+    { wire: 'W1', route: '18 AWG UL1007 Red', gauge: 'Molex Micro-Fit 3.0', lenMm: 1220 },
+    { wire: 'W2', route: '18 AWG UL1007 Black', gauge: 'Molex Micro-Fit 3.0', lenMm: 1220 },
   ]);
 
   const [stackupInfo, setStackupInfo] = useState<string>('4-Layer FR-4 (1.6 mm) · F.Cu / In1.Cu / In2.Cu / B.Cu');
@@ -288,8 +288,11 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
         .then((r) => (r.ok ? r.json() : null))
         .then((p) => {
           if (p) {
+            const mbCount = typeof p.mouse_bites?.count === 'number' ? p.mouse_bites.count : 8;
+            const holeCount = Array.isArray(p.tooling_holes) ? p.tooling_holes.length : 4;
+            const dims = p.panel_dimensions_mm ? `${p.panel_dimensions_mm.width}x${p.panel_dimensions_mm.height}mm` : '132x92mm';
             setPanelPreview(
-              `; Engine: ${p.engine ?? 'vd-panelizer-mit'} | mouse_bites=${p.mouse_bites_count ?? 8} | tooling_holes=${p.tooling_holes ?? 3}\n${p.kicad_pcb_sexpr ?? '(kicad_pcb (version 20240108))'}`
+              `; Engine: ${p.engine ?? 'vd-panelizer-mit'} | dims=${dims} | mouse_bites=${mbCount} | tooling_holes=${holeCount}\n${p.kicad_pcb_sexpr ?? '(kicad_pcb (version 20240108) (generator "vd-panelizer-mit"))'}`
             );
           }
         })
@@ -315,12 +318,14 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
         .then((h) => {
           if (Array.isArray(h?.cut_list) && h.cut_list.length) {
             setHarnessRows(
-              h.cut_list.slice(0, 6).map((c: { wire_id?: string; from_to?: string; gauge?: string; length_mm?: number }, idx: number) => ({
-                wire: c.wire_id || `W${idx + 1}`,
-                route: c.from_to || 'J1 -> J2',
-                gauge: c.gauge || '18 AWG',
-                lenMm: Number(c.length_mm ?? 1220),
-              }))
+              h.cut_list.slice(0, 6).map(
+                (c: { item?: number; wire?: string; terminal?: string; cut_length_mm?: number }, idx: number) => ({
+                  wire: `W${c.item ?? idx + 1}`,
+                  route: c.wire || '18 AWG UL1007',
+                  gauge: c.terminal || 'Molex Micro-Fit',
+                  lenMm: Number(c.cut_length_mm ?? 1220),
+                })
+              )
             );
           }
         })
@@ -391,7 +396,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
           ? bodeJson.bode_curve.map((pt: { freq_hz: number }) => Number((pt.freq_hz / 1000).toFixed(2)))
           : prev.bodeFreqKhz,
         bodeGainDb: Array.isArray(bodeJson?.bode_curve) && bodeJson.bode_curve.length
-          ? bodeJson.bode_curve.map((pt: { gain_db: number }) => Number(pt.gain_db))
+          ? bodeJson.bode_curve.map((pt: { mag_db: number }) => Number(pt.mag_db))
           : prev.bodeGainDb,
       }));
     } catch {

@@ -26,6 +26,21 @@ const PROJECT_TEMPLATES = [
   { id: 'mcu_dev', name: 'MCU Devboard', layers: 4, summary: 'STM32G4 / ESP32-S3 CAN-FD & SWD devboard' },
 ] as const;
 
+interface BoardComponentMeta {
+  refdes: string;
+  detail: string;
+  locked: boolean;
+  net: string;
+}
+
+const DEFAULT_COMPONENTS: BoardComponentMeta[] = [
+  { refdes: 'J1', detail: 'USB-C PD', locked: true, net: 'VBUS_12V' },
+  { refdes: 'U2', detail: 'TPS54302', locked: true, net: 'SW_NODE' },
+  { refdes: 'U1', detail: 'CH224K', locked: false, net: 'VBUS_12V' },
+  { refdes: 'L1', detail: '4.7uH', locked: false, net: 'SW_NODE' },
+  { refdes: 'C1', detail: '22uF X7R', locked: false, net: '+3V3_OUT' },
+];
+
 interface PanelContextState {
   activeWorkspace: WorkspaceId;
   toolMode: ToolMode;
@@ -35,6 +50,7 @@ interface PanelContextState {
   projectName: string;
   lockedCount: number;
   selectedRefdes: string;
+  boardComponents: BoardComponentMeta[];
   thoughtLog: string[];
 }
 
@@ -47,13 +63,15 @@ const ShellContext = React.createContext<PanelContextState>({
   projectName: 'board-1-buck-pd',
   lockedCount: 2,
   selectedRefdes: 'U2',
+  boardComponents: DEFAULT_COMPONENTS,
   thoughtLog: [],
 });
 
 const ViewportPanel: React.FC<IDockviewPanelProps> = () => {
   const ctx = React.useContext(ShellContext);
   const activeTab = WORKSPACE_TABS.find((t) => t.id === ctx.activeWorkspace) ?? WORKSPACE_TABS[1];
-  const isSelectedLocked = ctx.selectedRefdes === 'U1' || ctx.selectedRefdes === 'U2';
+  const compMeta = ctx.boardComponents.find((c) => c.refdes === ctx.selectedRefdes);
+  const isSelectedLocked = compMeta ? compMeta.locked : false;
 
   return (
     <PanelErrorBoundary panelTitle={activeTab.title}>
@@ -103,12 +121,6 @@ const ViewportPanel: React.FC<IDockviewPanelProps> = () => {
 
 const ExplorerPanel: React.FC<IDockviewPanelProps> = () => {
   const ctx = React.useContext(ShellContext);
-  const components = [
-    { refdes: 'U1', detail: 'CH224K', locked: true, net: 'VBUS_12V' },
-    { refdes: 'U2', detail: 'TPS54302', locked: true, net: 'SW_NODE' },
-    { refdes: 'L1', detail: '4.7uH', locked: false, net: 'SW_NODE' },
-    { refdes: 'C1', detail: '22uF X7R', locked: false, net: '+3V3_OUT' },
-  ];
 
   return (
     <PanelErrorBoundary panelTitle="Explorer">
@@ -123,22 +135,27 @@ const ExplorerPanel: React.FC<IDockviewPanelProps> = () => {
             </tr>
           </thead>
           <tbody className="vd-metric">
-            {components.map((item) => {
+            {ctx.boardComponents.map((item) => {
               const selected = ctx.selectedRefdes === item.refdes;
               return (
                 <tr
                   key={item.refdes}
                   style={{
                     backgroundColor: selected ? 'var(--vd-bg-elevated)' : 'transparent',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => {
-                    globalCrossProbeBus.select([item.refdes], 'tree');
-                    globalCrossProbeBus.highlightNet(item.net, 'tree');
                   }}
                 >
                   <td style={{ padding: '4px 4px' }}>
-                    {item.refdes} ({item.detail})
+                    <button
+                      type="button"
+                      className="vd-btn"
+                      style={{ minHeight: 24, padding: '2px 6px', fontSize: 11 }}
+                      onClick={() => {
+                        globalCrossProbeBus.select([item.refdes], 'tree');
+                        globalCrossProbeBus.highlightNet(item.net, 'tree');
+                      }}
+                    >
+                      {item.refdes} ({item.detail})
+                    </button>
                   </td>
                   <td style={{ color: item.locked ? 'var(--vd-human-lock)' : 'var(--vd-pass)' }}>
                     {item.locked ? 'Locked' : 'Unlocked'}
@@ -202,6 +219,7 @@ export const WorkstationShell: React.FC = () => {
   const [paletteQuery, setPaletteQuery] = useState('');
   const [fps, setFps] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState('Loopback 127.0.0.1:41900 ready');
+  const [boardComponents, setBoardComponents] = useState<BoardComponentMeta[]>(DEFAULT_COMPONENTS);
   const frameCountRef = useRef(0);
 
   const probeSnapshot = useSyncExternalStore(
@@ -219,9 +237,22 @@ export const WorkstationShell: React.FC = () => {
           setAutosaveAvailable(true);
         }
       })
-      .catch(() => {
-        /* Daemon offline or unit preview */
-      });
+      .catch(() => {});
+    fetch('/api/v1/board')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((b) => {
+        if (!cancelled && Array.isArray(b?.components) && b.components.length) {
+          setBoardComponents(
+            b.components.map((c: { refdes: string; mpn?: string; value?: string; locked?: number }) => ({
+              refdes: c.refdes,
+              detail: c.mpn || c.value || c.refdes,
+              locked: Boolean(c.locked),
+              net: 'SW_NODE',
+            }))
+          );
+        }
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -320,8 +351,9 @@ export const WorkstationShell: React.FC = () => {
     ratsnestVisible,
     lockRingsVisible,
     projectName,
-    lockedCount: 2,
+    lockedCount: boardComponents.filter((c) => c.locked).length,
     selectedRefdes: probeSnapshot.selection.entityIds[0] ?? 'U2',
+    boardComponents,
     thoughtLog: [
       `Active workspace: ${activeWorkspace}`,
       'SQLite HW-IR WAL & _tx_actor_ctx lock triggers armed',

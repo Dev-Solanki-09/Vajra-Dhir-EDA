@@ -319,7 +319,10 @@ def handle_agent_post(
             )
             handler.con.commit()
             wal_checkpointer(handler.con, lamport_row[0], False)
-            autosave_writer(str(db_dir / "board.vd.autosave.jsonl"), ops_snapshot)
+            try:
+                autosave_writer(str(db_dir / "board.vd.autosave.jsonl"), ops_snapshot)
+            except OSError:
+                pass
             with _PROPOSAL_LOCK:
                 if proposal_id in _PROPOSAL_STORE:
                     _PROPOSAL_STORE[proposal_id]["status"] = "accepted"

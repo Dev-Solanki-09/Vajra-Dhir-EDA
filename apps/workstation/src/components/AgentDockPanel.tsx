@@ -130,6 +130,10 @@ export const AgentDockPanel: React.FC = () => {
         );
         return;
       }
+      if (!res.ok) {
+        setThoughts((prev) => [...prev, `Proposal error (${res.status}): ${body.error || body.message || 'failed'}`]);
+        return;
+      }
       setProposals((prev) =>
         prev.map((p) =>
           p.proposal_id === proposalId

@@ -154,7 +154,13 @@ def run():
 
             # Verify live backend routes consumed by G6C Workspaces (sim_lab, mfg_diff, mcad_3d, library_bom)
             st_bode, bode_body = http_json(f"{base}/api/v1/smps/bode-calc", method="POST", payload={"vin": 12.0, "vout": 3.3, "iout": 2.0})
-            assert st_bode == 200 and "phase_margin_deg" in bode_body, f"Bad /api/v1/smps/bode-calc: {bode_body}"
+            assert st_bode == 200 and "phase_margin_deg" in bode_body and "mag_db" in bode_body["bode_curve"][0], f"Bad /api/v1/smps/bode-calc: {bode_body}"
+            st_pnl, pnl_body = http_json(f"{base}/api/v1/panel/generate", method="POST", payload={"rows": 2, "cols": 2, "rail_mm": 5.0})
+            assert st_pnl == 200 and isinstance(pnl_body.get("mouse_bites", {}).get("count"), int) and isinstance(pnl_body.get("tooling_holes"), list), f"Bad /api/v1/panel/generate: {pnl_body}"
+            st_har, har_body = http_json(f"{base}/api/v1/harness/compile", method="POST", payload={"harness_id": "WH-001"})
+            assert st_har == 200 and "cut_length_mm" in har_body["cut_list"][0], f"Bad /api/v1/harness/compile: {har_body}"
+            st_brd, brd_body = http_json(f"{base}/api/v1/board")
+            assert st_brd == 200 and any(c["refdes"] == "U2" and c["locked"] == 1 for c in brd_body["components"]), f"Bad /api/v1/board: {brd_body}"
             st_stk, stk_body = http_json(f"{base}/api/v1/stackup")
             assert st_stk == 200 and isinstance(stk_body.get("layers"), list), f"Bad /api/v1/stackup: {stk_body}"
             st_srch, srch_body = http_json(f"{base}/api/v1/components/search?q=TPS")
