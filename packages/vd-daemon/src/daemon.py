@@ -26,6 +26,7 @@ import uuid
 
 try:
     from .agent_routes import handle_agent_post
+    from .fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
     from .kicad_bridge import ensure_external_id_map
     from .kicad_routes import (
         handle_kicad_get,
@@ -43,6 +44,7 @@ except ImportError:
     if _DAEMON_SRC_DIR not in sys.path:
         sys.path.insert(0, _DAEMON_SRC_DIR)
     from agent_routes import handle_agent_post
+    from fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
     from kicad_bridge import ensure_external_id_map
     from kicad_routes import (
         handle_kicad_get,
@@ -1000,11 +1002,17 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                 unregister_ws_client(sock)
             return
 
+        elif path in ("/ws/pty", "/api/v1/ws/pty"):
+            handle_ws_pty(self, self.path)
+            return
+
         else:
             with DB_LOCK:
                 if handle_kicad_get(self, path, full_path=self.path, con=self.con):
                     return
-            if not path.startswith("/api/") and not path.startswith("/stitch/"):
+                if handle_fs_pty_get(self, path, full_path=self.path, con=self.con):
+                    return
+            if not path.startswith("/api/") and not path.startswith("/stitch/") and not path.startswith("/ws/"):
                 asset = resolve_studio_static_asset(path)
                 if asset["status"] == 200:
                     self.send_response(200)
@@ -1816,6 +1824,9 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(res).encode("utf-8"))
 
         elif handle_kicad_post(self, path, req, self.con):
+            return
+
+        elif handle_fs_pty_post(self, path, req, self.con):
             return
 
         elif handle_x1_post(self, path, req):

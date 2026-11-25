@@ -1,0 +1,23 @@
+{
+  "name": "@vajradhir/ide-core",
+  "version": "0.0.5",
+  "type": "module",
+  "license": "MIT",
+  "description": "Deep hardware IDE integration core for Monaco, xterm.js, and ConPTY/PTY grounded in cloned upstream references",
+  "main": "dist/index.js",
+  "types": "types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "test": "tsc --noEmit && vite build && node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vite": "^6.2.0"
+  }
+}

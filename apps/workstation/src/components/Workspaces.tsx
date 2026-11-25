@@ -20,6 +20,15 @@ const Schematic2DPanel = React.lazy(() =>
 const Viewport3DPanel = React.lazy(() =>
   import('./Viewport3DPanel').then((m) => ({ default: m.Viewport3DPanel }))
 );
+const FileExplorerPanel = React.lazy(() =>
+  import('./FileExplorerPanel').then((m) => ({ default: m.FileExplorerPanel }))
+);
+const CodeEditorPanel = React.lazy(() =>
+  import('./CodeEditorPanel').then((m) => ({ default: m.CodeEditorPanel }))
+);
+const TerminalPanel = React.lazy(() =>
+  import('./TerminalPanel').then((m) => ({ default: m.TerminalPanel }))
+);
 const UplotScope = React.lazy(() =>
   import('./UplotScope').then((m) => ({ default: m.UplotScope }))
 );
@@ -822,14 +831,25 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
       )}
 
       {workspace === 'firmware_pinmux' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="vd-metric" style={{ fontSize: 12 }}>Z3 SMT Pinmux Solver · STM32G474 / RP2040</span>
+            <span className="vd-metric" style={{ fontSize: 12 }}>Z3 SMT Pinmux + Monaco IDE + ConPTY · STM32G474 / RP2040</span>
             <button type="button" className="vd-btn vd-btn-primary" onClick={() => void runLivePinmux()}>
               Export board_pins.h
             </button>
           </div>
-          <pre className="vd-metric" style={{ margin: 0, padding: 10, borderRadius: 6, backgroundColor: 'var(--vd-bg-panel)', border: '1px solid var(--vd-border-subtle)', fontSize: 12, overflowX: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr', gap: 8, flex: 1, minHeight: 280 }}>
+            <Suspense fallback={<div className="vd-metric" style={{ padding: 8 }}>Loading file tree...</div>}>
+              <FileExplorerPanel />
+            </Suspense>
+            <Suspense fallback={<div className="vd-metric" style={{ padding: 8 }}>Loading Monaco Editor...</div>}>
+              <CodeEditorPanel />
+            </Suspense>
+          </div>
+          <Suspense fallback={<div className="vd-metric" style={{ padding: 8 }}>Loading PTY Terminal...</div>}>
+            <TerminalPanel />
+          </Suspense>
+          <pre className="vd-metric" style={{ margin: 0, padding: 8, borderRadius: 6, backgroundColor: 'var(--vd-bg-panel)', border: '1px solid var(--vd-border-subtle)', fontSize: 11, maxHeight: 90, overflow: 'auto' }}>
             {pinmuxC}
           </pre>
         </div>

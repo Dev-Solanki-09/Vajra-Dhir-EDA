@@ -206,12 +206,49 @@ const LazySchematic2DPanel = React.lazy(() =>
 const LazyViewport3DPanel = React.lazy(() =>
   import('./Viewport3DPanel').then((m) => ({ default: m.Viewport3DPanel }))
 );
+const LazyFileExplorerPanel = React.lazy(() =>
+  import('./FileExplorerPanel').then((m) => ({ default: m.FileExplorerPanel }))
+);
+const LazyCodeEditorPanel = React.lazy(() =>
+  import('./CodeEditorPanel').then((m) => ({ default: m.CodeEditorPanel }))
+);
+const LazyTerminalPanel = React.lazy(() =>
+  import('./TerminalPanel').then((m) => ({ default: m.TerminalPanel }))
+);
 
 const DockViewport3DPanel: React.FC<IDockviewPanelProps> = () => (
   <PanelErrorBoundary panelTitle="Viewport 3D (STEP)">
     <div style={{ padding: 12, height: '100%', backgroundColor: 'var(--vd-bg-canvas)' }}>
       <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading Three.js + OCCT 3D engine...</div>}>
         <LazyViewport3DPanel />
+      </Suspense>
+    </div>
+  </PanelErrorBoundary>
+);
+
+const DockFileExplorerPanel: React.FC<IDockviewPanelProps> = () => (
+  <PanelErrorBoundary panelTitle="Files">
+    <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading workspace files...</div>}>
+      <LazyFileExplorerPanel />
+    </Suspense>
+  </PanelErrorBoundary>
+);
+
+const DockCodeEditorPanel: React.FC<IDockviewPanelProps> = () => (
+  <PanelErrorBoundary panelTitle="Code Editor">
+    <div style={{ padding: 8, height: '100%', backgroundColor: 'var(--vd-bg-canvas)' }}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading Monaco Editor...</div>}>
+        <LazyCodeEditorPanel />
+      </Suspense>
+    </div>
+  </PanelErrorBoundary>
+);
+
+const DockTerminalPanel: React.FC<IDockviewPanelProps> = () => (
+  <PanelErrorBoundary panelTitle="Terminal">
+    <div style={{ padding: 8, height: '100%', backgroundColor: 'var(--vd-bg-canvas)' }}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading PTY Terminal...</div>}>
+        <LazyTerminalPanel />
       </Suspense>
     </div>
   </PanelErrorBoundary>
@@ -250,6 +287,9 @@ const DOCK_COMPONENTS = {
   pcb2d: DockPcb2DPanel,
   schematic2d: DockSchematic2DPanel,
   viewport3d: DockViewport3DPanel,
+  fileExplorer: DockFileExplorerPanel,
+  codeEditor: DockCodeEditorPanel,
+  terminal: DockTerminalPanel,
   explorer: ExplorerPanel,
   inspector: InspectorPanel,
 };
@@ -419,6 +459,18 @@ export const WorkstationShell: React.FC = () => {
       id: 'viewport3d_panel',
       component: 'viewport3d',
       title: '3D STEP (.kicad_pcb)',
+      position: { referencePanel: center, direction: 'within' },
+    });
+    event.api.addPanel({
+      id: 'code_editor_panel',
+      component: 'codeEditor',
+      title: 'Code IDE (Monaco)',
+      position: { referencePanel: center, direction: 'within' },
+    });
+    event.api.addPanel({
+      id: 'terminal_panel',
+      component: 'terminal',
+      title: 'Terminal (PTY)',
       position: { referencePanel: center, direction: 'within' },
     });
     center.api.setActive();

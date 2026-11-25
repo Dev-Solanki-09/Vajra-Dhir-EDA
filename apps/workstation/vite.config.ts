@@ -24,6 +24,10 @@ export default defineConfig({
         target: 'http://127.0.0.1:41900',
         ws: true,
       },
+      '/ws': {
+        target: 'http://127.0.0.1:41900',
+        ws: true,
+      },
       '/stitch': 'http://127.0.0.1:41900',
     },
   },
@@ -33,6 +37,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (id.includes('node_modules/monaco-editor')) return 'vendor-monaco';
+          if (id.includes('node_modules/@xterm')) return 'vendor-xterm';
           if (id.includes('node_modules/three')) return 'vendor-three';
           if (id.includes('packages/kicanvas-core') || id.includes('@vajradhir/kicanvas-core')) return 'vendor-kicanvas';
           if (id.includes('node_modules/elkjs')) return 'vendor-elk';
