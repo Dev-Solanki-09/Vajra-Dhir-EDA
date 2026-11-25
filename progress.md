@@ -1,5 +1,14 @@
 # PROGRESS — Wave Log (orchestrator-maintained)
 
+## 2026-11-25 · G1 AUDITED & MERGED (`APPROVE_WITH_NOTES`) · G2 READY
+
+- **G1 ACCEPTED (`2d64166`..`b13a312`, merged `--no-ff`):**
+  - `Cargo.lock` generated and committed (`3198` lines, 311 packages via `cargo metadata --locked`), `packages/cli/Cargo.toml` fixed (`vd-hw-dlp = { package = "vd-dlp", path = "../hw-dlp" }`).
+  - Adopted `test_patch_op_parity.py` (F-05, `8 ops / 5 actors / 14 SQL domains` PASS), implemented `register_merge_driver.py` + `test_merge_driver_registration.py` (F-06, `3/3` PASS), adopted & fixed `test_footgun_contract.py` (F-07, `3/3` PASS).
+  - Bumped `typescript == 7.0.2` & `engines.node >= 26.13.1` across root + `apps/desktop`, added `"types": ["node"]` to `packages/mcp-gateway/tsconfig.json`, regenerated cross-OS `pnpm-lock.yaml` (`win32-x64` + `linux-x64`), passed `pnpm install --frozen-lockfile`, `tsc --noEmit` (6/6 TS packages), and `pnpm test` (`4/4`).
+- **Dual-context review (`APPROVE_WITH_NOTES`):** noted local Windows host lacks MSVC `link.exe` (blocking local `cargo test`/`cargo check` binary linking until run on `ubuntu-24.04` CI or MSVC host), and flagged pre-existing numbering drift in untouched `packages/symbolic-verifier/src/footgun_engine.py`.
+- **G2 (`T-04`) READY:** CAD & geometry truth (F-08, F-09a, F-09b, F-20, `cavalier_contours`).
+
 ## 2026-11-24 · Step 1 SSOT Upgrade + G0 (T-02b + T-02c) AUDITED & MERGED · G1 READY
 
 - **Orchestrator SSOT Upgrade (`dd4ea87`):** reconciled `.ai-sync/` specs (`G5A/B/C`, `G6A/B/C/D`, `P0–P5`, `X1–X4`), created `.ai-sync/WORKER_BOOTSTRAP.md` (untracked) and `scripts/verify-handoff.mjs` receipt gate, fixed `docs/TECHSTACK.md` + `scripts/import-upstream-stack.sh` license/path traps (`occt-import-js` LGPL worker exception, `KiKit` Ring-2 subprocess, `surfer` EUPL removed, `serde_kicad_sexpr` dropped), recorded user rulings (`wasmtime >= 51.0.0`, `vd studio` v0.1.0 / optional Tauri v2 v0.2.0), archived `stash@{0}` to `.ai-sync/private/archive/stash0-v005-backup.patch` and dropped it.

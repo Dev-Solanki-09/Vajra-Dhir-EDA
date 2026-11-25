@@ -15,8 +15,8 @@ Inventory: `.ai-sync/tickets/INCOMPLETE-WORK-AND-CLEANUP.md` (all unfinished tic
 | Phase | Content | Owner | Status |
 |---|---|---|---|
 | G0 | T-02c Rust `1.100.0` pin + truthful handoff §4 + `verify-handoff.mjs` receipt | GEMINI | **MERGED** (`T-02b + T-02c` `b80fdde` merged `--no-ff`) |
-| G1 | T-03 takeover (`vd-merge`/bin `hw-merge` F-06; F-05/F-07 adopt-tests) + `Cargo.lock` + Rust `1.100.0` `min-publish-age` + TS `7.0.2` cross-OS/API audit | GEMINI | **READY** (ticket `.ai-sync/tickets/G1-gemini.md`) |
-| G2 | T-04 CAD/geometry truth (F-08/F-09/F-20 UUIDv7, `w_cong`, IPC-2152 vs 2221, `cavalier_contours`) | GEMINI | QUEUED |
+| G1 | T-03 takeover (`vd-merge`/bin `hw-merge` F-06; F-05/F-07 adopt-tests) + `Cargo.lock` + Rust `1.100.0` `min-publish-age` + TS `7.0.2` cross-OS/API audit | GEMINI | **MERGED** (`b13a312` merged `--no-ff`, dual-context `APPROVE_WITH_NOTES`) |
+| G2 | T-04 CAD/geometry truth (F-08/F-09/F-20 UUIDv7, `w_cong`, IPC-2152 vs 2221, `cavalier_contours`) | GEMINI | **READY** (ticket `.ai-sync/tickets/G2-gemini.md` / `T-04-deepseek.md`) |
 | G3 | T-05 verification hardening (explicit `STRUCTURAL_CHECK` / `GUI_DEFERRED_TO_G6D` labels, real `vd doctor`, Wasmtime `>= 51.0.0` negatives, G4→G8 fail-closed, F-19 validator, `hw-dlp`, solver-recovery) | GEMINI | QUEUED |
 | G4 | T-12 fixed `import-upstream-stack.sh --dry-run` + PUBLIC vendored `MANIFEST.json` + INTERNAL `.ai-sync/private/PRIVATE_REGISTRY.json` (146) + golden fixtures + `docs/LICENSE_EXCEPTIONS.md` | GEMINI | QUEUED |
 | G5A | Manufacturing & Transcoder: MIT `vd-panelizer` (`.kicad_pcb` 2×2) + Ring-2 subprocess `KiKit` + KiBot-style MIT DFM via `kicad-cli` + RS-274X + EAGLE/KiCad import | GEMINI | QUEUED |
@@ -56,7 +56,8 @@ You are WORKER-GEMINI, sole worker on Vajra-Dhir EDA in D:\project-gemini (branc
 | T-02 CI | REJECTED → T-02b (false root cause, missing jobs, Node 22 downgrade) |
 | T-02b CI remediation | MERGED (with T-02c `b80fdde`) |
 | T-02c Rust 1.100.0 pin | MERGED (G0 `--no-ff`, receipt `G0-receipt.json`) |
-| T-03 (DeepSeek) | RETIRED mid-flight; WIP preserved ab2ec71 → Gemini adopts in G1 |
+| T-03 (DeepSeek) | RETIRED mid-flight; WIP ab2ec71 adopted + merged in G1 |
+| G1 (T-03+T-08) | MERGED (`b13a312` `--no-ff`, dual-context `APPROVE_WITH_NOTES`, receipt `G1-receipt.json`) |
 | T-04/T-05/T-06/T-08..T-16 | FOLDED into G1–G8 + P-track + X-track |
 
 ## Ground truth
