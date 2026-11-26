@@ -164,11 +164,11 @@ impl ControlLoopSynthesizer {
 
         let fz1 = plant.flc_hz * 0.8;
         let fz2 = plant.flc_hz;
-        let fp1 = plant.fesr_hz;
+        let _fp1 = plant.fesr_hz;
         let fp2 = specs.fsw_hz / 2.0;
 
         let r1 = 10_000.0;
-        let c1 = 1.0 / (2.0 * PI * r1 * fz2);
+        let _c1 = 1.0 / (2.0 * PI * r1 * fz2);
         let r3 = 1_000.0;
         let c3 = 1.0 / (2.0 * PI * r3 * fz1);
         let rc = 20_000.0;
