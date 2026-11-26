@@ -76,9 +76,8 @@ impl PnpGenerator {
         }
 
         let mut assignments = Vec::new();
-        let mut slot = 1;
 
-        for (pkg_val, refs) in package_groups {
+        for (slot, (pkg_val, refs)) in (1..).zip(package_groups) {
             let parts: Vec<&str> = pkg_val.split(':').collect();
             let pkg = parts[0];
 
@@ -95,7 +94,6 @@ impl PnpGenerator {
                 tape_width_mm: tape_width,
                 parts_assigned: refs,
             });
-            slot += 1;
         }
 
         assignments

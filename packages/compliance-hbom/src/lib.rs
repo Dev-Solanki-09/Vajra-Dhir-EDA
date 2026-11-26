@@ -92,7 +92,6 @@ pub struct HbomGenerator;
 impl HbomGenerator {
     /// Audits all requirements and verifies 100% compliance
     pub fn audit_requirements(bindings: &[RequirementBinding]) -> Result<usize, HbomError> {
-        let mut passed_count = 0;
         for req in bindings {
             if !req.passed {
                 return Err(HbomError::UnsatisfiedRequirement(
@@ -100,9 +99,8 @@ impl HbomGenerator {
                     format!("Verification method {} failed", req.verification_method),
                 ));
             }
-            passed_count += 1;
         }
-        Ok(passed_count)
+        Ok(bindings.len())
     }
 
     /// Generates CycloneDX 1.6 HBOM JSON document
