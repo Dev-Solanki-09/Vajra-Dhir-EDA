@@ -140,9 +140,10 @@ fn main() {
 
         "dlp" => {
             let input = if args.len() >= 3 { &args[2] } else { "Clean routing prompt" };
-            let (sanitized, leaks) = DlpFirewall::sanitize_prompt(input);
+            let sanitized = DlpFirewall::sanitize_text(input);
+            let redacted_count = sanitized.matches("[REDACTED_API_KEY]").count();
             println!("[*] Sanitized Prompt: {}", sanitized);
-            println!("[*] Secrets redacted: {}", leaks.len());
+            println!("[*] Secrets redacted: {}", redacted_count);
         }
 
         "pdn" => {
@@ -256,7 +257,7 @@ fn main() {
         }
 
         "studio" => {
-            let project_arg = args.get(2).map(|s| s.as_str()).unwrap_or(".");
+            let project_arg = args.get(2).map_or(".", String::as_str);
             println!("[*] vd studio: Launching Silicon Darkroom Workstation on http://127.0.0.1:41900");
             println!("[*] Project workspace: {}", project_arg);
             let daemon_up = std::net::TcpStream::connect_timeout(
