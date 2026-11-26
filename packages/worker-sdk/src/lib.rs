@@ -137,7 +137,7 @@ impl WorkerDispatcher {
                 let hash = format!("sha256:{:x}", hasher.finalize());
 
                 artifacts.push(ArtifactInfo {
-                    name: "drc_report.json".to_string>,
+                    name: "drc_report.json".to_string(),
                     hash,
                     size_bytes: rep_bytes.len() as u64,
                 });
