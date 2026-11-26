@@ -31,8 +31,10 @@ fn test_fuel_exhaustion_stops_infinite_loop() {
     let wasm = wat::parse_str(wat).expect("WAT parse failed");
 
     // Allocate only 1000 fuel units
-    let mut limits = ExecutionLimits::default();
-    limits.fuel_units = 1_000;
+    let limits = ExecutionLimits {
+        fuel_units: 1_000,
+        ..Default::default()
+    };
 
     let res = runner.execute_module(&wasm, limits);
     match res {
@@ -58,8 +60,10 @@ fn test_memory_limiter_stops_excessive_growth() {
     "#;
     let wasm = wat::parse_str(wat).expect("WAT parse failed");
 
-    let mut limits = ExecutionLimits::default();
-    limits.max_memory_bytes = 64 * 1024 * 1024; // 64 MiB limit
+    let limits = ExecutionLimits {
+        max_memory_bytes: 64 * 1024 * 1024, // 64 MiB limit
+        ..Default::default()
+    };
 
     let res = runner.execute_module(&wasm, limits);
     // memory.grow returns -1 when ResourceLimiter denies growth, so module runs or traps
@@ -103,9 +107,11 @@ fn test_epoch_timeout_interrupts_infinite_loop() {
         )
     "#;
     let wasm = wat::parse_str(wat).expect("WAT parse failed");
-    let mut limits = ExecutionLimits::default();
-    limits.fuel_units = u64::MAX / 2;
-    limits.timeout_ms = 50;
+    let limits = ExecutionLimits {
+        fuel_units: u64::MAX / 2,
+        timeout_ms: 50,
+        ..Default::default()
+    };
 
     let res = runner.execute_module(&wasm, limits);
     assert!(
