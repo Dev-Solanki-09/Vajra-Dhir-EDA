@@ -9,7 +9,7 @@ fn create_test_comp(id: &str, refdes: &str, x: Nm, y: Nm, side: &str, locked: bo
             board_id: "board-1".into(),
             lock: LockGuard {
                 locked,
-                provenance: Provenance::Manual,
+                provenance: Provenance::Human,
                 lock_owner: None,
                 lock_reason: None,
             },

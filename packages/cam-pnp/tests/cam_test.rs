@@ -9,7 +9,7 @@ fn create_comp(refdes: &str, val: &str, pkg: &str, x_mm: f64, y_mm: f64) -> Hard
             board_id: "board-1".into(),
             lock: LockGuard {
                 locked: false,
-                provenance: Provenance::Manual,
+                provenance: Provenance::Human,
                 lock_owner: None,
                 lock_reason: None,
             },

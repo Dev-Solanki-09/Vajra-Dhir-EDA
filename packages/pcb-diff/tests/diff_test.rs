@@ -9,7 +9,7 @@ fn make_comp(refdes: &str, val: &str, fp: &str, x: Nm, y: Nm) -> HardwareEntity 
             board_id: "board-1".into(),
             lock: LockGuard {
                 locked: false,
-                provenance: Provenance::Manual,
+                provenance: Provenance::Human,
                 lock_owner: None,
                 lock_reason: None,
             },
