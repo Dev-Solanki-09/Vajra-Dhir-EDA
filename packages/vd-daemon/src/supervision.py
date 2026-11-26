@@ -105,8 +105,8 @@ class SupervisedProcessGroup:
                 else:
                     self._k32.CloseHandle(job)
 
-    def spawn(self, cmd: list[str], cwd: str | None = None) -> subprocess.Popen:
-        kwargs: dict = {"cwd": cwd}
+    def spawn(self, cmd: list[str], cwd: str | None = None, **extra_kwargs) -> subprocess.Popen:
+        kwargs: dict = {"cwd": cwd, **extra_kwargs}
         if sys.platform == "win32":
             proc = subprocess.Popen(cmd, **kwargs)
             if self._job_handle and self._k32 is not None:

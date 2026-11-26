@@ -32,7 +32,8 @@ try:
     from .fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
     from .spice_routes import handle_spice_get, handle_spice_post
     from .kg_routes import handle_kg_get, handle_kg_post
-    from .kicad_bridge import ensure_external_id_map
+    from .router_routes import handle_router_get, handle_router_post
+    from .kicad_bridge import ensure_external_id_map, sync_kicad_pcb_to_hwir, write_text_atomic
     from .kicad_routes import (
         handle_kicad_get,
         handle_kicad_post,
@@ -55,7 +56,8 @@ except ImportError:
     from fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
     from spice_routes import handle_spice_get, handle_spice_post
     from kg_routes import handle_kg_get, handle_kg_post
-    from kicad_bridge import ensure_external_id_map
+    from router_routes import handle_router_get, handle_router_post
+    from kicad_bridge import ensure_external_id_map, sync_kicad_pcb_to_hwir, write_text_atomic
     from kicad_routes import (
         handle_kicad_get,
         handle_kicad_post,
@@ -1034,6 +1036,8 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                     return
                 if handle_cosim_get(self, path, full_path=self.path, con=self.con):
                     return
+                if handle_router_get(self, path, full_path=self.path, con=self.con):
+                    return
             if not path.startswith("/api/") and not path.startswith("/stitch/") and not path.startswith("/ws/"):
                 asset = resolve_studio_static_asset(path)
                 if asset["status"] == 200:
@@ -1378,12 +1382,17 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                     cur.execute("UPDATE traces SET deleted = 1 WHERE id = ?", (op["trace_id"],))
                 elif t == "DELETE_VIA":
                     cur.execute("UPDATE vias SET deleted = 1 WHERE id = ?", (op["via_id"],))
+                elif t == "RESTORE_PCB_SNAPSHOT":
+                    p_dst = pathlib.Path(op["pcb_path"])
+                    write_text_atomic(p_dst, op["pcb_text"])
+                    sync_kicad_pcb_to_hwir(self.con, p_dst, actor_kind="human")
             cur.execute("UPDATE hardware_patches SET undone = 1 WHERE seq_id = ?", (seq_id,))
             cur.execute("UPDATE projects SET rev_lamport = rev_lamport + 1")
             lamport = cur.execute("SELECT rev_lamport FROM projects LIMIT 1").fetchone()[0]
             self.con.commit()
             try:
-                sync_after_patch(self.con, ops=inv_ops, patch_id=f"undo:{seq_id}")
+                if not any(op.get("op") == "RESTORE_PCB_SNAPSHOT" for op in inv_ops):
+                    sync_after_patch(self.con, ops=inv_ops, patch_id=f"undo:{seq_id}")
             except Exception:
                 pass
 
@@ -1864,6 +1873,9 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             return
 
         elif handle_cosim_post(self, path, req, self.con):
+            return
+
+        elif handle_router_post(self, path, req, self.con):
             return
 
         elif handle_x1_post(self, path, req):

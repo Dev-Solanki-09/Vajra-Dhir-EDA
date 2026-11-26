@@ -75,6 +75,20 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
   const [cursorWorldMm, setCursorWorldMm] = useState<{ xMm: number; yMm: number } | null>(null);
   const [aiGhost, setAiGhost] = useState<AiGhostSuggestion | null>(null);
   const [viewportTick, setViewportTick] = useState(0);
+  const [routeBusy, setRouteBusy] = useState(false);
+  const [routeSummary, setRouteSummary] = useState('');
+  const [ghostSegments, setGhostSegments] = useState<
+    Array<{ x1_nm: number; y1_nm: number; x2_nm: number; y2_nm: number; layer: string; net_name: string }>
+  >([]);
+  const [lockedTraceOverlay, setLockedTraceOverlay] = useState<{
+    trace_id: string;
+    net_name: string;
+    x1_nm: number;
+    y1_nm: number;
+    x2_nm: number;
+    y2_nm: number;
+    sha256: string;
+  } | null>(null);
 
   const selectedRefdes = probe.selection.entityIds[0] ?? 'J1';
 
@@ -515,6 +529,107 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
               </button>
             );
           })}
+          <button
+            type="button"
+            data-testid="pcb-lock-trace-btn"
+            className="vd-btn"
+            style={{ minHeight: 24, padding: '2px 6px', fontSize: 10, color: '#FBBF24' }}
+            disabled={routeBusy}
+            onClick={() => {
+              setRouteBusy(true);
+              void fetch('/api/v1/route/lock-trace', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ locked: true }),
+              })
+                .then((r) => r.json())
+                .then((d) => {
+                  if (d.ok) {
+                    setLockedTraceOverlay(d);
+                    setRouteSummary(`Locked trace ${d.net_name} · SHA ${String(d.sha256).slice(0, 10)}`);
+                  }
+                })
+                .catch(() => {})
+                .finally(() => setRouteBusy(false));
+            }}
+          >
+            Lock Trace
+          </button>
+          <button
+            type="button"
+            data-testid="pcb-autoroute-preview-btn"
+            className="vd-btn"
+            style={{ minHeight: 24, padding: '2px 6px', fontSize: 10, color: '#C4B5FD' }}
+            disabled={routeBusy}
+            onClick={() => {
+              setRouteBusy(true);
+              void fetch('/api/v1/route/auto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reroute_unlocked: true, preview_only: true, run_drc: false }),
+              })
+                .then((r) => r.json())
+                .then((d) => {
+                  if (d.ok) {
+                    setGhostSegments(Array.isArray(d.ghost_segments) ? d.ghost_segments : []);
+                    setRouteSummary(`Ghost Route: ${d.new_segments_count ?? 0} segs (${d.wirelength_mm ?? 0}mm) · Locks verified: ${d.locked_traces_verified ?? 0}`);
+                  }
+                })
+                .catch(() => {})
+                .finally(() => setRouteBusy(false));
+            }}
+          >
+            Preview Route
+          </button>
+          <button
+            type="button"
+            data-testid="pcb-autoroute-btn"
+            className="vd-btn vd-btn-primary"
+            style={{ minHeight: 24, padding: '2px 6px', fontSize: 10 }}
+            disabled={routeBusy}
+            onClick={() => {
+              setRouteBusy(true);
+              void fetch('/api/v1/route/auto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reroute_unlocked: true, preview_only: false, run_drc: false }),
+              })
+                .then((r) => r.json())
+                .then(async (d) => {
+                  if (d.ok) {
+                    setGhostSegments([]);
+                    setRouteSummary(`Routed ${d.total_segments ?? 0} segs (${d.wirelength_mm ?? 0}mm, ${d.parasitic_mohm ?? 0}mOhm) · Locks Verified: ${d.locked_traces_verified ?? 0}`);
+                    await globalKiCadSyncStore.fetchFiles();
+                  } else {
+                    setRouteSummary(`Route error: ${d.error ?? 'failed'}`);
+                  }
+                })
+                .catch(() => {})
+                .finally(() => setRouteBusy(false));
+            }}
+          >
+            Auto-Route (KRT)
+          </button>
+          {routeBusy && (
+            <button
+              type="button"
+              data-testid="pcb-autoroute-cancel-btn"
+              className="vd-btn"
+              style={{ minHeight: 24, padding: '2px 6px', fontSize: 10, color: '#ef4444' }}
+              onClick={() => {
+                void fetch('/api/v1/route/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+                setRouteBusy(false);
+                setRouteSummary('Autorouting cancelled');
+              }}
+            >
+              Cancel
+            </button>
+          )}
+          {routeSummary && (
+            <span data-testid="pcb-autoroute-status" style={{ fontSize: 10, color: '#6ee7b7' }}>
+              {routeSummary}
+            </span>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 10, color: 'var(--vd-text-secondary)' }}>
@@ -762,6 +877,51 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
               </g>
             );
           })()}
+
+          {/* Locked Trace Amber Indicator (P12) */}
+          {lockedTraceOverlay && viewerRef.current?.viewport?.camera && kcModuleRef.current && (() => {
+            const p1 = viewerRef.current!.viewport.camera.world_to_screen(
+              new kcModuleRef.current!.Vec2(lockedTraceOverlay.x1_nm / MM_TO_NM, lockedTraceOverlay.y1_nm / MM_TO_NM)
+            );
+            const p2 = viewerRef.current!.viewport.camera.world_to_screen(
+              new kcModuleRef.current!.Vec2(lockedTraceOverlay.x2_nm / MM_TO_NM, lockedTraceOverlay.y2_nm / MM_TO_NM)
+            );
+            return (
+              <g data-testid="pcb-locked-trace-line">
+                <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="#F59E0B" strokeWidth={5} opacity={0.85} />
+                <text x={(p1.x + p2.x) / 2} y={(p1.y + p2.y) / 2 - 6} textAnchor="middle" fill="#FBBF24" fontSize={9}>
+                  🔒 {lockedTraceOverlay.net_name}
+                </text>
+              </g>
+            );
+          })()}
+
+          {/* Violet Ghost Route Preview (P12) */}
+          {ghostSegments.length > 0 && viewerRef.current?.viewport?.camera && kcModuleRef.current && (
+            <g data-testid="pcb-route-ghost-overlay">
+              {ghostSegments.slice(0, 60).map((gs, idx) => {
+                const p1 = viewerRef.current!.viewport.camera.world_to_screen(
+                  new kcModuleRef.current!.Vec2(gs.x1_nm / MM_TO_NM, gs.y1_nm / MM_TO_NM)
+                );
+                const p2 = viewerRef.current!.viewport.camera.world_to_screen(
+                  new kcModuleRef.current!.Vec2(gs.x2_nm / MM_TO_NM, gs.y2_nm / MM_TO_NM)
+                );
+                return (
+                  <line
+                    key={`ghost-seg-${idx}`}
+                    x1={p1.x}
+                    y1={p1.y}
+                    x2={p2.x}
+                    y2={p2.y}
+                    stroke="#8B5CF6"
+                    strokeWidth={2.5}
+                    strokeDasharray="4 3"
+                    opacity={0.9}
+                  />
+                );
+              })}
+            </g>
+          )}
 
           {/* Violet AI Ghost Overlay */}
           {aiGhost && viewerRef.current?.viewport?.camera && kcModuleRef.current && (() => {
