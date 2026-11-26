@@ -15,9 +15,416 @@ use std::{
 use tower_http::cors::CorsLayer;
 use vd_cad_geom::{GeomKind, InteractiveSpatialKernel, LiveDrcHit, SnapResult, SpatialItem};
 use vd_hw_ir::{
-    model_v001::{BoardSnapshot, HardwarePatchOp, Nm, PatchRequest, PatchResponse, Provenance},
+    model::{self, HardwareEntity, HardwareEntityMeta, HardwarePatch, LockGuard},
+    model_v001::{
+        BoardMeta, BoardSnapshot, ComponentRecord, HardwarePatchOp, NetRecord, Nm, PatchLogEntry,
+        PatchRequest, PatchResponse, PinmuxRecord, ProjectMeta, Provenance, TraceRecord, ViaRecord,
+    },
     store::{HwIrError, HwIrStore},
 };
+
+const DEFAULT_PROJECT_ID: &str = "VD-BRD-001";
+const DEFAULT_BOARD_ID: &str = "board-main";
+
+fn to_core_prov(p: Provenance) -> model::Provenance {
+    match p {
+        Provenance::Human => model::Provenance::Human,
+        Provenance::Agent => model::Provenance::Agent,
+        Provenance::Cubo => model::Provenance::Cubo,
+        Provenance::Import => model::Provenance::Import,
+        Provenance::Compiler => model::Provenance::Compiler,
+    }
+}
+
+fn seed_reference_board_if_empty(store: &mut HwIrStore) -> Result<(), HwIrError> {
+    let count: i64 = store
+        .connection()
+        .query_row("SELECT COUNT(*) FROM projects", [], |r| r.get(0))?;
+    if count > 0 {
+        return Ok(());
+    }
+    store.with_actor_transaction(model::Provenance::Human, true, |tx| {
+        tx.execute(
+            "INSERT INTO projects (id, name, domain, dlp_class, autonomy_level, current_gate, target_fab_or_pdk, max_bom_cost_usd, ambient_temp_min_c, ambient_temp_max_c, spec_contract_json, rev_lamport, created_at_utc, updated_at_utc)
+             VALUES (?1, 'Golden Buck MCU', 'pcb', 'PRIVATE_CLOUD_OK', 'L3_GATE_COPILOT', 'G2_SCHEMA', 'jlcpcb_4l_7628', 15.0, 0.0, 70.0, '{}', 1, '2026-11-26T00:00:00Z', '2026-11-26T00:00:00Z')",
+            rusqlite::params![DEFAULT_PROJECT_ID],
+        )?;
+        tx.execute(
+            "INSERT INTO boards (id, project_id, name, board_kind, outline_polygon_nm, thickness_nm, layer_count, provenance, locked, rev_lamport, deleted)
+             VALUES (?1, ?2, 'main_pcb', 'rigid_pcb', '[[0,0],[60000000,0],[60000000,40000000],[0,40000000]]', 1600000, 4, 'human', 0, 1, 0)",
+            rusqlite::params![DEFAULT_BOARD_ID, DEFAULT_PROJECT_ID],
+        )?;
+        tx.execute(
+            "INSERT INTO net_classes (id, board_id, name, trace_width_nm, min_width_nm, clearance_nm, via_drill_nm, via_diameter_nm, provenance, locked, rev_lamport)
+             VALUES ('nc-default', ?1, 'Default', 250000, 150000, 200000, 300000, 600000, 'human', 0, 1)",
+            rusqlite::params![DEFAULT_BOARD_ID],
+        )?;
+        tx.execute(
+            "INSERT INTO nets (id, board_id, name, net_class_id, signal_role, nominal_voltage_v, is_high_speed, provenance, locked, rev_lamport, deleted)
+             VALUES ('net-3v3', ?1, '+3V3', 'nc-default', 'power_rail', 3.3, 0, 'human', 0, 1, 0)",
+            rusqlite::params![DEFAULT_BOARD_ID],
+        )?;
+        tx.execute(
+            "INSERT INTO components (id, board_id, refdes, value_str, mpn, package_name, footprint_ref, symbol_ref, functional_group, x_nm, y_nm, rot_mdeg, side, courtyard_w_nm, courtyard_h_nm, height_nm, power_diss_mw, unit_cost_usd, params_json, provenance, locked, rev_lamport, deleted)
+             VALUES ('comp-u2', ?1, 'U2', 'TPS54302', 'TPS54302DDCR', 'SOT-23-6', 'Package_TO_SOT_SMD:SOT-23-6', 'Regulator_Switching:TPS54302', 'power', 22000000, 20000000, 0, 'top', 3600000, 3200000, 1600000, 250.0, 1.1, '{}', 'human', 1, 1, 0)",
+            rusqlite::params![DEFAULT_BOARD_ID],
+        )?;
+        tx.execute(
+            "INSERT INTO components (id, board_id, refdes, value_str, mpn, package_name, footprint_ref, symbol_ref, functional_group, x_nm, y_nm, rot_mdeg, side, courtyard_w_nm, courtyard_h_nm, height_nm, power_diss_mw, unit_cost_usd, params_json, provenance, locked, rev_lamport, deleted)
+             VALUES ('comp-j1', ?1, 'J1', 'USB_C', 'CH224K', 'USB-C-16P', 'Connector_USB:USB_C_Receptacle', 'Connector:USB_C', 'usb_pd', 8000000, 20000000, 0, 'top', 9000000, 7500000, 3200000, 50.0, 0.85, '{}', 'human', 1, 1, 0)",
+            rusqlite::params![DEFAULT_BOARD_ID],
+        )?;
+        Ok(())
+    })
+}
+
+fn load_snapshot(store: &HwIrStore) -> Result<BoardSnapshot, HwIrError> {
+    let conn = store.connection();
+    let project = conn.query_row(
+        "SELECT id, name, domain, dlp_class, autonomy_level, current_gate, target_fab_or_pdk, COALESCE(max_bom_cost_usd, 0.0), ambient_temp_max_c, rev_lamport FROM projects LIMIT 1",
+        [],
+        |r| {
+            Ok(ProjectMeta {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                domain: r.get(2)?,
+                dlp_class: r.get(3)?,
+                autonomy_level: r.get(4)?,
+                current_gate: r.get(5)?,
+                target_fab_or_pdk: r.get(6)?,
+                max_bom_cost_usd: r.get(7)?,
+                ambient_temp_max_c: r.get(8)?,
+                rev_lamport: r.get(9)?,
+            })
+        },
+    )?;
+
+    let board = conn.query_row(
+        "SELECT id, project_id, name, thickness_nm, layer_count FROM boards WHERE project_id = ?1 AND deleted = 0 LIMIT 1",
+        rusqlite::params![&project.id],
+        |r| {
+            Ok(BoardMeta {
+                id: r.get(0)?,
+                project_id: r.get(1)?,
+                name: r.get(2)?,
+                width_nm: 60_000_000,
+                height_nm: 40_000_000,
+                thickness_nm: r.get(3)?,
+                layer_count: r.get(4)?,
+            })
+        },
+    )?;
+
+    let mut comp_stmt = conn.prepare(
+        "SELECT id, board_id, refdes, value_str, COALESCE(mpn, ''), package_name, footprint_ref, functional_group, x_nm, y_nm, rot_mdeg, side, courtyard_w_nm, courtyard_h_nm, power_diss_mw, COALESCE(unit_cost_usd, 0.0), params_json, provenance, locked, lock_owner, lock_reason, rev_lamport FROM components WHERE board_id = ?1 AND deleted = 0",
+    )?;
+    let components = comp_stmt
+        .query_map(rusqlite::params![&board.id], |r| {
+            let prov_s: String = r.get(17)?;
+            Ok(ComponentRecord {
+                id: r.get(0)?,
+                board_id: r.get(1)?,
+                refdes: r.get(2)?,
+                value_str: r.get(3)?,
+                mpn: r.get(4)?,
+                package_name: r.get(5)?,
+                footprint_ref: r.get(6)?,
+                functional_group: r.get(7)?,
+                x_nm: r.get(8)?,
+                y_nm: r.get(9)?,
+                rot_mdeg: r.get(10)?,
+                side: r.get(11)?,
+                courtyard_w_nm: r.get(12)?,
+                courtyard_h_nm: r.get(13)?,
+                power_diss_mw: r.get(14)?,
+                unit_cost_usd: r.get(15)?,
+                params_json: r.get(16)?,
+                provenance: Provenance::from_db(&prov_s),
+                locked: r.get::<_, i64>(18)? != 0,
+                lock_owner: r.get(19)?,
+                lock_reason: r.get(20)?,
+                rev_lamport: r.get(21)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut net_stmt = conn.prepare(
+        "SELECT id, board_id, name, net_class_id, signal_role, COALESCE(nominal_voltage_v, 0.0), is_high_speed FROM nets WHERE board_id = ?1 AND deleted = 0",
+    )?;
+    let nets = net_stmt
+        .query_map(rusqlite::params![&board.id], |r| {
+            Ok(NetRecord {
+                id: r.get(0)?,
+                board_id: r.get(1)?,
+                name: r.get(2)?,
+                net_class_id: r.get(3)?,
+                signal_role: r.get(4)?,
+                nominal_voltage_v: r.get(5)?,
+                is_high_speed: r.get::<_, i64>(6)? != 0,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut trace_stmt = conn.prepare(
+        "SELECT id, board_id, net_id, layer_name, x1_nm, y1_nm, x2_nm, y2_nm, width_nm, provenance, locked, rev_lamport FROM traces WHERE board_id = ?1 AND deleted = 0",
+    )?;
+    let traces = trace_stmt
+        .query_map(rusqlite::params![&board.id], |r| {
+            let prov_s: String = r.get(9)?;
+            Ok(TraceRecord {
+                id: r.get(0)?,
+                board_id: r.get(1)?,
+                net_id: r.get(2)?,
+                layer_name: r.get(3)?,
+                x1_nm: r.get(4)?,
+                y1_nm: r.get(5)?,
+                x2_nm: r.get(6)?,
+                y2_nm: r.get(7)?,
+                width_nm: r.get(8)?,
+                provenance: Provenance::from_db(&prov_s),
+                locked: r.get::<_, i64>(10)? != 0,
+                rev_lamport: r.get(11)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut via_stmt = conn.prepare(
+        "SELECT id, board_id, net_id, x_nm, y_nm, drill_nm, diameter_nm, start_layer, end_layer, via_kind, provenance, locked, rev_lamport FROM vias WHERE board_id = ?1 AND deleted = 0",
+    )?;
+    let vias = via_stmt
+        .query_map(rusqlite::params![&board.id], |r| {
+            let prov_s: String = r.get(10)?;
+            Ok(ViaRecord {
+                id: r.get(0)?,
+                board_id: r.get(1)?,
+                net_id: r.get(2)?,
+                x_nm: r.get(3)?,
+                y_nm: r.get(4)?,
+                drill_nm: r.get(5)?,
+                diameter_nm: r.get(6)?,
+                start_layer: r.get(7)?,
+                end_layer: r.get(8)?,
+                via_kind: r.get(9)?,
+                provenance: Provenance::from_db(&prov_s),
+                locked: r.get::<_, i64>(11)? != 0,
+                rev_lamport: r.get(12)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut pin_stmt = conn.prepare(
+        "SELECT fp.id, c.refdes, cp.pin_number, fp.peripheral_instance, fp.signal_alias, fp.gpio_mode, fp.locked
+         FROM firmware_pinmux fp
+         JOIN components c ON c.id = fp.mcu_component_id
+         JOIN component_pins cp ON cp.id = fp.pin_id
+         WHERE fp.board_id = ?1",
+    )?;
+    let pinmux = pin_stmt
+        .query_map(rusqlite::params![&board.id], |r| {
+            Ok(PinmuxRecord {
+                id: r.get(0)?,
+                mcu_refdes: r.get(1)?,
+                pin_number: r.get(2)?,
+                peripheral_instance: r.get(3)?,
+                signal_alias: r.get(4)?,
+                gpio_mode: r.get(5)?,
+                locked: r.get::<_, i64>(6)? != 0,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut patch_stmt = conn.prepare(
+        "SELECT seq_id, patch_id, actor_kind, actor_id, lamport_ts, undone, applied_at_utc FROM hardware_patches WHERE project_id = ?1 ORDER BY seq_id DESC LIMIT 50",
+    )?;
+    let patches = patch_stmt
+        .query_map(rusqlite::params![&project.id], |r| {
+            let actor_s: String = r.get(2)?;
+            Ok(PatchLogEntry {
+                seq_id: r.get(0)?,
+                patch_id: r.get(1)?,
+                actor_kind: Provenance::from_db(&actor_s),
+                actor_id: r.get(3)?,
+                lamport_ts: r.get(4)?,
+                summary: String::new(),
+                undone: r.get::<_, i64>(5)? != 0,
+                applied_at_utc: r.get(6)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let total_bom_usd = components.iter().map(|c| c.unit_cost_usd).sum();
+    Ok(BoardSnapshot {
+        project,
+        board,
+        components,
+        nets,
+        traces,
+        vias,
+        pinmux,
+        patches,
+        total_bom_usd,
+    })
+}
+
+fn apply_patch_req(store: &mut HwIrStore, req: &PatchRequest) -> Result<PatchResponse, HwIrError> {
+    let snap = load_snapshot(store)?;
+    let new_lamport = (snap.project.rev_lamport + 1).max(1);
+    let patch_id = uuid::Uuid::now_v7().to_string();
+    let core_actor = to_core_prov(req.actor_kind);
+
+    let mut core_ops = Vec::with_capacity(req.ops.len());
+    for op in &req.ops {
+        match op {
+            HardwarePatchOp::MoveComponent {
+                component_id,
+                x_nm,
+                y_nm,
+                rot_mdeg,
+                side,
+            } => core_ops.push(model::HardwarePatchOp::MoveComponent {
+                component_id: component_id.clone(),
+                x_nm: *x_nm,
+                y_nm: *y_nm,
+                rot_mdeg: *rot_mdeg,
+                side: side.clone(),
+            }),
+            HardwarePatchOp::SetLock {
+                entity_type,
+                entity_id,
+                locked,
+                reason,
+            } => core_ops.push(model::HardwarePatchOp::SetLock {
+                entity_type: entity_type.clone(),
+                entity_id: entity_id.clone(),
+                locked: *locked,
+                reason: reason.clone(),
+            }),
+            HardwarePatchOp::AddTrace { trace } => {
+                core_ops.push(model::HardwarePatchOp::UpsertEntity {
+                    entity: HardwareEntity::Trace {
+                        meta: HardwareEntityMeta {
+                            id: trace.id.clone(),
+                            board_id: trace.board_id.clone(),
+                            lock: LockGuard {
+                                locked: trace.locked,
+                                provenance: to_core_prov(trace.provenance),
+                                lock_owner: None,
+                                lock_reason: None,
+                            },
+                            rev_lamport: new_lamport as u64,
+                            deleted: false,
+                        },
+                        net_id: trace.net_id.clone(),
+                        layer_name: trace.layer_name.clone(),
+                        x1_nm: trace.x1_nm,
+                        y1_nm: trace.y1_nm,
+                        x2_nm: trace.x2_nm,
+                        y2_nm: trace.y2_nm,
+                        width_nm: trace.width_nm,
+                        arc_mid: None,
+                    },
+                })
+            }
+            HardwarePatchOp::SoftDeleteTrace { trace_id } => {
+                core_ops.push(model::HardwarePatchOp::DeleteEntity {
+                    entity_type: "trace".into(),
+                    entity_id: trace_id.clone(),
+                })
+            }
+            HardwarePatchOp::AddVia { via } => core_ops.push(model::HardwarePatchOp::UpsertEntity {
+                entity: HardwareEntity::Via {
+                    meta: HardwareEntityMeta {
+                        id: via.id.clone(),
+                        board_id: via.board_id.clone(),
+                        lock: LockGuard {
+                            locked: via.locked,
+                            provenance: to_core_prov(via.provenance),
+                            lock_owner: None,
+                            lock_reason: None,
+                        },
+                        rev_lamport: new_lamport as u64,
+                        deleted: false,
+                    },
+                    net_id: via.net_id.clone(),
+                    x_nm: via.x_nm,
+                    y_nm: via.y_nm,
+                    drill_nm: via.drill_nm,
+                    diameter_nm: via.diameter_nm,
+                    start_layer: via.start_layer.clone(),
+                    end_layer: via.end_layer.clone(),
+                    via_kind: via.via_kind.clone(),
+                },
+            }),
+            HardwarePatchOp::SoftDeleteVia { via_id } => {
+                core_ops.push(model::HardwarePatchOp::DeleteEntity {
+                    entity_type: "via".into(),
+                    entity_id: via_id.clone(),
+                })
+            }
+            HardwarePatchOp::RestoreTrace { trace_id } => {
+                store.with_actor_transaction(core_actor, false, |tx| {
+                    tx.execute(
+                        "UPDATE traces SET deleted = 0 WHERE id = ?1",
+                        rusqlite::params![trace_id],
+                    )?;
+                    Ok(())
+                })?;
+            }
+            HardwarePatchOp::RestoreVia { via_id } => {
+                store.with_actor_transaction(core_actor, false, |tx| {
+                    tx.execute(
+                        "UPDATE vias SET deleted = 0 WHERE id = ?1",
+                        rusqlite::params![via_id],
+                    )?;
+                    Ok(())
+                })?;
+            }
+        }
+    }
+
+    if !core_ops.is_empty() {
+        store.apply_patch(&HardwarePatch {
+            patch_id: patch_id.clone(),
+            project_id: snap.project.id.clone(),
+            actor_kind: core_actor,
+            actor_id: req.actor_id.clone(),
+            lamport_ts: new_lamport as u64,
+            forward_ops: core_ops,
+            inverse_ops: Vec::new(),
+            otel_trace_id: None,
+        })?;
+    }
+
+    store.with_actor_transaction(core_actor, true, |tx| {
+        tx.execute(
+            "UPDATE projects SET rev_lamport = ?1 WHERE id = ?2",
+            rusqlite::params![new_lamport, &snap.project.id],
+        )?;
+        Ok(())
+    })?;
+
+    Ok(PatchResponse {
+        applied: true,
+        patch_id,
+        new_lamport,
+        error_code: None,
+        message: req.summary.clone(),
+    })
+}
+
+fn undo_req(store: &mut HwIrStore) -> Result<i64, HwIrError> {
+    let snap = load_snapshot(store)?;
+    store.undo_last_patch(&snap.project.id)?;
+    let next = load_snapshot(store)?.project.rev_lamport;
+    Ok(next)
+}
+
+fn redo_req(store: &mut HwIrStore) -> Result<i64, HwIrError> {
+    let snap = load_snapshot(store)?;
+    store.redo_last_patch(&snap.project.id, model::Provenance::Human)?;
+    let next = load_snapshot(store)?.project.rev_lamport;
+    Ok(next)
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct BudgetConfig {
@@ -303,9 +710,9 @@ async fn get_health(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         Ok(g) => g,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Store lock poisoned").into_response(),
     };
-    match guard.load_snapshot() {
+    match load_snapshot(&guard) {
         Ok(snap) => Json(HealthResponse {
-            version: "0.0.2",
+            version: "0.0.3",
             bind_addr: "127.0.0.1:41900",
             rev_lamport: snap.project.rev_lamport,
             dlp_class: snap.project.dlp_class,
@@ -321,7 +728,7 @@ async fn get_board(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         Ok(g) => g,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Store lock poisoned").into_response(),
     };
-    match guard.load_snapshot() {
+    match load_snapshot(&guard) {
         Ok(snap) => Json(snap).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     }
@@ -335,7 +742,7 @@ async fn post_patch(
         Ok(g) => g,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Store lock poisoned").into_response(),
     };
-    match guard.apply_patch(&req) {
+    match apply_patch_req(&mut guard, &req) {
         Ok(res) => (StatusCode::OK, Json(res)).into_response(),
         Err(HwIrError::LockViolation(msg)) => (
             StatusCode::CONFLICT,
@@ -370,7 +777,7 @@ async fn post_agent_sim(
         Ok(g) => g,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Store lock poisoned").into_response(),
     };
-    let snap = match guard.load_snapshot() {
+    let snap = match load_snapshot(&guard) {
         Ok(s) => s,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     };
@@ -390,7 +797,7 @@ async fn post_agent_sim(
             side: comp.side.clone(),
         }],
     };
-    match guard.apply_patch(&patch_req) {
+    match apply_patch_req(&mut guard, &patch_req) {
         Ok(res) => (StatusCode::OK, Json(res)).into_response(),
         Err(HwIrError::LockViolation(msg)) => (
             StatusCode::CONFLICT,
@@ -412,7 +819,7 @@ async fn post_undo(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         Ok(g) => g,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Store lock poisoned").into_response(),
     };
-    match guard.undo() {
+    match undo_req(&mut guard) {
         Ok(lamport) => (StatusCode::OK, Json(serde_json::json!({ "new_lamport": lamport }))).into_response(),
         Err(e) => (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
     }
@@ -423,7 +830,7 @@ async fn post_redo(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         Ok(g) => g,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Store lock poisoned").into_response(),
     };
-    match guard.redo() {
+    match redo_req(&mut guard) {
         Ok(lamport) => (StatusCode::OK, Json(serde_json::json!({ "new_lamport": lamport }))).into_response(),
         Err(e) => (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
     }
@@ -434,7 +841,7 @@ async fn post_snap(State(state): State<Arc<AppState>>, Json(req): Json<SnapReq>)
         Ok(g) => g,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Store lock poisoned").into_response(),
     };
-    let snap = match guard.load_snapshot() {
+    let snap = match load_snapshot(&guard) {
         Ok(s) => s,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     };
@@ -451,7 +858,7 @@ async fn post_route_preview(
         Ok(g) => g,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Store lock poisoned").into_response(),
     };
-    let snap = match guard.load_snapshot() {
+    let snap = match load_snapshot(&guard) {
         Ok(s) => s,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     };
@@ -500,7 +907,7 @@ async fn post_verify(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         Ok(g) => g,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Store lock poisoned").into_response(),
     };
-    match guard.load_snapshot() {
+    match load_snapshot(&guard) {
         Ok(snap) => Json(run_deterministic_verify(&snap)).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     }
@@ -511,7 +918,7 @@ async fn get_export_kicad(State(state): State<Arc<AppState>>) -> impl IntoRespon
         Ok(g) => g,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Store lock poisoned".into_response()).into_response(),
     };
-    let snap = match guard.load_snapshot() {
+    let snap = match load_snapshot(&guard) {
         Ok(s) => s,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     };
@@ -568,7 +975,7 @@ async fn get_export_firmware_pins(State(state): State<Arc<AppState>>) -> impl In
         Ok(g) => g,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Store lock poisoned".into_response()).into_response(),
     };
-    let snap = match guard.load_snapshot() {
+    let snap = match load_snapshot(&guard) {
         Ok(s) => s,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     };
@@ -592,8 +999,7 @@ async fn main() {
     let db_path = db_dir.join("prototype-v0.0.1.vd.db");
 
     let mut store = HwIrStore::open(&db_path).expect("Failed to open SQLite WAL HW-IR database");
-    store
-        .seed_reference_board_if_empty()
+    seed_reference_board_if_empty(&mut store)
         .expect("Failed to seed VD-BRD-001 reference board");
 
     let budget: BudgetConfig = fs::read_to_string("budget.json")

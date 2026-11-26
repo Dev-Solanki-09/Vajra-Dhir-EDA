@@ -2281,6 +2281,7 @@ name = "vd-daemon"
 version = "0.0.3"
 dependencies = [
  "axum",
+ "rusqlite",
  "serde",
  "serde_json",
  "tokio",
