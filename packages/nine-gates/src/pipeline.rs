@@ -73,7 +73,7 @@ impl NineGatePipeline {
             recommendations.push("Optimize component selection in budget.json to lower unit cost.".into());
         }
 
-        if layer_count == 0 || layer_count % 2 != 0 {
+        if layer_count == 0 || !layer_count.is_multiple_of(2) {
             findings.push(format!("Invalid PCB layer count: {} (must be even and >= 2).", layer_count));
             recommendations.push("Set layer count to standard 2, 4, 6, or 8 layers.".into());
         }
@@ -592,7 +592,7 @@ impl NineGatePipeline {
     fn hash_evidence(board_id: &str, gate: GateStage, findings: &[String]) -> String {
         let mut hasher = Sha256::new();
         hasher.update(board_id.as_bytes());
-        hasher.update(&[gate as u8]);
+        hasher.update([gate as u8]);
         for f in findings {
             hasher.update(f.as_bytes());
         }
