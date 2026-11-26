@@ -18,6 +18,7 @@ import { AgentDockPanel } from './AgentDockPanel';
 import { CalculatorDrawer } from './CalculatorDrawer';
 import { ActiveWorkspaceView } from './Workspaces';
 import { useDesignStore } from '../store/useDesignStore';
+import { registerUiControlCallbacks, startUiControlBridge } from '../store/uiControlBridge';
 import { PolishToolsModal } from './PolishToolsModal';
 import { FOCUSED_PRESETS, formatCoordUnit, usePolishStore } from '../store/usePolishStore';
 
@@ -449,6 +450,9 @@ export const WorkstationShell: React.FC = () => {
   const [hwLockShort, setHwLockShort] = useState('hw.lock:pending');
   const [boardComponents, setBoardComponents] = useState<BoardComponentMeta[]>(DEFAULT_COMPONENTS);
   const frameCountRef = useRef(0);
+  const dockApiRef = useRef<DockviewReadyEvent['api'] | null>(null);
+  const activeWsRef = useRef<WorkspaceId>('pcb_layout');
+  activeWsRef.current = activeWorkspace;
 
   const unitMode = usePolishStore((s) => s.unitMode);
   const activePreset = usePolishStore((s) => s.activePreset);
@@ -467,6 +471,18 @@ export const WorkstationShell: React.FC = () => {
 
   useEffect(() => {
     useDesignStore.getState().connectSyncChannels();
+    registerUiControlCallbacks({
+      getWorkspace: () => activeWsRef.current,
+      setWorkspace: (w) => setActiveWorkspace(w),
+      focusPanel: (panelId) => {
+        const panel = dockApiRef.current?.getPanel(panelId);
+        if (!panel) return false;
+        panel.api.setActive();
+        return true;
+      },
+      listPanels: () => dockApiRef.current?.panels.map((p) => p.id) ?? [],
+    });
+    startUiControlBridge();
     globalCrossProbeBus.select(['U2'], 'tree');
     let cancelled = false;
     fetch('/api/v1/project')
@@ -595,6 +611,7 @@ export const WorkstationShell: React.FC = () => {
   };
 
   const onDockReady = (event: DockviewReadyEvent) => {
+    dockApiRef.current = event.api;
     const center = event.api.addPanel({
       id: 'viewport_panel',
       component: 'viewport',

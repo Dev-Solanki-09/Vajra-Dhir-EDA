@@ -33,6 +33,9 @@ try:
     from .report_routes import handle_report_get, handle_report_post
     from .sync_propagator import handle_tx_get, handle_tx_post
     from .polish_routes import handle_polish_get, handle_polish_post
+    from .mcp_live_server import handle_mcp_http_post, handle_ws_ui_control
+    from .acp_broker import handle_acp_http_post
+    from .plugin_host import handle_plugin_get, handle_plugin_post
     from .fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
     from .spice_routes import handle_spice_get, handle_spice_post
     from .kg_routes import handle_kg_get, handle_kg_post
@@ -63,6 +66,9 @@ except ImportError:
     from report_routes import handle_report_get, handle_report_post
     from sync_propagator import handle_tx_get, handle_tx_post
     from polish_routes import handle_polish_get, handle_polish_post
+    from mcp_live_server import handle_mcp_http_post, handle_ws_ui_control
+    from acp_broker import handle_acp_http_post
+    from plugin_host import handle_plugin_get, handle_plugin_post
     from fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
     from spice_routes import handle_spice_get, handle_spice_post
     from kg_routes import handle_kg_get, handle_kg_post
@@ -1032,6 +1038,10 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             handle_ws_pty(self, self.path)
             return
 
+        elif path in ("/ws/ui-control", "/api/v1/ws/ui-control"):
+            handle_ws_ui_control(self)
+            return
+
         else:
             with DB_LOCK:
                 if handle_kicad_get(self, path, full_path=self.path, con=self.con):
@@ -1063,6 +1073,8 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                 if handle_tx_get(self, path, full_path=self.path, con=self.con):
                     return
                 if handle_polish_get(self, path, full_path=self.path, con=self.con):
+                    return
+                if handle_plugin_get(self, path):
                     return
             if not path.startswith("/api/") and not path.startswith("/stitch/") and not path.startswith("/ws/"):
                 asset = resolve_studio_static_asset(path)
@@ -1920,6 +1932,15 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             return
 
         elif handle_polish_post(self, path, req, self.con):
+            return
+
+        elif handle_mcp_http_post(self, path, req, self.con):
+            return
+
+        elif handle_acp_http_post(self, path, req, self.con):
+            return
+
+        elif handle_plugin_post(self, path, req):
             return
 
         elif handle_x1_post(self, path, req):

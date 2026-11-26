@@ -1,0 +1,40 @@
+{
+  "id": "trace-impedance-helper",
+  "version": "1.0.0",
+  "runtime": "python-worker",
+  "entrypoint": "worker.py",
+  "capabilities": ["calc.pure", "ui.panel", "net.external"],
+  "limits": {
+    "max_memory_mb": 64,
+    "timeout_ms": 3000
+  },
+  "contributions": {
+    "commands": [
+      { "id": "plugin.trace_impedance.calc", "label": "Trace Impedance Calculator" }
+    ],
+    "tools": [
+      {
+        "name": "plugin_calc_microstrip",
+        "description": "Compute microstrip impedance estimate safely offline",
+        "required_capability": "calc.pure",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "width_mm": { "type": "number" },
+            "height_mm": { "type": "number" },
+            "er": { "type": "number" }
+          }
+        }
+      },
+      {
+        "name": "plugin_forbidden_network",
+        "description": "Tests fail-closed capability confinement when network capability was denied",
+        "required_capability": "net.external",
+        "inputSchema": { "type": "object", "properties": {} }
+      }
+    ],
+    "panels": [
+      { "id": "calculator", "title": "Impedance Helper Plugin" }
+    ]
+  }
+}
