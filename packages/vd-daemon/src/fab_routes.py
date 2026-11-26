@@ -12,9 +12,19 @@ from typing import Any, Dict, Optional
 try:
     from .kicad_bridge import sha256_text
     from .kicad_routes import _BRIDGE, _resolve_project_file
+    from .fab_pack_engine import (
+        authorize_gate8_signoff,
+        build_fab_bundle,
+        validate_ipc2581_xml,
+    )
 except ImportError:
     from kicad_bridge import sha256_text
     from kicad_routes import _BRIDGE, _resolve_project_file
+    from fab_pack_engine import (
+        authorize_gate8_signoff,
+        build_fab_bundle,
+        validate_ipc2581_xml,
+    )
 
 
 def _send_json(handler: Any, status: int, body: Dict[str, Any]) -> None:
@@ -49,6 +59,39 @@ def export_cached_gerbers(pcb_path: pathlib.Path, use_cache: bool = True) -> Dic
     return res
 
 
+def _serve_cas_artifact(handler: Any, sha_hex: str) -> bool:
+    if not sha_hex or len(sha_hex) != 64 or not all(c in "0123456789abcdef" for c in sha_hex.lower()):
+        return False
+    cas_root = pathlib.Path(_BRIDGE.cas.root_dir)
+    matches = []
+    for base in (cas_root / "sha256", cas_root):
+        cas_dir = base / sha_hex[:2] / sha_hex[2:4]
+        if cas_dir.is_dir():
+            matches.extend(sorted(cas_dir.glob(f"{sha_hex}.*")))
+            if matches:
+                break
+    if not matches:
+        return False
+    target = matches[0]
+    ext = target.suffix.lower()
+    mime = {
+        ".svg": "image/svg+xml; charset=utf-8",
+        ".html": "text/html; charset=utf-8",
+        ".csv": "text/csv; charset=utf-8",
+        ".xml": "application/xml; charset=utf-8",
+        ".json": "application/json; charset=utf-8",
+        ".pdf": "application/pdf",
+    }.get(ext, "application/octet-stream")
+    data = target.read_bytes()
+    handler.send_response(200)
+    handler.send_header("Content-Type", mime)
+    handler.send_header("Content-Length", str(len(data)))
+    handler._send_cors()
+    handler.end_headers()
+    handler.wfile.write(data)
+    return True
+
+
 def handle_fab_get(handler: Any, path: str, full_path: str = "", con: Optional[sqlite3.Connection] = None) -> bool:
     if path == "/api/v1/fab/gerbers":
         parsed = urllib.parse.urlparse(full_path or path)
@@ -58,6 +101,14 @@ def handle_fab_get(handler: Any, path: str, full_path: str = "", con: Optional[s
         res = export_cached_gerbers(pcb_path, use_cache=True)
         _send_json(handler, 200 if res.get("success") else 400, res)
         return True
+
+    if path.startswith("/api/v1/fab/artifact/"):
+        sha_hex = path.rsplit("/", 1)[-1]
+        if _serve_cas_artifact(handler, sha_hex):
+            return True
+        _send_json(handler, 404, {"success": False, "error": "CAS artifact not found"})
+        return True
+
     return False
 
 
@@ -67,4 +118,37 @@ def handle_fab_post(handler: Any, path: str, req: Dict[str, Any], con: Optional[
         res = export_cached_gerbers(pcb_path, use_cache=bool(req.get("use_cache", True)))
         _send_json(handler, 200 if res.get("success") else 400, res)
         return True
+
+    if path == "/api/v1/fab/validate-2581":
+        xml_override = req.get("xml_path")
+        if xml_override:
+            val = validate_ipc2581_xml(pathlib.Path(str(xml_override)))
+            _send_json(handler, 200, {"success": bool(val.get("valid")), "validation": val})
+            return True
+        pcb_path = _resolve_project_file(req, "pcb_path", ".kicad_pcb", prefer_active=True)
+        exp = _BRIDGE.export_ipc2581(pcb_path)
+        xml_path = pathlib.Path(exp["cas_artifact"]["artifact_path"])
+        val = validate_ipc2581_xml(xml_path)
+        _send_json(handler, 200, {"success": bool(val.get("valid")), "cas_artifact": exp["cas_artifact"], "validation": val})
+        return True
+
+    if path == "/api/v1/fab/build-bundle":
+        if req.get("release_authorized") is True and not req.get("human_confirmed"):
+            _send_json(handler, 403, {
+                "success": False,
+                "error_code": "GATE8_HUMAN_SIGNOFF_REQUIRED",
+                "release_authorized": False,
+                "error": "Release authorization cannot be bypassed without Gate 8 human signoff.",
+            })
+            return True
+        pcb_path = _resolve_project_file(req, "pcb_path", ".kicad_pcb", prefer_active=True)
+        res = build_fab_bundle(pcb_path, con=con)
+        _send_json(handler, 200, res)
+        return True
+
+    if path == "/api/v1/fab/signoff":
+        status, body = authorize_gate8_signoff(req)
+        _send_json(handler, status, body)
+        return True
+
     return False
