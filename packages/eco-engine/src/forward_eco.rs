@@ -80,8 +80,8 @@ impl ForwardEcoEngine {
 
         for (idx, comp) in new_components.iter_mut().enumerate() {
             if let HardwareEntity::Component {
-                ref mut x_nm,
-                ref mut y_nm,
+                x_nm,
+                y_nm,
                 ..
             } = comp
             {

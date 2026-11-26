@@ -334,13 +334,13 @@ impl WireHarnessCompiler {
             h
         );
         svg.push_str(&format!(
-            r#"<text x="20" y="30" fill="#E6EDF7" font-size="14">Harness: {} ({} wires)</text>"#,
+            r##"<text x="20" y="30" fill="#E6EDF7" font-size="14">Harness: {} ({} wires)</text>"##,
             esc(&report.harness_name), report.total_wires_count
         ));
         for (i, w) in report.wiring_table.iter().enumerate() {
             let y = 64 + (i * 28);
             svg.push_str(&format!(
-                r#"<line x1="120" y1="{}" x2="540" y2="{}" stroke="#3B82F6" stroke-width="2"/><text x="20" y="{}" fill="#94A3B8" font-size="11">{}</text><text x="555" y="{}" fill="#E6EDF7" font-size="11">{} [{}] {:.0}mm</text>"#,
+                r##"<line x1="120" y1="{}" x2="540" y2="{}" stroke="#3B82F6" stroke-width="2"/><text x="20" y="{}" fill="#94A3B8" font-size="11">{}</text><text x="555" y="{}" fill="#E6EDF7" font-size="11">{} [{}] {:.0}mm</text>"##,
                 y, y, y + 4, esc(&w.from_endpoint), y + 4, esc(&w.to_endpoint), esc(&w.color_code), w.cut_length_mm
             ));
         }

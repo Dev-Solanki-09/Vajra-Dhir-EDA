@@ -155,14 +155,14 @@ impl PcbDiffEngine {
     fn generate_svg_diff(rev_a: &str, rev_b: &str, changes: &[ComponentChange]) -> String {
         let mut svg = String::from(r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%" style="background:#0b0e14; font-family:sans-serif;">"#);
         svg.push_str(&format!(
-            r#"<text x="20" y="30" fill="#94a3b8" font-size="14">Vajra-Dhīr Visual Diff: {} → {}</text>"#,
+            r##"<text x="20" y="30" fill="#94a3b8" font-size="14">Vajra-Dhīr Visual Diff: {} → {}</text>"##,
             rev_a, rev_b
         ));
         svg.push_str(r#"<g transform="translate(20, 60)">"#);
-        svg.push_str(r#"<rect x="0" y="0" width="760" height="500" fill="#12161f" stroke="#222733" rx="8"/>"#);
-        svg.push_str(r#"<text x="20" y="40" fill="#10B981" font-size="12">● Green: Added</text>"#);
-        svg.push_str(r#"<text x="140" y="40" fill="#EF4444" font-size="12">● Red: Removed</text>"#);
-        svg.push_str(r#"<text x="260" y="40" fill="#3B82F6" font-size="12">● Blue: Modified</text>"#);
+        svg.push_str(r##"<rect x="0" y="0" width="760" height="500" fill="#12161f" stroke="#222733" rx="8"/>"##);
+        svg.push_str(r##"<text x="20" y="40" fill="#10B981" font-size="12">● Green: Added</text>"##);
+        svg.push_str(r##"<text x="140" y="40" fill="#EF4444" font-size="12">● Red: Removed</text>"##);
+        svg.push_str(r##"<text x="260" y="40" fill="#3B82F6" font-size="12">● Blue: Modified</text>"##);
 
         let mut y = 80;
         for c in changes.iter().take(10) {
