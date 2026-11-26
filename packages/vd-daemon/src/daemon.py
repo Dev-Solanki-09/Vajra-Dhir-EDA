@@ -32,6 +32,7 @@ try:
     from .fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
     from .spice_routes import handle_spice_get, handle_spice_post
     from .kg_routes import handle_kg_get, handle_kg_post
+    from .pi_routes import handle_pi_get, handle_pi_post
     from .router_routes import handle_router_get, handle_router_post
     from .kicad_bridge import ensure_external_id_map, sync_kicad_pcb_to_hwir, write_text_atomic
     from .kicad_routes import (
@@ -56,6 +57,7 @@ except ImportError:
     from fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
     from spice_routes import handle_spice_get, handle_spice_post
     from kg_routes import handle_kg_get, handle_kg_post
+    from pi_routes import handle_pi_get, handle_pi_post
     from router_routes import handle_router_get, handle_router_post
     from kicad_bridge import ensure_external_id_map, sync_kicad_pcb_to_hwir, write_text_atomic
     from kicad_routes import (
@@ -1038,6 +1040,8 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                     return
                 if handle_router_get(self, path, full_path=self.path, con=self.con):
                     return
+                if handle_pi_get(self, path, full_path=self.path, con=self.con):
+                    return
             if not path.startswith("/api/") and not path.startswith("/stitch/") and not path.startswith("/ws/"):
                 asset = resolve_studio_static_asset(path)
                 if asset["status"] == 200:
@@ -1876,6 +1880,9 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             return
 
         elif handle_router_post(self, path, req, self.con):
+            return
+
+        elif handle_pi_post(self, path, req, self.con):
             return
 
         elif handle_x1_post(self, path, req):

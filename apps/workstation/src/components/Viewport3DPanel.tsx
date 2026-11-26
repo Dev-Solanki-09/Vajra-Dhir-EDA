@@ -5,6 +5,7 @@ import { TransformControls } from 'three/examples/jsm/controls/TransformControls
 import { globalCrossProbeBus } from '@vajradhir/crossprobe-bus';
 import { globalKiCadSyncStore, useKiCadSync } from '../kicadSyncClient';
 import { globalStepWorkerClient } from '../workers/stepClient';
+import { globalPiHeatmapStore, lookupPiSampleAtWorldMm, samplePiColormapRgb, usePiHeatmap } from '../piHeatmapStore';
 
 export interface Component3DMeta {
   uuid: string;
@@ -134,6 +135,7 @@ export const Viewport3DPanel: React.FC = () => {
   const [stepExportStatus, setStepExportStatus] = useState('OCCT Worker Ready');
   const [statusNote, setStatusNote] = useState('Blender Orbit · MMB/LMB · G Move · R Rotate · F Flip · L Lock');
   const [aiGhost, setAiGhost] = useState<{ refdes: string; xMm: number; yMm: number } | null>(null);
+  const piHeatmap = usePiHeatmap();
 
   const selectedRefdes = probe.selection.entityIds[0] ?? 'J1';
   const actorKindRef = useRef(actorKind);
@@ -429,11 +431,15 @@ export const Viewport3DPanel: React.FC = () => {
     boardRoot.add(fr4Mesh);
     fr4MeshRef.current = fr4Mesh;
 
-    // 2. Copper Traces & Pads
+    // 2. Copper Traces & Pads (with optional P13 2.5D FEM Viridis/Inferno Heatmap vertex coloring)
     copperGroup.visible = showCopper;
     const fCuMat = new THREE.MeshStandardMaterial({ color: '#E05D44', metalness: 0.75, roughness: 0.35 });
     const bCuMat = new THREE.MeshStandardMaterial({ color: '#3B82F6', metalness: 0.75, roughness: 0.35 });
     const padMat = new THREE.MeshStandardMaterial({ color: '#D0A020', metalness: 0.85, roughness: 0.25 });
+    const piActive = Boolean(piHeatmap.enabled && piHeatmap.result?.heatmap);
+    const piHm = piActive ? piHeatmap.result!.heatmap : null;
+    const useJ = piHeatmap.metric === 'current_density_a_mm2';
+    const piDenom = piHm ? Math.max(1e-3, useJ ? piHm.max_current_density_a_mm2 : piHm.max_ir_drop_mv) : 1;
 
     for (const seg of meshPayload.copper_segments) {
       const dx = seg.x2_mm - seg.x1_mm;
@@ -441,7 +447,38 @@ export const Viewport3DPanel: React.FC = () => {
       const len = Math.hypot(dx, dz);
       if (len < 0.001) continue;
       const geo = new THREE.BoxGeometry(len + seg.width_mm * 0.4, 0.04, Math.max(seg.width_mm, 0.12));
-      const mat = seg.layer === 'B.Cu' ? bCuMat.clone() : fCuMat.clone();
+      let mat: THREE.MeshStandardMaterial;
+      const matchedPi = piHm?.segments.find(
+        (ps) =>
+          ps.layer === seg.layer &&
+          ((Math.hypot(ps.x1_mm - seg.x1_mm, ps.y1_mm - seg.y1_mm) < 0.05 &&
+            Math.hypot(ps.x2_mm - seg.x2_mm, ps.y2_mm - seg.y2_mm) < 0.05) ||
+            (Math.hypot(ps.x1_mm - seg.x2_mm, ps.y1_mm - seg.y2_mm) < 0.05 &&
+              Math.hypot(ps.x2_mm - seg.x1_mm, ps.y2_mm - seg.y1_mm) < 0.05))
+      );
+      if (piActive && matchedPi) {
+        const nomV = piHeatmap.result?.worst_case?.nominal_v || 3.3;
+        const tStart = useJ
+          ? Math.min(1, matchedPi.current_density_a_mm2 / piDenom)
+          : Math.min(1, Math.max(0, (nomV - matchedPi.v_start) * 1000) / piDenom);
+        const tEnd = useJ
+          ? Math.min(1, matchedPi.current_density_a_mm2 / piDenom)
+          : Math.min(1, Math.max(0, (nomV - matchedPi.v_end) * 1000) / piDenom);
+        const rgb0 = samplePiColormapRgb(piHeatmap.colormap, tStart);
+        const rgb1 = samplePiColormapRgb(piHeatmap.colormap, tEnd);
+        const posAttr = geo.attributes.position;
+        const colors = new Float32Array(posAttr.count * 3);
+        for (let vi = 0; vi < posAttr.count; vi++) {
+          const c = posAttr.getX(vi) >= 0 ? rgb1 : rgb0;
+          colors[vi * 3] = c[0];
+          colors[vi * 3 + 1] = c[1];
+          colors[vi * 3 + 2] = c[2];
+        }
+        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        mat = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.3, roughness: 0.35 });
+      } else {
+        mat = seg.layer === 'B.Cu' ? bCuMat.clone() : fCuMat.clone();
+      }
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(
         (seg.x1_mm + seg.x2_mm) / 2,
@@ -449,6 +486,7 @@ export const Viewport3DPanel: React.FC = () => {
         (seg.y1_mm + seg.y2_mm) / 2
       );
       mesh.rotation.y = -Math.atan2(dz, dx);
+      mesh.userData = { net: seg.net, isPiHeatmapColored: Boolean(piActive && matchedPi) };
       copperGroup.add(mesh);
     }
 
@@ -457,7 +495,15 @@ export const Viewport3DPanel: React.FC = () => {
         pad.shape === 'circle'
           ? new THREE.CylinderGeometry(pad.sx_mm / 2, pad.sx_mm / 2, 0.05, 16)
           : new THREE.BoxGeometry(pad.sx_mm, 0.05, pad.sy_mm);
-      const pMesh = new THREE.Mesh(pGeo, padMat.clone());
+      const matchedPad = piHm?.pads.find((pp) => pp.refdes === pad.refdes && pp.pad === pad.number);
+      const pMat = matchedPad
+        ? new THREE.MeshStandardMaterial({
+            color: new THREE.Color(...samplePiColormapRgb(piHeatmap.colormap, matchedPad.norm_ir_drop)),
+            metalness: 0.4,
+            roughness: 0.3,
+          })
+        : padMat.clone();
+      const pMesh = new THREE.Mesh(pGeo, pMat);
       const ySurf = pad.type === 'thru_hole' ? 0 : pad.layer === 'B.Cu' ? -th / 2 - 0.03 : th / 2 + 0.03;
       if (pad.type === 'thru_hole') {
         pMesh.scale.y = (th + 0.12) / 0.05;
@@ -474,9 +520,31 @@ export const Viewport3DPanel: React.FC = () => {
     const viaMat = new THREE.MeshStandardMaterial({ color: '#FBBF24', metalness: 0.88, roughness: 0.22 });
     for (const v of meshPayload.vias) {
       const vGeo = new THREE.CylinderGeometry(v.size_mm / 2, v.size_mm / 2, th + 0.12, 16);
-      const vMesh = new THREE.Mesh(vGeo, viaMat.clone());
+      const matchedVia = piHm?.vias.find((pv) => Math.hypot(pv.x_mm - v.x_mm, pv.y_mm - v.y_mm) < 0.05);
+      const vMesh = new THREE.Mesh(
+        vGeo,
+        matchedVia
+          ? new THREE.MeshStandardMaterial({
+              color: new THREE.Color(...samplePiColormapRgb(piHeatmap.colormap, matchedVia.norm_current_density)),
+              metalness: 0.5,
+              roughness: 0.25,
+            })
+          : viaMat.clone()
+      );
       vMesh.position.set(v.x_mm, 0, v.y_mm);
       viaGroup.add(vMesh);
+    }
+
+    // 3b. P13 PI Bottleneck 3D Beacon Ring when bottleneck exists
+    const bn = piActive ? piHeatmap.result?.worst_case?.bottleneck : null;
+    if (bn && !piHeatmap.result?.passed) {
+      const bnRingGeo = new THREE.RingGeometry(0.9, 1.4, 24);
+      bnRingGeo.rotateX(-Math.PI / 2);
+      const bnRingMat = new THREE.MeshBasicMaterial({ color: '#EF4444', side: THREE.DoubleSide });
+      const bnRing = new THREE.Mesh(bnRingGeo, bnRingMat);
+      bnRing.position.set(bn.x_mm, bn.layer === 'B.Cu' ? -th / 2 - 0.09 : th / 2 + 0.09, bn.y_mm);
+      bnRing.userData = { isPiBottleneck: true };
+      copperGroup.add(bnRing);
     }
 
     // 4. Component Anchors + STEP Asset Grouping for InstancedMesh Optimization
@@ -609,7 +677,7 @@ export const Viewport3DPanel: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [meshPayload, xray, showFr4, showCopper, showParts, selectedRefdes, clashRefs, snapCamera]);
+  }, [meshPayload, xray, showFr4, showCopper, showParts, selectedRefdes, clashRefs, snapCamera, piHeatmap.enabled, piHeatmap.result, piHeatmap.metric, piHeatmap.colormap]);
 
   // Attach TransformControls dynamically to currently selected anchor
   useEffect(() => {
@@ -686,6 +754,26 @@ export const Viewport3DPanel: React.FC = () => {
       }
     });
   }, []);
+
+  const handleCanvasPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!piHeatmap.enabled || !piHeatmap.result) return;
+    const canvas = canvasRef.current;
+    const activeCam = activeCamRef.current;
+    const copperGroup = copperGroupRef.current;
+    if (!canvas || !activeCam || !copperGroup) return;
+    const rect = canvas.getBoundingClientRect();
+    const ndc = new THREE.Vector2(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(ndc, activeCam);
+    const hits = raycaster.intersectObjects(copperGroup.children, true);
+    if (hits.length > 0) {
+      const pt = hits[0].point;
+      globalPiHeatmapStore.setHoverSample(lookupPiSampleAtWorldMm(piHeatmap.result, pt.x, pt.z));
+    }
+  };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -895,6 +983,16 @@ export const Viewport3DPanel: React.FC = () => {
           <button type="button" className="vd-btn vd-btn-primary" style={{ minHeight: 22, padding: '2px 7px', fontSize: 11 }} onClick={() => void handleExportStep()}>
             Export STEP
           </button>
+          <button
+            type="button"
+            data-testid="v3d-pi-heatmap-toggle"
+            className={`vd-btn ${piHeatmap.enabled ? 'vd-btn-primary' : ''}`}
+            style={{ minHeight: 22, padding: '2px 7px', fontSize: 11 }}
+            disabled={piHeatmap.loading}
+            onClick={() => void globalPiHeatmapStore.toggle(sync.pcbPath)}
+          >
+            {piHeatmap.loading ? 'Solving PI...' : piHeatmap.enabled ? 'PI Heatmap: On' : 'PI Heatmap'}
+          </button>
           <select
             aria-label="3D Actor Mode"
             value={actorKind}
@@ -960,9 +1058,56 @@ export const Viewport3DPanel: React.FC = () => {
           ref={canvasRef}
           data-testid="viewport-3d-canvas"
           aria-label="Three.js OCCT 3D PCB Assembly Viewport"
+          onPointerMove={handleCanvasPointerMove}
           onClick={handleCanvasClick}
           style={{ width: '100%', height: '100%', display: 'block' }}
         />
+
+        {piHeatmap.enabled && piHeatmap.result && (
+          <div
+            data-testid="v3d-pi-scale-bar"
+            className="vd-metric"
+            style={{
+              position: 'absolute',
+              left: 10,
+              bottom: 10,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 3,
+              padding: '6px 10px',
+              backgroundColor: 'rgba(11, 14, 20, 0.92)',
+              border: '1px solid var(--vd-border-subtle)',
+              borderRadius: 6,
+              fontSize: 10,
+              pointerEvents: 'none',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, color: 'var(--vd-text-primary)' }}>
+              <span data-testid="v3d-pi-status">
+                3D PI {piHeatmap.result.passed ? 'PASS' : 'BOTTLENECK'} · ΔV {(piHeatmap.result.worst_case?.max_ir_drop_mv ?? 0).toFixed(1)}mV
+              </span>
+              <span style={{ color: 'var(--vd-text-secondary)' }}>
+                0.0 — {(piHeatmap.metric === 'current_density_a_mm2'
+                  ? piHeatmap.result.heatmap.max_current_density_a_mm2
+                  : piHeatmap.result.heatmap.max_ir_drop_mv
+                ).toFixed(1)} {piHeatmap.metric === 'current_density_a_mm2' ? 'A/mm²' : 'mV'}
+              </span>
+            </div>
+            <div
+              style={{
+                height: 8,
+                width: 210,
+                borderRadius: 4,
+                background: `linear-gradient(90deg, ${piHeatmap.result.heatmap.color_stops.join(', ')})`,
+              }}
+            />
+            <span data-testid="v3d-pi-hover-readout" style={{ color: '#93C5FD' }}>
+              {piHeatmap.hoverSample
+                ? `${piHeatmap.hoverSample.voltageV.toFixed(3)} V @ ${piHeatmap.hoverSample.currentDensityAMm2.toFixed(1)} A/mm²`
+                : `${(piHeatmap.result.worst_case?.min_delivered_v ?? 3.3).toFixed(3)} V @ ${(piHeatmap.result.worst_case?.peak_current_density_a_mm2 ?? 0).toFixed(1)} A/mm²`}
+            </span>
+          </div>
+        )}
 
         {/* Compact Floating Part Selection & Clash HUD */}
         <div

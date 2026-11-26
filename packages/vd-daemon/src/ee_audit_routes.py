@@ -22,9 +22,11 @@ from ee_audit_runner import (  # noqa: E402
 try:
     from .kg_routes import _KG_LOCK, _kg_db_path, open_kg_connection
     from .kicad_routes import _ACTIVE_STATE, _ensure_active_workspace, broadcast_ws_event
+    from .pi_worker import get_last_pi_result
 except ImportError:
     from kg_routes import _KG_LOCK, _kg_db_path, open_kg_connection
     from kicad_routes import _ACTIVE_STATE, _ensure_active_workspace, broadcast_ws_event
+    from pi_worker import get_last_pi_result
 
 
 def _send_json(handler: Any, status: int, body: Dict[str, Any]) -> None:
@@ -171,10 +173,15 @@ def handle_ee_get(handler: Any, path: str, full_path: str = "", con: Any = None)
     if path == "/api/v1/ee/audit":
         spec = _build_workspace_circuit_spec(con)
         audit = _run_with_kg(spec)
+        last_pi = get_last_pi_result()
         _send_json(handler, 200, {
             "mode": "workspace",
             "spec": spec,
             "audit": audit,
+            "pi_summary": {
+                "worst_case": last_pi.get("worst_case"),
+                "findings": (last_pi.get("cross_integration") or {}).get("p13_findings", []),
+            } if last_pi else None,
         })
         return True
 

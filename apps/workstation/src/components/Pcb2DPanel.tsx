@@ -3,6 +3,7 @@ import { globalCrossProbeBus } from '@vajradhir/crossprobe-bus';
 import type { BoardViewer, KicadPCB } from '@vajradhir/kicanvas-core';
 import { globalKiCadSyncStore, useKiCadSync } from '../kicadSyncClient';
 import { globalSpiceOverlayStore, useSpiceOverlay } from '../spiceSimStore';
+import { globalPiHeatmapStore, lookupPiSampleAtWorldMm, samplePiColormapHex, usePiHeatmap } from '../piHeatmapStore';
 
 type PcbTool = 'select' | 'drag' | 'route' | 'via';
 
@@ -65,6 +66,7 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
   const initialFitDoneRef = useRef(false);
 
   const spiceOverlay = useSpiceOverlay();
+  const piHeatmap = usePiHeatmap();
   const [tool, setTool] = useState<PcbTool>('select');
   const [backendLabel, setBackendLabel] = useState<'WebGL2' | 'Canvas2D' | 'Initializing'>('Initializing');
   const [statusNote, setStatusNote] = useState('KiCanvas WebGL2/Canvas2D synced to P1');
@@ -630,6 +632,61 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
               {routeSummary}
             </span>
           )}
+          <button
+            type="button"
+            data-testid="pcb-pi-heatmap-toggle"
+            className={`vd-btn ${piHeatmap.enabled ? 'vd-btn-primary' : ''}`}
+            style={{ minHeight: 24, padding: '2px 6px', fontSize: 10 }}
+            disabled={piHeatmap.loading}
+            onClick={() => void globalPiHeatmapStore.toggle(sync.pcbPath)}
+          >
+            {piHeatmap.loading ? 'Solving PI...' : piHeatmap.enabled ? 'PI Heatmap: On' : 'PI Heatmap'}
+          </button>
+          {piHeatmap.enabled && (
+            <select
+              data-testid="pcb-pi-metric-select"
+              aria-label="Power Integrity Metric"
+              value={piHeatmap.metric}
+              onChange={(e) => {
+                const m = e.target.value as 'ir_drop_mv' | 'current_density_a_mm2';
+                globalPiHeatmapStore.setMetric(m);
+              }}
+              style={{
+                backgroundColor: 'var(--vd-bg-canvas)',
+                color: 'var(--vd-text-primary)',
+                border: '1px solid var(--vd-border-subtle)',
+                borderRadius: 4,
+                padding: '1px 4px',
+                fontSize: 10,
+              }}
+            >
+              <option value="current_density_a_mm2">J (A/mm²)</option>
+              <option value="ir_drop_mv">IR Drop (mV)</option>
+            </select>
+          )}
+          {piHeatmap.enabled && piHeatmap.result?.worst_case && !piHeatmap.result.passed && (
+            <button
+              type="button"
+              data-testid="pcb-pi-widen-btn"
+              className="vd-btn"
+              style={{ minHeight: 24, padding: '2px 6px', fontSize: 10, color: '#FBBF24', borderColor: '#FBBF24' }}
+              disabled={piHeatmap.loading}
+              onClick={() => void globalPiHeatmapStore.repairBottleneck({ pcbPath: sync.pcbPath })}
+            >
+              Widen Bottleneck ({piHeatmap.result.worst_case.bottleneck?.suggested_width_mm ?? 1.9}mm)
+            </button>
+          )}
+          {piHeatmap.enabled && piHeatmap.result?.worst_case && (
+            <span
+              data-testid="pcb-pi-status"
+              style={{
+                fontSize: 10,
+                color: piHeatmap.result.passed ? '#6ee7b7' : '#fca5a5',
+              }}
+            >
+              PI {piHeatmap.result.passed ? 'PASS' : 'BOTTLENECK'} · ΔV {piHeatmap.result.worst_case.max_ir_drop_mv.toFixed(1)}mV · J {piHeatmap.result.worst_case.peak_current_density_a_mm2.toFixed(1)}A/mm² · Vmin {piHeatmap.result.worst_case.min_delivered_v.toFixed(3)}V
+            </span>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 10, color: 'var(--vd-text-secondary)' }}>
@@ -688,7 +745,12 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
         }}
         onPointerMove={(e) => {
           const w = toWorldMm(e.clientX, e.clientY);
-          if (w) setCursorWorldMm(w);
+          if (w) {
+            setCursorWorldMm(w);
+            if (piHeatmap.enabled && piHeatmap.result) {
+              globalPiHeatmapStore.setHoverSample(lookupPiSampleAtWorldMm(piHeatmap.result, w.xMm, w.yMm));
+            }
+          }
           if (dragRefdes && w) {
             setDragPreviewMm({ refdes: dragRefdes, xMm: w.xMm, yMm: w.yMm });
           }
@@ -878,6 +940,48 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
             );
           })()}
 
+          {/* Power Integrity 2.5D FEM Heatmap Overlay (P13 padne) */}
+          {piHeatmap.enabled && piHeatmap.result && viewerRef.current?.viewport?.camera && kcModuleRef.current && (() => {
+            const cam = viewerRef.current!.viewport.camera;
+            const kc = kcModuleRef.current!;
+            const hm = piHeatmap.result!.heatmap;
+            const bn = piHeatmap.result!.worst_case?.bottleneck;
+            const useJ = piHeatmap.metric === 'current_density_a_mm2';
+            const denom = Math.max(1e-3, useJ ? hm.max_current_density_a_mm2 : hm.max_ir_drop_mv);
+            const bnPt = bn ? cam.world_to_screen(new kc.Vec2(bn.x_mm, bn.y_mm)) : null;
+            return (
+              <g data-testid="pcb-pi-heatmap-overlay">
+                {hm.segments.map((seg, idx) => {
+                  const p1 = cam.world_to_screen(new kc.Vec2(seg.x1_mm, seg.y1_mm));
+                  const p2 = cam.world_to_screen(new kc.Vec2(seg.x2_mm, seg.y2_mm));
+                  const norm = Math.min(1, (useJ ? seg.current_density_a_mm2 : seg.ir_drop_mv) / denom);
+                  const col = samplePiColormapHex(piHeatmap.colormap, norm);
+                  return (
+                    <line
+                      key={`pi-seg-${idx}`}
+                      x1={p1.x}
+                      y1={p1.y}
+                      x2={p2.x}
+                      y2={p2.y}
+                      stroke={col}
+                      strokeWidth={Math.max(4, seg.width_mm * cam.zoom * 1.1)}
+                      strokeLinecap="round"
+                      opacity={0.9}
+                    />
+                  );
+                })}
+                {bn && bnPt && !piHeatmap.result!.passed && (
+                  <g data-testid="pcb-pi-bottleneck-marker">
+                    <circle cx={bnPt.x} cy={bnPt.y} r={12} fill="rgba(239, 68, 68, 0.2)" stroke="#EF4444" strokeWidth={2} strokeDasharray="3 2" />
+                    <text x={bnPt.x} y={bnPt.y - 16} textAnchor="middle" fill="#FCA5A5" fontSize={9} fontFamily="var(--vd-font-mono)">
+                      {bn.current_density_a_mm2.toFixed(0)} A/mm²
+                    </text>
+                  </g>
+                )}
+              </g>
+            );
+          })()}
+
           {/* Locked Trace Amber Indicator (P12) */}
           {lockedTraceOverlay && viewerRef.current?.viewport?.camera && kcModuleRef.current && (() => {
             const p1 = viewerRef.current!.viewport.camera.world_to_screen(
@@ -978,6 +1082,51 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
             </g>
           ))}
         </svg>
+
+        {/* PI Heatmap Scale Bar & Hover Readout (P13) */}
+        {piHeatmap.enabled && piHeatmap.result && (
+          <div
+            data-testid="pcb-pi-scale-bar"
+            className="vd-metric"
+            style={{
+              position: 'absolute',
+              left: 10,
+              bottom: 10,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 3,
+              padding: '6px 10px',
+              backgroundColor: 'rgba(11, 14, 20, 0.92)',
+              border: '1px solid var(--vd-border-subtle)',
+              borderRadius: 6,
+              fontSize: 10,
+              pointerEvents: 'none',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, color: 'var(--vd-text-primary)' }}>
+              <span>{piHeatmap.metric === 'current_density_a_mm2' ? 'Current Density (A/mm²)' : 'IR Drop (mV)'}</span>
+              <span style={{ color: 'var(--vd-text-secondary)' }}>
+                0.0 — {(piHeatmap.metric === 'current_density_a_mm2'
+                  ? piHeatmap.result.heatmap.max_current_density_a_mm2
+                  : piHeatmap.result.heatmap.max_ir_drop_mv
+                ).toFixed(1)} {piHeatmap.metric === 'current_density_a_mm2' ? 'A/mm²' : 'mV'}
+              </span>
+            </div>
+            <div
+              style={{
+                height: 8,
+                width: 210,
+                borderRadius: 4,
+                background: `linear-gradient(90deg, ${piHeatmap.result.heatmap.color_stops.join(', ')})`,
+              }}
+            />
+            <span data-testid="pcb-pi-hover-readout" style={{ color: '#93C5FD' }}>
+              {piHeatmap.hoverSample
+                ? `${piHeatmap.hoverSample.voltageV.toFixed(3)} V @ ${piHeatmap.hoverSample.currentDensityAMm2.toFixed(1)} A/mm² (${piHeatmap.hoverSample.net})`
+                : `${(piHeatmap.result.worst_case?.min_delivered_v ?? 3.3).toFixed(3)} V @ ${(piHeatmap.result.worst_case?.peak_current_density_a_mm2 ?? 0).toFixed(1)} A/mm²`}
+            </span>
+          </div>
+        )}
 
         {/* AI Ghost Accept/Reject floating pill */}
         {aiGhost && (
