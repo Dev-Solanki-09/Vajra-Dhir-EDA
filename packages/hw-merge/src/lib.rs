@@ -191,7 +191,7 @@ impl HwMergeDriver {
 
         for i in 0..components.len() {
             for j in (i + 1)..components.len() {
-                if let (
+                let (
                     HardwareEntity::Component {
                         meta: meta_a,
                         refdes: refdes_a,
@@ -215,24 +215,25 @@ impl HwMergeDriver {
                         ..
                     },
                 ) = (components[i], components[j])
+                else {
+                    continue;
+                };
+                if meta_a.board_id == meta_b.board_id
+                    && side_a == side_b
+                    && check_courtyard_overlap(
+                        *x_a, *y_a, *cw_a, *ch_a, *rot_a, *x_b, *y_b, *cw_b, *ch_b, *rot_b,
+                    )
                 {
-                    if meta_a.board_id == meta_b.board_id && side_a == side_b {
-                        if check_courtyard_overlap(
-                            *x_a, *y_a, *cw_a, *ch_a, *rot_a,
-                            *x_b, *y_b, *cw_b, *ch_b, *rot_b,
-                        ) {
-                            conflicts.push(MergeConflict {
-                                entity_id: meta_a.id.clone(),
-                                kind: ConflictKind::SpatialCourtyardCollision,
-                                description: format!(
-                                    "SPATIAL_COURTYARD_COLLISION: Component {} ({}) and Component {} ({}) overlap on {} side",
-                                    refdes_a, meta_a.id, refdes_b, meta_b.id, side_a
-                                ),
-                                ours_snippet: Some(format!("RefDes: {}, Center: ({}, {})", refdes_a, x_a, y_a)),
-                                theirs_snippet: Some(format!("RefDes: {}, Center: ({}, {})", refdes_b, x_b, y_b)),
-                            });
-                        }
-                    }
+                    conflicts.push(MergeConflict {
+                        entity_id: meta_a.id.clone(),
+                        kind: ConflictKind::SpatialCourtyardCollision,
+                        description: format!(
+                            "SPATIAL_COURTYARD_COLLISION: Component {} ({}) and Component {} ({}) overlap on {} side",
+                            refdes_a, meta_a.id, refdes_b, meta_b.id, side_a
+                        ),
+                        ours_snippet: Some(format!("RefDes: {}, Center: ({}, {})", refdes_a, x_a, y_a)),
+                        theirs_snippet: Some(format!("RefDes: {}, Center: ({}, {})", refdes_b, x_b, y_b)),
+                    });
                 }
             }
         }
