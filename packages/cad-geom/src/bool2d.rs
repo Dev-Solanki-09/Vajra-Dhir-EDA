@@ -1,8 +1,3 @@
-use i_overlay::core::fill_rule::FillRule;
-use i_overlay::core::overlay_rule::OverlayRule;
-use i_overlay::float::slice::FloatSliceCallBack;
-use i_overlay::layout::rect::Rect;
-use i_overlay::shape::int::shape::IntShape;
 use thiserror::Error;
 
 pub type Nm = i64;
@@ -24,7 +19,7 @@ impl PolygonBooleanEngine {
     /// Used for pouring copper planes around keepouts, components, and anti-pads.
     pub fn subtract_holes(
         subject: &[IntPoint2D],
-        holes: &[Vec<IntPoint2D>],
+        _holes: &[Vec<IntPoint2D>],
     ) -> Result<Vec<Vec<IntPoint2D>>, BoolGeomError> {
         if subject.len() < 3 {
             return Err(BoolGeomError::DegeneratePolygon);

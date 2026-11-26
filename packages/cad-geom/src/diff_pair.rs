@@ -37,8 +37,8 @@ impl DifferentialPairEngine {
 
         let half_dist = (width_nm + gap_nm) / 2;
 
-        let mut p_points = Vec::with_capacity(guide_path.len());
-        let mut n_points = Vec::with_capacity(guide_path.len());
+        let mut p_points: Vec<IntPoint2D> = Vec::with_capacity(guide_path.len());
+        let mut n_points: Vec<IntPoint2D> = Vec::with_capacity(guide_path.len());
 
         let mut p_len: u64 = 0;
         let mut n_len: u64 = 0;
