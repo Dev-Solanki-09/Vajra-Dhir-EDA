@@ -27,8 +27,12 @@ b0111 #
 1"
 b1001 #`;
 
-export const VcdWaveformViewer: React.FC<{ vcdText?: string }> = ({ vcdText }) => {
+export const VcdWaveformViewer: React.FC<{
+  vcdText?: string;
+  cursorRatio?: number;
+}> = ({ vcdText, cursorRatio }) => {
   const parsed = useMemo(() => parseVcd(vcdText || DEFAULT_SAMPLE_VCD), [vcdText]);
+  const cursorX = cursorRatio !== undefined ? Math.max(0, Math.min(240, cursorRatio * 240)) : null;
 
   return (
     <div
@@ -41,7 +45,8 @@ export const VcdWaveformViewer: React.FC<{ vcdText?: string }> = ({ vcdText }) =
       }}
     >
       <div className="vd-metric" style={{ fontSize: 11, marginBottom: 8, color: 'var(--vd-text-secondary)' }}>
-        Pure-MIT Digital VCD Waveform Track (Zero EUPL · timescale={parsed.timescaleNs} ns · end={parsed.endTimeNs} ns)
+        Pure-MIT Digital VCD Waveform Track (Zero EUPL · timescale={parsed.timescaleNs} ns · end={parsed.endTimeNs} ns
+        {cursorRatio !== undefined ? ` · cursor=${(cursorRatio * parsed.endTimeNs).toFixed(1)} ns` : ''})
       </div>
       <div style={{ display: 'grid', gap: 6 }}>
         {parsed.signals.map((sig) => (
@@ -72,6 +77,18 @@ export const VcdWaveformViewer: React.FC<{ vcdText?: string }> = ({ vcdText }) =
                   </g>
                 );
               })}
+              {cursorX !== null && (
+                <line
+                  data-testid="vcd-cursor-line"
+                  x1={cursorX}
+                  y1={0}
+                  x2={cursorX}
+                  y2={24}
+                  stroke="#F59E0B"
+                  strokeWidth="1.5"
+                  strokeDasharray="2 2"
+                />
+              )}
             </svg>
           </div>
         ))}

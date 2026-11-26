@@ -227,6 +227,9 @@ const LazyEeAuditPanel = React.lazy(() =>
 const LazySimulationLabPanel = React.lazy(() =>
   import('./SimulationLabPanel').then((m) => ({ default: m.SimulationLabPanel }))
 );
+const LazyCosimPanel = React.lazy(() =>
+  import('./CosimPanel').then((m) => ({ default: m.CosimPanel }))
+);
 
 const DockViewport3DPanel: React.FC<IDockviewPanelProps> = () => (
   <PanelErrorBoundary panelTitle="Viewport 3D (STEP)">
@@ -290,7 +293,7 @@ const DockEeAuditPanel: React.FC<IDockviewPanelProps> = () => (
   <PanelErrorBoundary panelTitle="EE Audit (Z3/SymPy)">
     <div style={{ padding: 8, height: '100%', backgroundColor: 'var(--vd-bg-canvas)', overflowY: 'auto' }}>
       <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading Senior EE Verification Brain...</div>}>
-        <LazyEeAuditPanel />
+        <LazyEeAuditPanel autoRun={false} />
       </Suspense>
     </div>
   </PanelErrorBoundary>
@@ -300,7 +303,17 @@ const DockSimulationLabPanel: React.FC<IDockviewPanelProps> = () => (
   <PanelErrorBoundary panelTitle="SPICE Virtual Lab (P10)">
     <div style={{ padding: 8, height: '100%', backgroundColor: 'var(--vd-bg-canvas)', overflowY: 'auto' }}>
       <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading ngspice-wasm Virtual Lab...</div>}>
-        <LazySimulationLabPanel />
+        <LazySimulationLabPanel autoRun={false} />
+      </Suspense>
+    </div>
+  </PanelErrorBoundary>
+);
+
+const DockCosimPanel: React.FC<IDockviewPanelProps> = () => (
+  <PanelErrorBoundary panelTitle="Renode Co-Sim (P11)">
+    <div style={{ padding: 8, height: '100%', backgroundColor: 'var(--vd-bg-canvas)', overflowY: 'auto' }}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading Renode/SBC Digital Twin...</div>}>
+        <LazyCosimPanel autoRun={false} />
       </Suspense>
     </div>
   </PanelErrorBoundary>
@@ -346,6 +359,7 @@ const DOCK_COMPONENTS = {
   componentLibrary: DockComponentLibraryPanel,
   eeAudit: DockEeAuditPanel,
   simLab: DockSimulationLabPanel,
+  cosimLab: DockCosimPanel,
   explorer: ExplorerPanel,
   inspector: InspectorPanel,
 };
@@ -545,6 +559,12 @@ export const WorkstationShell: React.FC = () => {
       id: 'sim_lab_panel',
       component: 'simLab',
       title: 'SPICE Lab (ngspice)',
+      position: { referencePanel: center, direction: 'within' },
+    });
+    event.api.addPanel({
+      id: 'cosim_panel',
+      component: 'cosimLab',
+      title: 'Renode Co-Sim (P11)',
       position: { referencePanel: center, direction: 'within' },
     });
     center.api.setActive();

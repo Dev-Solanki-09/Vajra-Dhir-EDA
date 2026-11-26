@@ -77,7 +77,7 @@ const REFDES_TO_NET: Record<string, string> = {
 
 const PROBE_NETS = ['vout_3v3', 'sw_node', 'v_mcu_3v3', 'vin_12v'] as const;
 
-export const SimulationLabPanel: React.FC = () => {
+export const SimulationLabPanel: React.FC<{ autoRun?: boolean }> = ({ autoRun = true }) => {
   const overlay = useSpiceOverlay();
   const [mode, setMode] = useState<SpiceMode>('tran');
   const [faultType, setFaultType] = useState<FaultType>('none');
@@ -175,9 +175,11 @@ export const SimulationLabPanel: React.FC = () => {
   );
 
   useEffect(() => {
-    void runSimulation('tran', '22.0', 'none', 'native');
+    if (autoRun) {
+      void runSimulation('tran', '22.0', 'none', 'native');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [autoRun]);
 
   // CrossProbeBus P10 <-> P2/P3 Virtual Probe listener
   useEffect(() => {

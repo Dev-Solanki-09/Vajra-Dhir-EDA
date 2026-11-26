@@ -61,7 +61,7 @@ const DOMAIN_TABS: ReadonlyArray<'All' | EeDomain> = [
   'Control/Stability',
 ];
 
-export const EeAuditPanel: React.FC = () => {
+export const EeAuditPanel: React.FC<{ autoRun?: boolean }> = ({ autoRun = true }) => {
   const [mode, setMode] = useState<'workspace' | 'benchmark8'>('workspace');
   const [domainFilter, setDomainFilter] = useState<'All' | EeDomain>('All');
   const [audit, setAudit] = useState<EeAuditPayload | null>(null);
@@ -93,8 +93,10 @@ export const EeAuditPanel: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    void runWorkspaceAudit();
-  }, [runWorkspaceAudit]);
+    if (autoRun) {
+      void runWorkspaceAudit();
+    }
+  }, [autoRun, runWorkspaceAudit]);
 
   const runBenchmark8 = useCallback(async () => {
     setLoading(true);

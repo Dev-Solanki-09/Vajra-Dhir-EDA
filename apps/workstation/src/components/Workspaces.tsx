@@ -47,6 +47,9 @@ const EeAuditPanel = React.lazy(() =>
 const SimulationLabPanel = React.lazy(() =>
   import('./SimulationLabPanel').then((m) => ({ default: m.SimulationLabPanel }))
 );
+const CosimPanel = React.lazy(() =>
+  import('./CosimPanel').then((m) => ({ default: m.CosimPanel }))
+);
 
 export type WorkspaceViewState = 'loading' | 'empty' | 'error' | 'full';
 
@@ -884,6 +887,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
           </div>
           <Suspense fallback={<div className="vd-metric" style={{ padding: 8 }}>Loading PTY Terminal...</div>}>
             <TerminalPanel />
+            <CosimPanel />
           </Suspense>
           <pre className="vd-metric" style={{ margin: 0, padding: 8, borderRadius: 6, backgroundColor: 'var(--vd-bg-panel)', border: '1px solid var(--vd-border-subtle)', fontSize: 11, maxHeight: 90, overflow: 'auto' }}>
             {pinmuxC}

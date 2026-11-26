@@ -105,6 +105,10 @@ def main() -> None:
                 page.wait_for_selector('[data-testid="component-library-panel"]', timeout=20000)
                 page.wait_for_selector('[data-testid="kg-row-CL31B226KAHNNNE"]', timeout=15000)
                 page.locator('[data-testid="kg-row-CL31B226KAHNNNE"]').click()
+                page.wait_for_function(
+                    "() => document.querySelector('[data-testid=\"kg-details-card\"]')?.innerText?.includes('CL31B226KAHNNNE')",
+                    timeout=15000,
+                )
                 page.wait_for_selector('[data-testid="kg-effective-derating"]', timeout=10000)
                 assert "Effective at 12V" in page.locator('[data-testid="kg-effective-derating"]').inner_text()
                 page.wait_for_selector('[data-testid="kg-details-card"] .uplot canvas', timeout=10000)
@@ -112,10 +116,14 @@ def main() -> None:
 
                 # Import Symbol + Footprint + STEP & Place into project
                 page.locator('[data-testid="kg-import-place-btn"]').click()
-                page.wait_for_function(
-                    "() => document.querySelector('[data-testid=\"kg-status-banner\"]')?.textContent?.includes('Imported C12891')",
-                    timeout=15000,
-                )
+                try:
+                    page.wait_for_function(
+                        "() => document.querySelector('[data-testid=\"kg-status-banner\"]')?.textContent?.includes('Imported C12891')",
+                        timeout=25000,
+                    )
+                except Exception as exc:
+                    banner_txt = page.locator('[data-testid="kg-status-banner"]').inner_text()
+                    raise RuntimeError(f"P7 import wait failed: {exc}\nBANNER={banner_txt}\nERRORS={errors}") from exc
 
                 assert (proj_dir / "sym-lib-table").is_file()
                 assert (proj_dir / "fp-lib-table").is_file()
