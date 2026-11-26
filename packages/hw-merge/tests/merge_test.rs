@@ -52,7 +52,7 @@ fn test_rule1_human_lock_precedence() {
     let ours_u1 = make_component("comp-u1", "U1", 10_000_000, 10_000_000, 4_000_000, 4_000_000, true, Provenance::Human);
     let theirs_u1 = make_component("comp-u1", "U1", 20_000_000, 20_000_000, 4_000_000, 4_000_000, false, Provenance::Agent);
 
-    let res = HwMergeDriver::merge_3way(&[base_u1], &[ours_u1.clone()], &[theirs_u1]).expect("Merge failed");
+    let res = HwMergeDriver::merge_3way(&[base_u1], std::slice::from_ref(&ours_u1), &[theirs_u1]).expect("Merge failed");
 
     assert!(res.is_clean(), "Human-locked component should win without conflict");
     assert_eq!(res.merged_entities.len(), 1);
