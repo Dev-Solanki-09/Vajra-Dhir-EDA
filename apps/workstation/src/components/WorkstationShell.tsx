@@ -224,6 +224,9 @@ const LazyComponentLibraryPanel = React.lazy(() =>
 const LazyEeAuditPanel = React.lazy(() =>
   import('./EeAuditPanel').then((m) => ({ default: m.EeAuditPanel }))
 );
+const LazySimulationLabPanel = React.lazy(() =>
+  import('./SimulationLabPanel').then((m) => ({ default: m.SimulationLabPanel }))
+);
 
 const DockViewport3DPanel: React.FC<IDockviewPanelProps> = () => (
   <PanelErrorBoundary panelTitle="Viewport 3D (STEP)">
@@ -293,6 +296,16 @@ const DockEeAuditPanel: React.FC<IDockviewPanelProps> = () => (
   </PanelErrorBoundary>
 );
 
+const DockSimulationLabPanel: React.FC<IDockviewPanelProps> = () => (
+  <PanelErrorBoundary panelTitle="SPICE Virtual Lab (P10)">
+    <div style={{ padding: 8, height: '100%', backgroundColor: 'var(--vd-bg-canvas)', overflowY: 'auto' }}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading ngspice-wasm Virtual Lab...</div>}>
+        <LazySimulationLabPanel />
+      </Suspense>
+    </div>
+  </PanelErrorBoundary>
+);
+
 const DockPcb2DPanel: React.FC<IDockviewPanelProps> = () => {
   const ctx = React.useContext(ShellContext);
   return (
@@ -332,6 +345,7 @@ const DOCK_COMPONENTS = {
   architecture: DockArchitecturePlannerPanel,
   componentLibrary: DockComponentLibraryPanel,
   eeAudit: DockEeAuditPanel,
+  simLab: DockSimulationLabPanel,
   explorer: ExplorerPanel,
   inspector: InspectorPanel,
 };
@@ -525,6 +539,12 @@ export const WorkstationShell: React.FC = () => {
       id: 'ee_audit_panel',
       component: 'eeAudit',
       title: 'EE Audit (Z3/SymPy)',
+      position: { referencePanel: center, direction: 'within' },
+    });
+    event.api.addPanel({
+      id: 'sim_lab_panel',
+      component: 'simLab',
+      title: 'SPICE Lab (ngspice)',
       position: { referencePanel: center, direction: 'within' },
     });
     center.api.setActive();

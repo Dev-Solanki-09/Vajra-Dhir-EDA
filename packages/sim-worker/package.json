@@ -1,0 +1,32 @@
+{
+  "name": "@vajradhir/sim-worker",
+  "version": "0.0.5",
+  "type": "module",
+  "license": "MIT",
+  "description": "In-browser ngspice WASM Web Worker engine (MIT eecircuit-engine) with timeout termination and convergence recovery ladder",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./worker": {
+      "types": "./dist/spiceWorker.d.ts",
+      "default": "./dist/spiceWorker.js"
+    }
+  },
+  "engines": {
+    "node": ">=26.13.1"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc && node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "eecircuit-engine": "^1.9.0"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}

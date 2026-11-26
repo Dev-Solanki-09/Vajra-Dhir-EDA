@@ -29,6 +29,7 @@ try:
     from .atopile_engine import handle_ato_get, handle_ato_post
     from .ee_audit_routes import handle_ee_get, handle_ee_post
     from .fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
+    from .spice_routes import handle_spice_get, handle_spice_post
     from .kg_routes import handle_kg_get, handle_kg_post
     from .kicad_bridge import ensure_external_id_map
     from .kicad_routes import (
@@ -50,6 +51,7 @@ except ImportError:
     from atopile_engine import handle_ato_get, handle_ato_post
     from ee_audit_routes import handle_ee_get, handle_ee_post
     from fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
+    from spice_routes import handle_spice_get, handle_spice_post
     from kg_routes import handle_kg_get, handle_kg_post
     from kicad_bridge import ensure_external_id_map
     from kicad_routes import (
@@ -281,11 +283,11 @@ STUDIO_CSP = (
     "frame-ancestors 'none'"
 )
 
-# Emscripten embind in isolated LGPL-2.1 occt-import-js Web Worker requires 'unsafe-eval' in worker scope only.
+# Emscripten embind / embedded WASM in isolated Web Workers requires worker-scoped wasm + data fetch.
 STEP_WORKER_CSP = (
     "default-src 'self'; "
     "script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'; "
-    "connect-src 'self'"
+    "connect-src 'self' data: blob:"
 )
 
 
@@ -311,11 +313,13 @@ def resolve_studio_static_asset(req_path: str) -> dict:
             target = (root_resolved / rel).resolve()
             if target.is_relative_to(root_resolved) and target.is_file():
                 ctype, _ = mimetypes.guess_type(str(target))
-                is_occt_worker = rel.startswith("assets/stepWorker.worker") and rel.endswith(".js")
+                is_wasm_worker = (
+                    rel.startswith("assets/stepWorker.worker") or rel.startswith("assets/spiceWorker.worker")
+                ) and rel.endswith(".js")
                 return {
                     "status": 200,
                     "content_type": ctype or "application/octet-stream",
-                    "csp": STEP_WORKER_CSP if is_occt_worker else STUDIO_CSP,
+                    "csp": STEP_WORKER_CSP if is_wasm_worker else STUDIO_CSP,
                     "body": target.read_bytes(),
                 }
 
@@ -1023,6 +1027,8 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                 if handle_kg_get(self, path, full_path=self.path):
                     return
                 if handle_ee_get(self, path, full_path=self.path, con=self.con):
+                    return
+                if handle_spice_get(self, path, full_path=self.path, con=self.con):
                     return
             if not path.startswith("/api/") and not path.startswith("/stitch/") and not path.startswith("/ws/"):
                 asset = resolve_studio_static_asset(path)
@@ -1848,6 +1854,9 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             return
 
         elif handle_ee_post(self, path, req, self.con):
+            return
+
+        elif handle_spice_post(self, path, req, self.con):
             return
 
         elif handle_x1_post(self, path, req):

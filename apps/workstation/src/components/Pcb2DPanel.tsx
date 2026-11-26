@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExtern
 import { globalCrossProbeBus } from '@vajradhir/crossprobe-bus';
 import type { BoardViewer, KicadPCB } from '@vajradhir/kicanvas-core';
 import { globalKiCadSyncStore, useKiCadSync } from '../kicadSyncClient';
+import { globalSpiceOverlayStore, useSpiceOverlay } from '../spiceSimStore';
 
 type PcbTool = 'select' | 'drag' | 'route' | 'via';
 
@@ -63,6 +64,7 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
   const kcModuleRef = useRef<typeof import('@vajradhir/kicanvas-core') | null>(null);
   const initialFitDoneRef = useRef(false);
 
+  const spiceOverlay = useSpiceOverlay();
   const [tool, setTool] = useState<PcbTool>('select');
   const [backendLabel, setBackendLabel] = useState<'WebGL2' | 'Canvas2D' | 'Initializing'>('Initializing');
   const [statusNote, setStatusNote] = useState('KiCanvas WebGL2/Canvas2D synced to P1');
@@ -492,6 +494,27 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
           >
             Fit
           </button>
+          {(['vout_3v3', 'sw_node', 'v_mcu_3v3', 'vin_12v'] as const).map((net) => {
+            const vDc = spiceOverlay.dcNodes[net];
+            const isProbed = spiceOverlay.activeProbeNet === net;
+            return (
+              <button
+                key={net}
+                type="button"
+                data-testid={`pcb-probe-net-${net}`}
+                className={isProbed ? 'vd-btn vd-btn-primary' : 'vd-btn'}
+                style={{ minHeight: 24, padding: '2px 6px', fontSize: 10 }}
+                onClick={() => {
+                  globalSpiceOverlayStore.update({ activeProbeNet: net });
+                  globalCrossProbeBus.highlightNet(net, 'pcb', '#F59E0B');
+                  setStatusNote(`SPICE Probe -> v(${net})${vDc !== undefined ? ` (${vDc.toFixed(2)}V)` : ''}`);
+                }}
+              >
+                Probe {net}
+                {vDc !== undefined ? ` ${vDc.toFixed(2)}V` : ''}
+              </button>
+            );
+          })}
         </div>
 
         <div style={{ display: 'flex', gap: 10, color: 'var(--vd-text-secondary)' }}>
@@ -708,6 +731,7 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
                   fontFamily="var(--vd-font-mono)"
                 >
                   {fp.refdes}{fp.locked ? ' 🔒' : ''}
+                  {spiceOverlay.powerMw[fp.refdes] !== undefined ? ` (${spiceOverlay.powerMw[fp.refdes]}mW)` : ''}
                 </text>
               </g>
             );

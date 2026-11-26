@@ -44,6 +44,9 @@ const VcdWaveformViewer = React.lazy(() =>
 const EeAuditPanel = React.lazy(() =>
   import('./EeAuditPanel').then((m) => ({ default: m.EeAuditPanel }))
 );
+const SimulationLabPanel = React.lazy(() =>
+  import('./SimulationLabPanel').then((m) => ({ default: m.SimulationLabPanel }))
+);
 
 export type WorkspaceViewState = 'loading' | 'empty' | 'error' | 'full';
 
@@ -607,6 +610,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
               strokeColor="#38BDF8"
             />
             <VcdWaveformViewer />
+            <SimulationLabPanel />
             <EeAuditPanel />
           </Suspense>
         </div>
