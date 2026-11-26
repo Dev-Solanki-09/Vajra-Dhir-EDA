@@ -70,7 +70,7 @@ fn test_placer_respects_locked_components() {
     // Verify cost reduced or converged
     assert!(metrics.final_cost <= metrics.initial_cost);
     // Unlocked component should have moved closer to the locked one to reduce wirelength
-    let final_dist = ((components[1].x_nm - locked_x).abs() + (components[1].y_nm - locked_y).abs());
+    let final_dist = (components[1].x_nm - locked_x).abs() + (components[1].y_nm - locked_y).abs();
     let initial_dist = (80_000_000 - locked_x).abs() + (70_000_000 - locked_y).abs();
     assert!(
         final_dist < initial_dist,
