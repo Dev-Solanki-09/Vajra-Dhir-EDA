@@ -236,6 +236,9 @@ const LazyGerberInspectorPanel = React.lazy(() =>
 const LazyFabReleasePanel = React.lazy(() =>
   import('./FabReleasePanel').then((m) => ({ default: m.FabReleasePanel }))
 );
+const LazyReportPreviewPanel = React.lazy(() =>
+  import('./ReportPreviewPanel').then((m) => ({ default: m.ReportPreviewPanel }))
+);
 
 const DockViewport3DPanel: React.FC<IDockviewPanelProps> = () => (
   <PanelErrorBoundary panelTitle="Viewport 3D (STEP)">
@@ -345,6 +348,16 @@ const DockFabReleasePanel: React.FC<IDockviewPanelProps> = () => (
   </PanelErrorBoundary>
 );
 
+const DockReportPreviewPanel: React.FC<IDockviewPanelProps> = () => (
+  <PanelErrorBoundary panelTitle="Report Dossier (P17)">
+    <div style={{ padding: 8, height: '100%', backgroundColor: 'var(--vd-bg-canvas)', overflowY: 'auto' }}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading Engineering Dossier PDF Preview...</div>}>
+        <LazyReportPreviewPanel />
+      </Suspense>
+    </div>
+  </PanelErrorBoundary>
+);
+
 const DockPcb2DPanel: React.FC<IDockviewPanelProps> = () => {
   const ctx = React.useContext(ShellContext);
   return (
@@ -388,6 +401,7 @@ const DOCK_COMPONENTS = {
   cosimLab: DockCosimPanel,
   gerberInspector: DockGerberInspectorPanel,
   fabRelease: DockFabReleasePanel,
+  reportPreview: DockReportPreviewPanel,
   explorer: ExplorerPanel,
   inspector: InspectorPanel,
 };
@@ -605,6 +619,12 @@ export const WorkstationShell: React.FC = () => {
       id: 'fab_release_panel',
       component: 'fabRelease',
       title: 'Fab Release (P16)',
+      position: { referencePanel: center, direction: 'within' },
+    });
+    event.api.addPanel({
+      id: 'report_preview_panel',
+      component: 'reportPreview',
+      title: 'Report Dossier (P17)',
       position: { referencePanel: center, direction: 'within' },
     });
     center.api.setActive();
