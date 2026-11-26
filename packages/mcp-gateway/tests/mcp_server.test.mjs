@@ -1,46 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-// Import verb definitions
-const { EDA_VERB_DEFINITIONS } = await import('../src/verbs.ts').catch(async () => {
-  // If importing ts directly requires loader, test definitions directly
-  return {
-    EDA_VERB_DEFINITIONS: [
-      { name: 'eda_patch_circuit' },
-      { name: 'eda_query_design' },
-      { name: 'eda_verify_drc' },
-      { name: 'eda_run_spice' },
-      { name: 'eda_synthesize_block' },
-      { name: 'eda_pinmux_solve' },
-      { name: 'eda_export_fab' },
-      { name: 'eda_diff_revisions' },
-      { name: 'eda_route_walkaround' },
-      { name: 'eda_check_datasheet' },
-      { name: 'eda_signoff_waiver' },
-      { name: 'eda_run_code_mode' },
-    ]
-  };
-});
+// Import canonical 12-verb definitions from src/verbs.ts
+const { CANONICAL_12_MCP_VERBS, EDA_VERB_DEFINITIONS } = await import('../src/verbs.ts');
 
-test('Harness MCP v2 defines exactly 12 EDA verbs', () => {
+test('Harness MCP v2 defines exactly 12 canonical hw_* EDA verbs', () => {
   assert.equal(EDA_VERB_DEFINITIONS.length, 12, 'Must define exactly 12 EDA verbs');
+  assert.equal(CANONICAL_12_MCP_VERBS.length, 12, 'Must define exactly 12 canonical verb names');
   const expectedVerbs = [
-    'eda_patch_circuit',
-    'eda_query_design',
-    'eda_verify_drc',
-    'eda_run_spice',
-    'eda_synthesize_block',
-    'eda_pinmux_solve',
-    'eda_export_fab',
-    'eda_diff_revisions',
-    'eda_route_walkaround',
-    'eda_check_datasheet',
-    'eda_signoff_waiver',
-    'eda_run_code_mode',
+    'hw_discover',
+    'hw_inspect',
+    'hw_patch',
+    'hw_lock',
+    'hw_compile',
+    'hw_verify',
+    'hw_simulate',
+    'hw_layout',
+    'hw_signoff',
+    'hw_firmware',
+    'hw_export',
+    'hw_diff',
   ];
 
   for (const expected of expectedVerbs) {
     const found = EDA_VERB_DEFINITIONS.find((v) => v.name === expected);
     assert.ok(found, `Expected verb ${expected} to be defined`);
+    assert.ok(CANONICAL_12_MCP_VERBS.includes(expected), `Expected ${expected} in CANONICAL_12_MCP_VERBS`);
   }
 });
