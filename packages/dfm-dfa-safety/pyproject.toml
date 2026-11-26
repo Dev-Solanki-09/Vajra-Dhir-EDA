@@ -1,6 +1,6 @@
 [project]
 name = "vajra-dhir-dfm-dfa-safety"
-version = "0.0.1"
+version = "0.0.3"
 description = "Vajra-Dhīr Deep DFM, DFA, IPC-2221 Creepage & IPC-D-356 Test-Point Engine"
 requires-python = ">=3.11"
 license = { text = "MIT" }

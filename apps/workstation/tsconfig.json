@@ -10,9 +10,9 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "paths": {
-      "@tracespace/identify-layers": ["../../vendor/ring1-refs/tracespace/packages/identify-layers/src/index.ts"],
-      "@tracespace/parser": ["../../vendor/ring1-refs/tracespace/packages/parser/src/index.ts"],
-      "@tracespace/plotter": ["../../vendor/ring1-refs/tracespace/packages/plotter/src/index.ts"],
+      "@tracespace/identify-layers": ["../../packages/tracespace-vendor/identify-layers/src/index.ts"],
+      "@tracespace/parser": ["../../packages/tracespace-vendor/parser/src/index.ts"],
+      "@tracespace/plotter": ["../../packages/tracespace-vendor/plotter/src/index.ts"],
       "moo": ["./src/shims/moo.ts"]
     }
   },

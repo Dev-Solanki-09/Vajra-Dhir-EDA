@@ -1,27 +1,48 @@
-# Release Notes — Vajra-Dhīr EDA `v0.0.2`
+# Release Notes: Vajra-Dhir EDA v0.0.3
 
-- **Version:** `0.0.2`
+- **Version:** `0.0.3`
 - **License:** Apache License 2.0 (`LICENSE`, with permissive `MIT OR Apache-2.0` per-crate declarations; see `NOTICE` and [LICENSE_EXCEPTIONS.md](LICENSE_EXCEPTIONS.md))
 - **human_signoff:** `PENDING`
 - **release_authorized:** `false`
 - **physical_fabrication_status:** `NOT_FABRICATED_0_OF_3`
 
-## Summary of Capabilities (`v0.0.2`)
+## What Was Added (`v0.0.3`)
 
-- **Core Workstation (`apps/workstation`):** React 19 + `dockview-react` MIT docking shell served on `127.0.0.1:41900` (`vd studio`), Matte Industrial Precision chrome, code-split entry JS bundle (`< 400 KB`), WebGL2/Canvas2D PCB viewport with KiCanvas RAF lifecycle guard, `elkjs` schematic layout, `uPlot` scope, pure-MIT IEEE-1364 VCD digital waveform track, MIT `tracespace` 15-layer Gerber preview, and `zustand` omnidirectional `rev_id` cross-view sync.
-- **Live MCP v2, ACP & Manufacturing Dossier (`packages/vd-daemon`, `packages/mcp-gateway`):** Unified 12-verb MCP v2 (`--stdio` + Streamable HTTP `/mcp`), `/ws/ui-control` bridge, ACP broker (`OFF`/`COPILOT`/`AUTONOMOUS`), 2-tier capability-gated plugin host, 2.5D DC PI (`padne`), 3D MCAD thermal (`CadQuery` + `Gmsh`/`ElmerFEM`), IPC-2581 fab bundle builder with fail-closed Gate-8 signoff (`403`), and Typst bring-up PDF dossier.
-- **Constraints, BOM & DFM (`packages/constraint-mgr`, `packages/bom-analytics`, `packages/dfm-dfa-safety`):** Netclass width/clearance/skew/length rules (`i64` nm), assembly variant DNP/MPN overrides, Extended feeder fees, stock/lifecycle alerts, and DFM/DFA/PI scorecards.
-- **Collaboration & Reproducibility (`packages/collab`, `packages/hw-ir`):** `Yjs` CRDT projection with fail-closed `KERNEL_LOCK_VIOLATION` enforcement across peers/agents and deterministic `vd.hw.lock.v1` SHA-256 project digests.
-- **Simulation & Silicon Contracts (`packages/sim-compat`, `packages/silicon-pack`, `packages/cad-geom`):** Lockstep co-simulation contracts, Ring-2 `network_mode: none` worker enforcement, LibreLane Pack-2C C2P2B pad-to-ball mapping, SKiDL S-expression importer, and integer `i64` nm MCAD 3D bounding-box clearance DRC.
+- **6-Zone Matte Industrial Precision Workstation (`apps/workstation`):** Rebuilt shell layout with `MenuBar` (9 cascading menus with keyboard navigation and 5 workspace preset tabs plus custom layout saving), `TransportBar` with anchored `Grid`/`Layers`/`Overlays`/`Shading` popovers, collapsible `ToolShelf` with variant flyouts, `BottomDrawer` (`Diagnostics`, `Library`, `Simulation`, `Terminal`, `History`), `Ctrl+K` Command Palette, `Space` cursor context menu, `FloatingWindow` Stackup Calculator, `ToastStack`, and `VajraIcons` (78 monochrome 16x16 SVG icons).
+- **Persistent Settings & Local Project Management (`packages/vd-daemon/src/settings_store.py`, `fs_pty_routes.py`):** Atomic JSON persistence in `.vd-cache/user-settings.json` and `project.vd.json` across all 9 preference categories, keymap conflict detector, `FileBrowserModal` backed by `/api/v1/fs/browse` and `/api/v1/fs/mkdir`, dirty-state `UnsavedGuardDialog`, activity audit log, and secret-scrubbed diagnostics bundle (`/api/v1/system/diagnostics-bundle`).
+- **One-Command Download Launcher & Integrated Projects (`scripts/launch-studio.py`, `scripts/sync-integrated-projects.mjs`, `packages/tracespace-vendor`):** Vendored pure-MIT `@tracespace/*` packages so fresh clones/ZIP downloads compile without external vendor mirrors, auto-seeded built-in hardware designs (`designs/*`, `fixtures/golden-buck-mcu`) in `HomeScreen` and `/api/v1/projects/catalog`, added `/api/v1/projects/open`, and added `pnpm studio` plus cross-platform `pnpm setup:projects`.
+- **Job Runner & Memory Endpoint (`packages/vd-daemon/src/job_runner.py`):** Added `/api/v1/jobs` (`GET`/`POST`/`DELETE`) and `/api/v1/system/memory`.
 
-- **Verification & Known Limits**
-  - Hardware reference blueprints in `designs/` are software-verified only (`0/3` physically fabricated).
-  - Full Rust compilation and test execution require `ubuntu-24.04` CI or local C++ build tools (`link.exe` on Windows).
-  - Remote publishing and release tagging remain gated on explicit human signoff.
+## What Was Improved
 
-## Locked Artifact Digests (`v0.0.2` LF-Normalized SHA-256)
+- **Daemon Startup, MIME & Static Serving (`packages/vd-daemon/src/daemon.py`, `acp_orchestrator.py`):** Lazy-loaded heavy solver modules (`z3`, `sympy`, `duckdb`, EE/SPICE/MCAD/fab routes), added explicit Windows MIME types, `Cache-Control`, gzip compression, SQLite PRAGMAs (`mmap_size`, `wal_autocheckpoint`), and query indexes on hot `HW-IR` tables.
+- **Workstation Stability & Rendering (`App.tsx`, `WorkstationShell.tsx`, `Viewport3DPanel.tsx`, `ScrubInput.tsx`, `useSettingsStore.ts`):** Added `RootErrorBoundary` with layout recovery, serialized settings writes to eliminate concurrent PUT races, fixed `ScrubInput` expression parsing and drag tracking, added `webglcontextlost` and `forceContextLoss()` cleanup, enabled `proportionalLayout={false}` on Dockview, and removed background `rAF` idle churn.
+- **GitHub Actions CI Workflows (`.github/actions-pins.lock.json`, `scripts/check-actions-lock.mjs`):** Moved custom JSON action pin registry out of `.github/workflows/actions.lock` to `.github/actions-pins.lock.json` so GitHub Actions parses both workflows cleanly without `startup_failure`.
 
-- `pnpm-lock.yaml`: `51496ee58e6d6df74c933965e9fce291e7013ac0992be29754ae9f78a807652f`
-- `uv.lock`: `18bee561dcd5573bd635623b7e8234397da59638294bfe8071de6b9e8e92745c`
-- `Cargo.lock`: `0c0d3f18118163a81c2cfe6590853687882d451254b0c9d1093e523921487ff4`
-- `apps/workstation/dist/index.html`: `9ae102db5477049a2d6983dc04fb877fc98c3a3b94bf326e8a213e5a963fdd4e`
+## How to Run It
+
+```bash
+# 1. Install dependencies, build the workstation UI, start loopback daemon, and open http://127.0.0.1:41900
+pnpm studio
+
+# 2. Optional: clone optional external OSS upstream mirrors into vendor/ and workers/sources/
+pnpm setup:projects
+
+# 3. Run offline verification suites
+python -m pytest packages -q
+pnpm -r test
+node scripts/check-spdx-firewall.mjs
+```
+
+## Verification & Known Limits
+
+- Hardware reference blueprints in `designs/` are software-verified only (`0/3` physically fabricated).
+- Full Rust compilation and test execution require `ubuntu-24.04` CI or local C++ build tools (`link.exe` on Windows).
+- Remote publishing and fabrication release remain gated on explicit human signoff.
+
+## Locked Artifact Digests (`v0.0.3` LF-Normalized SHA-256)
+
+- `pnpm-lock.yaml`: `d049f18b2719b896fffb5525f65481848bbe28971b210c0111adf0801542520c`
+- `uv.lock`: `7c2c8258fa1425c259d838e92afe3a4d744230de0f0d6548b94db3f53f1f78d5`
+- `Cargo.lock`: `1c2145599820ba440cf84865c7b9c74a03f9535cb0e4d99f6cc131db5ac86c95`
+- `apps/workstation/dist/index.html`: `15c33d33231c373db59a1c9f732d2b7076bc8ab9b64c02ce28a4c5c2b71fa6f8`

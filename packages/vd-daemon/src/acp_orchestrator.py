@@ -25,15 +25,9 @@ from typing import Any, Dict, List, Optional
 try:
     from .kicad_bridge import sha256_text, write_text_atomic
     from .kicad_routes import _ACTIVE_STATE, _BRIDGE, _ensure_active_workspace, sync_after_patch
-    from .ee_audit_routes import run_full_ee_audit
-    from .fab_pack_engine import build_fab_bundle
-    from .report_engine import compile_engineering_dossier
 except ImportError:
     from kicad_bridge import sha256_text, write_text_atomic
     from kicad_routes import _ACTIVE_STATE, _BRIDGE, _ensure_active_workspace, sync_after_patch
-    from ee_audit_routes import run_full_ee_audit
-    from fab_pack_engine import build_fab_bundle
-    from report_engine import compile_engineering_dossier
 
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
 _ACP_REF_DIR = _REPO_ROOT / "vendor" / "ring1-refs" / "agent-client-protocol"
@@ -307,6 +301,15 @@ def run_autonomous_ee_loop(
             log_verb("hw_lock", f"Respected human lock on {refdes} (KERNEL_LOCK_VIOLATION -> Violet Ghost proposal)", verdict="LOCKED_SAFE")
 
     # Run deterministic verification P1, P9, P13, P14, P16, P17
+    try:
+        from .ee_audit_routes import run_full_ee_audit
+        from .fab_pack_engine import build_fab_bundle
+        from .report_engine import compile_engineering_dossier
+    except ImportError:
+        from ee_audit_routes import run_full_ee_audit
+        from fab_pack_engine import build_fab_bundle
+        from report_engine import compile_engineering_dossier
+
     ee_audit = run_full_ee_audit({"resistors": [{"refdes": "R1", "package": "0603", "r_ohm": 4700, "current_a": 0.001, "rated_w": 0.1}]})
     log_verb("hw_verify", f"P9 EE Audit passed={ee_audit.get('passed', True)}", verdict="PASS")
     log_verb("hw_simulate", "P10 SPICE & P13 padne PI verified", verdict="PASS")

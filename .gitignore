@@ -26,6 +26,8 @@ env/
 *.kicad_prl
 .vajradhir/
 .vd-dev/
+.vd-cache/
+.vd-runtime/
 *.log
 
 # Sensitive environments & credentials

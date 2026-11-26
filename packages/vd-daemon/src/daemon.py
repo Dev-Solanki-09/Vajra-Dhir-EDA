@@ -4,8 +4,10 @@ Implements all 11 REST API endpoints on 127.0.0.1:41900 with exact i64 nm & UUID
 """
 
 import base64
+import gzip
 import hashlib
 import http.server
+import importlib
 import json
 import math
 import mimetypes
@@ -24,24 +26,19 @@ import time
 import urllib.parse
 import uuid
 
+_DAEMON_SRC_DIR = str(pathlib.Path(__file__).resolve().parent)
+if _DAEMON_SRC_DIR not in sys.path:
+    sys.path.insert(0, _DAEMON_SRC_DIR)
+
 try:
-    from .agent_routes import handle_agent_get, handle_agent_post
-    from .atopile_engine import handle_ato_get, handle_ato_post
-    from .cosim_routes import handle_cosim_get, handle_cosim_post
-    from .ee_audit_routes import handle_ee_get, handle_ee_post
-    from .fab_routes import handle_fab_get, handle_fab_post
-    from .report_routes import handle_report_get, handle_report_post
     from .sync_propagator import handle_tx_get, handle_tx_post
     from .polish_routes import handle_polish_get, handle_polish_post
+    from .settings_store import handle_settings_get, handle_settings_post, handle_settings_put
+    from .job_runner import handle_jobs_delete, handle_jobs_get, handle_jobs_post
     from .mcp_live_server import handle_mcp_http_post, handle_ws_ui_control
     from .acp_broker import handle_acp_http_post
     from .plugin_host import handle_plugin_get, handle_plugin_post
     from .fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
-    from .spice_routes import handle_spice_get, handle_spice_post
-    from .kg_routes import handle_kg_get, handle_kg_post
-    from .mcad_thermal_routes import handle_mcad_get, handle_mcad_post
-    from .pi_routes import handle_pi_get, handle_pi_post
-    from .router_routes import handle_router_get, handle_router_post
     from .kicad_bridge import ensure_external_id_map, sync_kicad_pcb_to_hwir, write_text_atomic
     from .kicad_routes import (
         handle_kicad_get,
@@ -55,26 +52,14 @@ try:
     from .x3_routes import handle_x3_post
     from .x4_routes import handle_x4_post
 except ImportError:
-    _DAEMON_SRC_DIR = str(pathlib.Path(__file__).resolve().parent)
-    if _DAEMON_SRC_DIR not in sys.path:
-        sys.path.insert(0, _DAEMON_SRC_DIR)
-    from agent_routes import handle_agent_get, handle_agent_post
-    from atopile_engine import handle_ato_get, handle_ato_post
-    from cosim_routes import handle_cosim_get, handle_cosim_post
-    from ee_audit_routes import handle_ee_get, handle_ee_post
-    from fab_routes import handle_fab_get, handle_fab_post
-    from report_routes import handle_report_get, handle_report_post
     from sync_propagator import handle_tx_get, handle_tx_post
     from polish_routes import handle_polish_get, handle_polish_post
+    from settings_store import handle_settings_get, handle_settings_post, handle_settings_put
+    from job_runner import handle_jobs_delete, handle_jobs_get, handle_jobs_post
     from mcp_live_server import handle_mcp_http_post, handle_ws_ui_control
     from acp_broker import handle_acp_http_post
     from plugin_host import handle_plugin_get, handle_plugin_post
     from fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
-    from spice_routes import handle_spice_get, handle_spice_post
-    from kg_routes import handle_kg_get, handle_kg_post
-    from mcad_thermal_routes import handle_mcad_get, handle_mcad_post
-    from pi_routes import handle_pi_get, handle_pi_post
-    from router_routes import handle_router_get, handle_router_post
     from kicad_bridge import ensure_external_id_map, sync_kicad_pcb_to_hwir, write_text_atomic
     from kicad_routes import (
         handle_kicad_get,
@@ -87,6 +72,20 @@ except ImportError:
     from x1_routes import handle_x1_post
     from x3_routes import handle_x3_post
     from x4_routes import handle_x4_post
+
+_MOD_CACHE: dict[str, object] = {}
+
+
+def _lazy_fn(mod_name: str, fn_name: str):
+    """Guarded lazy importer keeping cold daemon startup <500ms without importing z3/sympy/duckdb eagerly."""
+    mod = _MOD_CACHE.get(mod_name)
+    if mod is None:
+        try:
+            mod = importlib.import_module(f".{mod_name}", package=__package__) if __package__ else importlib.import_module(mod_name)
+        except ImportError:
+            mod = importlib.import_module(mod_name)
+        _MOD_CACHE[mod_name] = mod
+    return getattr(mod, fn_name)
 
 DB_LOCK = threading.RLock()
 
@@ -313,14 +312,27 @@ STEP_WORKER_CSP = (
 )
 
 
+_STATIC_MIME_MAP = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".mjs": "application/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".wasm": "application/wasm",
+    ".svg": "image/svg+xml",
+    ".json": "application/json; charset=utf-8",
+    ".png": "image/png",
+    ".ico": "image/x-icon",
+}
+
+
 def resolve_studio_static_asset(req_path: str) -> dict:
-    """Serves compiled apps/workstation or apps/prototype-gui static assets with strict CSP & traversal guard."""
+    """Serves compiled apps/workstation or apps/prototype-gui static assets with strict CSP, explicit Windows MIME & Cache-Control."""
     decoded = urllib.parse.unquote(req_path or "/").split("?", 1)[0]
     if "\\" in decoded or "\x00" in decoded or ":" in decoded:
-        return {"status": 404, "content_type": "text/plain", "csp": STUDIO_CSP, "body": b"Not Found"}
+        return {"status": 404, "content_type": "text/plain", "csp": STUDIO_CSP, "cache_control": "no-store", "body": b"Not Found"}
     parts = [p for p in decoded.split("/") if p]
     if ".." in parts or "." in parts:
-        return {"status": 404, "content_type": "text/plain", "csp": STUDIO_CSP, "body": b"Not Found"}
+        return {"status": 404, "content_type": "text/plain", "csp": STUDIO_CSP, "cache_control": "no-store", "body": b"Not Found"}
     rel = "/".join(parts)
     if not rel or rel == "index.html":
         rel = "index.html"
@@ -334,14 +346,18 @@ def resolve_studio_static_asset(req_path: str) -> dict:
             root_resolved = root.resolve()
             target = (root_resolved / rel).resolve()
             if target.is_relative_to(root_resolved) and target.is_file():
-                ctype, _ = mimetypes.guess_type(str(target))
+                ext = target.suffix.lower()
+                ctype = _STATIC_MIME_MAP.get(ext) or mimetypes.guess_type(str(target))[0] or "application/octet-stream"
                 is_wasm_worker = (
                     rel.startswith("assets/stepWorker.worker") or rel.startswith("assets/spiceWorker.worker")
-                ) and rel.endswith(".js")
+                ) and ext in (".js", ".mjs")
+                cache_ctl = "no-cache" if rel == "index.html" else ("public, max-age=31536000, immutable" if rel.startswith("assets/") else "no-cache")
                 return {
                     "status": 200,
-                    "content_type": ctype or "application/octet-stream",
+                    "content_type": ctype,
                     "csp": STEP_WORKER_CSP if is_wasm_worker else STUDIO_CSP,
+                    "cache_control": cache_ctl,
+                    "compressible": ext in (".html", ".js", ".mjs", ".css", ".svg", ".json"),
                     "body": target.read_bytes(),
                 }
 
@@ -349,18 +365,20 @@ def resolve_studio_static_asset(req_path: str) -> dict:
         html = (
             "<!doctype html><html lang='en'><head><meta charset='utf-8'/>"
             "<title>Vajra-Dhir Studio</title></head>"
-            "<body style='background:#0B0E14;color:#E6EDF7;font-family:sans-serif;padding:24px'>"
+            "<body style='background:#141416;color:#D8D8DE;font-family:sans-serif;padding:24px'>"
             "<h1>Vajra-Dhir Studio (Loopback 127.0.0.1:41900)</h1>"
-            "<p>Daemon health: <code>/api/v1/health</code>. Build frontend dist to serve full bundle.</p>"
+            "<p>Daemon health: <code>/api/v1/health</code>. Run <code>pnpm build</code> or <code>pnpm studio</code> to serve the compiled frontend UI bundle.</p>"
             "</body></html>"
         ).encode("utf-8")
         return {
             "status": 200,
             "content_type": "text/html; charset=utf-8",
             "csp": STUDIO_CSP,
+            "cache_control": "no-cache",
+            "compressible": True,
             "body": html,
         }
-    return {"status": 404, "content_type": "text/plain", "csp": STUDIO_CSP, "body": b"Not Found"}
+    return {"status": 404, "content_type": "text/plain", "csp": STUDIO_CSP, "cache_control": "no-store", "body": b"Not Found"}
 
 
 def init_db(db_path: pathlib.Path) -> sqlite3.Connection:
@@ -371,13 +389,27 @@ def init_db(db_path: pathlib.Path) -> sqlite3.Connection:
     con.execute("PRAGMA foreign_keys = ON;")
     con.execute("PRAGMA synchronous = NORMAL;")
     con.execute("PRAGMA temp_store = MEMORY;")
-    con.execute("PRAGMA cache_size = -16384;")
-    
+    con.execute("PRAGMA cache_size = -16000;")
+    con.execute("PRAGMA mmap_size = 67108864;")
+    con.execute("PRAGMA wal_autocheckpoint = 1000;")
+
     # Run DDLs if database is not yet initialized
     has_tables = con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'").fetchone()
     if not has_tables:
         if SCHEMA_V001.exists():
             con.executescript(SCHEMA_V001.read_text(encoding="utf-8"))
+
+    for idx_sql in (
+        "CREATE INDEX IF NOT EXISTS idx_components_board_id ON components(board_id);",
+        "CREATE INDEX IF NOT EXISTS idx_components_refdes ON components(refdes);",
+        "CREATE INDEX IF NOT EXISTS idx_nets_board_id ON nets(board_id);",
+        "CREATE INDEX IF NOT EXISTS idx_nets_name ON nets(name);",
+        "CREATE INDEX IF NOT EXISTS idx_patches_proj_rev ON hardware_patches(project_id, rev_lamport);",
+    ):
+        try:
+            con.execute(idx_sql)
+        except sqlite3.OperationalError:
+            pass
 
     # Ensure _tx_actor_ctx has human actor and external_id_map exists
     con.execute("INSERT OR IGNORE INTO _tx_actor_ctx(singleton, actor_kind, allow_lock_override) VALUES (1, 'human', 0)")
@@ -785,11 +817,35 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
 
     def _send_cors(self):
         self.send_header("Access-Control-Allow-Origin", "http://127.0.0.1:5173")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
     def do_OPTIONS(self):
         self.send_response(204)
+        self._send_cors()
+        self.end_headers()
+
+    def do_DELETE(self):
+        parsed = urllib.parse.urlparse(self.path)
+        if handle_jobs_delete(self, parsed.path):
+            return
+        self.send_response(404)
+        self._send_cors()
+        self.end_headers()
+
+    def do_PUT(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(length) if length > 0 else b"{}"
+        try:
+            req = json.loads(body.decode("utf-8")) if body else {}
+        except Exception:
+            req = {}
+        with DB_LOCK:
+            if handle_settings_put(self, path, req, self.con):
+                return
+        self.send_response(404)
         self._send_cors()
         self.end_headers()
 
@@ -800,7 +856,7 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
         if path in ("/api/v1/health", "/api/health"):
             snap = load_snapshot(self.con)
             res = {
-                "version": "0.0.1",
+                "version": "0.0.3",
                 "bind_addr": "127.0.0.1:41900",
                 "rev_lamport": snap["project"]["rev_lamport"],
                 "dlp_class": snap["project"]["dlp_class"],
@@ -1044,46 +1100,69 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
 
         else:
             with DB_LOCK:
+                if handle_jobs_get(self, path, full_path=self.path):
+                    return
                 if handle_kicad_get(self, path, full_path=self.path, con=self.con):
                     return
                 if handle_fs_pty_get(self, path, full_path=self.path, con=self.con):
                     return
-                if handle_ato_get(self, path, full_path=self.path, con=self.con):
-                    return
-                if handle_kg_get(self, path, full_path=self.path):
-                    return
-                if handle_ee_get(self, path, full_path=self.path, con=self.con):
-                    return
-                if handle_spice_get(self, path, full_path=self.path, con=self.con):
-                    return
-                if handle_cosim_get(self, path, full_path=self.path, con=self.con):
-                    return
-                if handle_router_get(self, path, full_path=self.path, con=self.con):
-                    return
-                if handle_pi_get(self, path, full_path=self.path, con=self.con):
-                    return
-                if handle_mcad_get(self, path, full_path=self.path, con=self.con):
-                    return
-                if handle_fab_get(self, path, full_path=self.path, con=self.con):
-                    return
-                if handle_report_get(self, path, full_path=self.path, con=self.con):
-                    return
-                if handle_agent_get(self, path, full_path=self.path, con=self.con):
-                    return
+                if path.startswith(("/api/v1/ato/", "/api/ato/")):
+                    if _lazy_fn("atopile_engine", "handle_ato_get")(self, path, full_path=self.path, con=self.con):
+                        return
+                if path.startswith(("/api/v1/parts/", "/api/parts/")):
+                    if _lazy_fn("kg_routes", "handle_kg_get")(self, path, full_path=self.path):
+                        return
+                if path.startswith(("/api/v1/ee/", "/api/ee/")):
+                    if _lazy_fn("ee_audit_routes", "handle_ee_get")(self, path, full_path=self.path, con=self.con):
+                        return
+                if path.startswith(("/api/v1/sim/", "/api/sim/")):
+                    if _lazy_fn("spice_routes", "handle_spice_get")(self, path, full_path=self.path, con=self.con):
+                        return
+                if path.startswith(("/api/v1/cosim/", "/api/cosim/")):
+                    if _lazy_fn("cosim_routes", "handle_cosim_get")(self, path, full_path=self.path, con=self.con):
+                        return
+                if path.startswith(("/api/v1/route/", "/api/route/")):
+                    if _lazy_fn("router_routes", "handle_router_get")(self, path, full_path=self.path, con=self.con):
+                        return
+                if path.startswith(("/api/v1/pi/", "/api/pi/")):
+                    if _lazy_fn("pi_routes", "handle_pi_get")(self, path, full_path=self.path, con=self.con):
+                        return
+                if path.startswith(("/api/v1/mcad/", "/api/mcad/", "/api/v1/thermal/")):
+                    if _lazy_fn("mcad_thermal_routes", "handle_mcad_get")(self, path, full_path=self.path, con=self.con):
+                        return
+                if path.startswith(("/api/v1/fab/", "/api/fab/")):
+                    if _lazy_fn("fab_routes", "handle_fab_get")(self, path, full_path=self.path, con=self.con):
+                        return
+                if path.startswith(("/api/v1/report/", "/api/report/")):
+                    if _lazy_fn("report_routes", "handle_report_get")(self, path, full_path=self.path, con=self.con):
+                        return
+                if path.startswith(("/api/v1/agent/", "/api/agent/")):
+                    if _lazy_fn("agent_routes", "handle_agent_get")(self, path, full_path=self.path, con=self.con):
+                        return
                 if handle_tx_get(self, path, full_path=self.path, con=self.con):
                     return
                 if handle_polish_get(self, path, full_path=self.path, con=self.con):
+                    return
+                if handle_settings_get(self, path, full_path=self.path, con=self.con):
                     return
                 if handle_plugin_get(self, path):
                     return
             if not path.startswith("/api/") and not path.startswith("/stitch/") and not path.startswith("/ws/"):
                 asset = resolve_studio_static_asset(path)
                 if asset["status"] == 200:
+                    payload = asset["body"]
+                    use_gzip = bool(asset.get("compressible")) and len(payload) > 1024 and "gzip" in (self.headers.get("Accept-Encoding") or "").lower()
+                    if use_gzip:
+                        payload = gzip.compress(payload, compresslevel=5)
                     self.send_response(200)
                     self.send_header("Content-Type", asset["content_type"])
                     self.send_header("Content-Security-Policy", asset["csp"])
+                    self.send_header("Cache-Control", asset.get("cache_control", "no-cache"))
+                    if use_gzip:
+                        self.send_header("Content-Encoding", "gzip")
+                    self.send_header("Content-Length", str(len(payload)))
                     self.end_headers()
-                    self.wfile.write(asset["body"])
+                    self.wfile.write(payload)
                     return
             self.send_response(404)
             self._send_cors()
@@ -1892,46 +1971,52 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(res).encode("utf-8"))
 
+        elif handle_jobs_post(self, path, req, self.con):
+            return
+
         elif handle_kicad_post(self, path, req, self.con):
             return
 
         elif handle_fs_pty_post(self, path, req, self.con):
             return
 
-        elif handle_ato_post(self, path, req, self.con):
+        elif path.startswith(("/api/v1/ato/", "/api/ato/")) and _lazy_fn("atopile_engine", "handle_ato_post")(self, path, req, self.con):
             return
 
-        elif handle_kg_post(self, path, req, self.con):
+        elif path.startswith(("/api/v1/parts/", "/api/parts/")) and _lazy_fn("kg_routes", "handle_kg_post")(self, path, req, self.con):
             return
 
-        elif handle_ee_post(self, path, req, self.con):
+        elif path.startswith(("/api/v1/ee/", "/api/ee/")) and _lazy_fn("ee_audit_routes", "handle_ee_post")(self, path, req, self.con):
             return
 
-        elif handle_spice_post(self, path, req, self.con):
+        elif path.startswith(("/api/v1/sim/", "/api/sim/")) and _lazy_fn("spice_routes", "handle_spice_post")(self, path, req, self.con):
             return
 
-        elif handle_cosim_post(self, path, req, self.con):
+        elif path.startswith(("/api/v1/cosim/", "/api/cosim/")) and _lazy_fn("cosim_routes", "handle_cosim_post")(self, path, req, self.con):
             return
 
-        elif handle_router_post(self, path, req, self.con):
+        elif path.startswith(("/api/v1/route/", "/api/route/")) and _lazy_fn("router_routes", "handle_router_post")(self, path, req, self.con):
             return
 
-        elif handle_pi_post(self, path, req, self.con):
+        elif path.startswith(("/api/v1/pi/", "/api/pi/")) and _lazy_fn("pi_routes", "handle_pi_post")(self, path, req, self.con):
             return
 
-        elif handle_mcad_post(self, path, req, self.con):
+        elif path.startswith(("/api/v1/mcad/", "/api/mcad/", "/api/v1/thermal/")) and _lazy_fn("mcad_thermal_routes", "handle_mcad_post")(self, path, req, self.con):
             return
 
-        elif handle_fab_post(self, path, req, self.con):
+        elif path.startswith(("/api/v1/fab/", "/api/fab/")) and _lazy_fn("fab_routes", "handle_fab_post")(self, path, req, self.con):
             return
 
-        elif handle_report_post(self, path, req, self.con):
+        elif path.startswith(("/api/v1/report/", "/api/report/")) and _lazy_fn("report_routes", "handle_report_post")(self, path, req, self.con):
             return
 
         elif handle_tx_post(self, path, req, self.con):
             return
 
         elif handle_polish_post(self, path, req, self.con):
+            return
+
+        elif handle_settings_post(self, path, req, self.con):
             return
 
         elif handle_mcp_http_post(self, path, req, self.con):
@@ -1952,7 +2037,7 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
         elif handle_x4_post(self, path, req):
             return
 
-        elif handle_agent_post(self, path, req, DB_DIR, write_autosave_shadow, maybe_checkpoint_wal):
+        elif _lazy_fn("agent_routes", "handle_agent_post")(self, path, req, DB_DIR, write_autosave_shadow, maybe_checkpoint_wal):
             return
 
         else:

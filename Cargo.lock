@@ -2152,7 +2152,7 @@ checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "vd-autorouter"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2163,7 +2163,7 @@ dependencies = [
 
 [[package]]
 name = "vd-bom-analytics"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2171,7 +2171,7 @@ dependencies = [
 
 [[package]]
 name = "vd-cad-geom"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "cavalier_contours",
  "i_overlay 1.10.0",
@@ -2185,7 +2185,7 @@ dependencies = [
 
 [[package]]
 name = "vd-cam-pnp"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2197,7 +2197,7 @@ dependencies = [
 
 [[package]]
 name = "vd-cas-store"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2208,7 +2208,7 @@ dependencies = [
 
 [[package]]
 name = "vd-cli"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2239,7 +2239,7 @@ dependencies = [
 
 [[package]]
 name = "vd-compliance-hbom"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2249,7 +2249,7 @@ dependencies = [
 
 [[package]]
 name = "vd-component-kg"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2260,7 +2260,7 @@ dependencies = [
 
 [[package]]
 name = "vd-constraint-mgr"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2269,7 +2269,7 @@ dependencies = [
 
 [[package]]
 name = "vd-control-loop"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2278,7 +2278,7 @@ dependencies = [
 
 [[package]]
 name = "vd-daemon"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "axum",
  "serde",
@@ -2292,7 +2292,7 @@ dependencies = [
 
 [[package]]
 name = "vd-dlp"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2303,7 +2303,7 @@ dependencies = [
 
 [[package]]
 name = "vd-eco-engine"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2315,7 +2315,7 @@ dependencies = [
 
 [[package]]
 name = "vd-emc-workbench"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2324,7 +2324,7 @@ dependencies = [
 
 [[package]]
 name = "vd-footprint-synth"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2334,7 +2334,7 @@ dependencies = [
 
 [[package]]
 name = "vd-ir"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "rusqlite",
  "serde",
@@ -2347,7 +2347,7 @@ dependencies = [
 
 [[package]]
 name = "vd-mcp-gateway"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2365,7 +2365,7 @@ dependencies = [
 
 [[package]]
 name = "vd-merge"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2377,7 +2377,7 @@ dependencies = [
 
 [[package]]
 name = "vd-nine-gates"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2391,7 +2391,7 @@ dependencies = [
 
 [[package]]
 name = "vd-open-cubo"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2404,7 +2404,7 @@ dependencies = [
 
 [[package]]
 name = "vd-panelizer"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2417,7 +2417,7 @@ dependencies = [
 
 [[package]]
 name = "vd-pcb-diff"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2429,7 +2429,7 @@ dependencies = [
 
 [[package]]
 name = "vd-pdn-solver"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2441,7 +2441,7 @@ dependencies = [
 
 [[package]]
 name = "vd-placer"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "rand 0.8.8",
  "rand_chacha",
@@ -2454,7 +2454,7 @@ dependencies = [
 
 [[package]]
 name = "vd-schematic-beautifier"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2464,7 +2464,7 @@ dependencies = [
 
 [[package]]
 name = "vd-silicon-pack"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2472,7 +2472,7 @@ dependencies = [
 
 [[package]]
 name = "vd-sim-compat"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2482,7 +2482,7 @@ dependencies = [
 
 [[package]]
 name = "vd-solver-recovery"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2491,7 +2491,7 @@ dependencies = [
 
 [[package]]
 name = "vd-symbolic-verifier"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2504,7 +2504,7 @@ dependencies = [
 
 [[package]]
 name = "vd-transcoder"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "notify",
  "serde",
@@ -2517,7 +2517,7 @@ dependencies = [
 
 [[package]]
 name = "vd-wasm-sandbox"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2531,7 +2531,7 @@ dependencies = [
 
 [[package]]
 name = "vd-wire-harness"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2543,7 +2543,7 @@ dependencies = [
 
 [[package]]
 name = "vd-worker-sdk"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",

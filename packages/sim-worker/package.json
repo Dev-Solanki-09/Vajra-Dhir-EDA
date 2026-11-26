@@ -1,6 +1,6 @@
 {
   "name": "@vajradhir/sim-worker",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "license": "MIT",
   "description": "In-browser ngspice WASM Web Worker engine (MIT eecircuit-engine) with timeout termination and convergence recovery ladder",

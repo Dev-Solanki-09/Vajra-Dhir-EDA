@@ -1,4 +1,4 @@
-/* Hallmark · v2.0.0 · genre: modern-minimal · brand: silicon-darkroom (kept) · shape: app screen · redesign: full · scope: app · built: the project */
+/* Hallmark · v2.0.0 · Matte Industrial Precision Enterprise Workstation Styles */
 
 * {
   box-sizing: border-box;
@@ -11,13 +11,14 @@ body,
   padding: 0;
   width: 100%;
   height: 100%;
-  background-color: var(--vd-bg-workbench);
+  background-color: var(--vd-bg-canvas);
   color: var(--vd-text-primary);
   font-family: var(--vd-font-ui);
-  font-size: 16px;
-  line-height: 1.4;
+  font-size: var(--vd-ui-size);
+  line-height: 1.35;
   overflow-x: clip;
   overflow-y: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 .vd-metric {
@@ -25,24 +26,36 @@ body,
   font-variant-numeric: tabular-nums;
 }
 
+.vd-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--vd-text-secondary);
+}
+
 .vd-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  padding: 4px 12px;
+  justify-content: center;
+  gap: 5px;
+  min-height: var(--vd-btn-h);
+  padding: 2px 8px;
   background-color: var(--vd-bg-elevated);
   color: var(--vd-text-primary);
   border: 1px solid var(--vd-border-subtle);
-  border-radius: 4px;
+  border-radius: 2px;
   font-family: var(--vd-font-ui);
-  font-size: 13px;
+  font-size: 11px;
+  line-height: 1.2;
   cursor: pointer;
+  white-space: nowrap;
   transition: border-color var(--vd-dur-micro) ease, background-color var(--vd-dur-micro) ease;
 }
 
 .vd-btn:hover:not(:disabled) {
-  border-color: var(--vd-border-active);
+  background-color: var(--vd-bg-popover);
+  border-color: var(--vd-border-strong);
 }
 
 .vd-btn:active:not(:disabled) {
@@ -50,14 +63,19 @@ body,
 }
 
 .vd-btn:disabled {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .vd-btn-primary {
   background-color: var(--vd-border-active);
   border-color: var(--vd-border-active);
-  color: var(--vd-layer-silk);
+  color: #F8FAFC;
+}
+
+.vd-btn-primary:hover:not(:disabled) {
+  background-color: #3570B4;
+  border-color: #3570B4;
 }
 
 .vd-btn-lock {
@@ -70,8 +88,30 @@ body,
   color: var(--vd-text-primary);
 }
 
+.vd-btn-icon {
+  min-width: var(--vd-btn-h);
+  padding: 2px 4px;
+}
+
+.vd-input,
+.vd-select {
+  background-color: var(--vd-bg-canvas);
+  color: var(--vd-text-primary);
+  border: 1px solid var(--vd-border-subtle);
+  border-radius: 2px;
+  padding: 3px 6px;
+  font-family: var(--vd-font-ui);
+  font-size: 11px;
+}
+
+.vd-input:focus,
+.vd-select:focus {
+  border-color: var(--vd-border-active);
+  outline: none;
+}
+
 :focus-visible {
-  outline: 2px solid var(--vd-border-active);
+  outline: 1px solid var(--vd-border-active);
   outline-offset: 1px;
 }
 
@@ -82,66 +122,306 @@ body,
   }
 }
 
+/* 6-Zone Enterprise Shell */
 .vd-shell {
   display: grid;
-  grid-template-rows: 40px 1fr 28px;
+  grid-template-rows: 28px 32px 1fr 22px;
   height: 100%;
   width: 100%;
+  background-color: var(--vd-bg-canvas);
 }
 
-.vd-topbar {
+.vd-shell.vd-no-statusbar {
+  grid-template-rows: 28px 32px 1fr;
+}
+
+/* Zone 1: Top Menu Bar + Workspace Tabs + System Pills (28px) */
+.vd-menubar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
-  background-color: var(--vd-bg-panel);
+  height: 28px;
+  padding: 0 8px;
+  background-color: var(--vd-bg-elevated);
   border-bottom: 1px solid var(--vd-border-subtle);
-}
-
-.vd-main {
-  display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
-  min-height: 0;
-}
-
-.vd-activity-bar {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   gap: 8px;
-  padding: 8px 4px;
-  background-color: var(--vd-bg-panel);
-  border-right: 1px solid var(--vd-border-subtle);
+  user-select: none;
+  z-index: 30;
 }
 
-.vd-activity-btn {
-  width: 40px;
-  height: 40px;
-  display: inline-flex;
+.vd-menubar-left,
+.vd-menubar-tabs,
+.vd-menubar-right {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 6px;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vd-menu-trigger {
+  height: 22px;
+  padding: 0 7px;
+  background: transparent;
+  color: var(--vd-text-primary);
   border: 1px solid transparent;
-  background-color: transparent;
-  color: var(--vd-text-secondary);
+  border-radius: 2px;
+  font-size: 11px;
   cursor: pointer;
 }
 
-.vd-activity-btn[data-active="true"] {
+.vd-menu-trigger:hover,
+.vd-menu-trigger[aria-expanded="true"] {
+  background-color: var(--vd-bg-popover);
+  border-color: var(--vd-border-subtle);
+}
+
+.vd-ws-tab {
+  height: 28px;
+  padding: 0 9px;
+  background: transparent;
+  color: var(--vd-text-secondary);
+  border: none;
+  border-top: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vd-ws-tab:hover {
+  color: var(--vd-text-primary);
+  background-color: var(--vd-bg-popover);
+}
+
+.vd-ws-tab[data-active="true"] {
+  color: var(--vd-text-primary);
+  background-color: var(--vd-bg-panel);
+  border-top-color: var(--vd-border-active);
+}
+
+.vd-pill {
+  height: 20px;
+  padding: 0 7px;
+  background-color: var(--vd-bg-canvas);
+  border: 1px solid var(--vd-border-subtle);
+  border-radius: 2px;
+  font-size: 10.5px;
+  color: var(--vd-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Zone 2: Contextual Control & Transport Bar (32px) */
+.vd-transport-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0 8px;
+  background-color: var(--vd-bg-panel);
+  border-bottom: 1px solid var(--vd-border-subtle);
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.vd-bar-cluster {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.vd-bar-divider {
+  width: 1px;
+  height: 18px;
+  background-color: var(--vd-border-subtle);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* Zone 3 + Zone 4 Workspace Body */
+.vd-workbench-body {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--vd-bg-canvas);
+}
+
+/* Zone 3: Left Tool Shelf (38px) */
+.vd-tool-shelf {
+  width: 38px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 2px;
+  gap: 3px;
   background-color: var(--vd-bg-elevated);
-  border-color: var(--vd-border-active);
+  border-right: 1px solid var(--vd-border-subtle);
+  user-select: none;
+}
+
+.vd-tool-btn {
+  position: relative;
+  width: 30px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--vd-text-secondary);
+  border: 1px solid transparent;
+  border-left: 2px solid transparent;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.vd-tool-btn:hover {
+  background-color: var(--vd-bg-popover);
   color: var(--vd-text-primary);
 }
 
+.vd-tool-btn[data-active="true"] {
+  background-color: var(--vd-bg-active-row);
+  border-color: var(--vd-border-subtle);
+  border-left-color: var(--vd-border-active);
+  color: var(--vd-text-primary);
+}
+
+.vd-flyout-corner {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 4px 4px;
+  border-color: transparent transparent var(--vd-text-muted) transparent;
+}
+
+/* Center column hosting Dockview + collapsible Bottom Drawer */
+.vd-center-stack {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bottom Drawer (210px) */
+.vd-bottom-drawer {
+  height: 210px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--vd-bg-panel);
+  border-top: 1px solid var(--vd-border-strong);
+}
+
+.vd-bottom-drawer-tabs {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  background-color: var(--vd-bg-elevated);
+  border-bottom: 1px solid var(--vd-border-subtle);
+}
+
+/* Zone 6: Status Bar (22px) */
 .vd-statusbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
-  font-size: 12px;
-  background-color: var(--vd-bg-panel);
+  height: 22px;
+  padding: 0 8px;
+  font-size: 10.5px;
+  background-color: var(--vd-bg-elevated);
   border-top: 1px solid var(--vd-border-subtle);
   color: var(--vd-text-secondary);
+  gap: 8px;
+}
+
+.vd-status-chip {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  color: var(--vd-text-secondary);
+  padding: 0 5px;
+  height: 18px;
+  font-size: 10.5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vd-status-chip:hover {
+  background-color: var(--vd-bg-popover);
+  border-color: var(--vd-border-subtle);
+  color: var(--vd-text-primary);
+}
+
+/* Floating Popovers, Menus, Context Menus, Modals */
+.vd-popover {
+  position: fixed;
+  z-index: 90;
+  background-color: var(--vd-bg-popover);
+  border: 1px solid var(--vd-border-strong);
+  border-radius: 3px;
+  padding: 6px;
+  color: var(--vd-text-primary);
+  min-width: 190px;
+  max-width: min(360px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+
+.vd-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.vd-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 2px;
+  color: var(--vd-text-primary);
+  font-family: var(--vd-font-ui);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vd-menu-item:hover,
+.vd-menu-item[data-focused="true"] {
+  background-color: var(--vd-border-active);
+  color: #F8FAFC;
+}
+
+.vd-menu-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.vd-menu-sep {
+  height: 1px;
+  background-color: var(--vd-border-subtle);
+  margin: 3px 4px;
 }
 
 .vd-modal-backdrop {
@@ -151,29 +431,124 @@ body,
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: 80;
 }
 
 .vd-modal-panel {
-  width: min(640px, 92vw);
-  max-height: 80vh;
+  width: min(720px, 94vw);
+  max-height: 88vh;
   overflow-y: auto;
   background-color: var(--vd-bg-panel);
-  border: 1px solid var(--vd-border-subtle);
-  border-radius: 8px;
-  padding: 16px;
+  border: 1px solid var(--vd-border-strong);
+  border-radius: 3px;
+  padding: 12px;
+  color: var(--vd-text-primary);
 }
 
+/* Tree Rows & Accordions */
+.vd-tree-row {
+  height: var(--vd-row-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+  border-radius: 2px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.vd-tree-row:hover {
+  background-color: var(--vd-bg-popover);
+}
+
+.vd-tree-row[data-selected="true"] {
+  background-color: var(--vd-bg-active-row);
+}
+
+.vd-tree-row .vd-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.72;
+}
+
+.vd-tree-row:hover .vd-row-actions,
+.vd-tree-row[data-selected="true"] .vd-row-actions {
+  opacity: 1;
+}
+
+.vd-accordion-header {
+  width: 100%;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px;
+  background-color: var(--vd-bg-elevated);
+  border: none;
+  border-top: 1px solid var(--vd-border-subtle);
+  border-bottom: 1px solid var(--vd-border-subtle);
+  color: var(--vd-text-primary);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+/* Toast Stack (Bottom-Right above Status Bar) */
+.vd-toast-stack {
+  position: fixed;
+  right: 10px;
+  bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 75;
+  width: 310px;
+  pointer-events: none;
+}
+
+.vd-toast-card {
+  pointer-events: auto;
+  background-color: var(--vd-bg-popover);
+  border: 1px solid var(--vd-border-strong);
+  border-radius: 3px;
+  padding: 7px 9px;
+  font-size: 11px;
+}
+
+/* Dockview Matte Industrial Overrides */
 .dockview-theme-dark {
-  --dv-background-color: var(--vd-bg-workbench);
+  --dv-background-color: var(--vd-bg-canvas);
   --dv-group-view-background-color: var(--vd-bg-canvas);
-  --dv-tabs-and-actions-container-background-color: var(--vd-bg-panel);
-  --dv-activegroup-visiblepanel-tab-background-color: var(--vd-bg-elevated);
-  --dv-inactivegroup-visiblepanel-tab-background-color: var(--vd-bg-panel);
-  --dv-activegroup-hiddenpanel-tab-background-color: var(--vd-bg-panel);
-  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--vd-bg-panel);
+  --dv-tabs-and-actions-container-background-color: var(--vd-bg-elevated);
+  --dv-tabs-and-actions-container-height: 26px;
+  --dv-activegroup-visiblepanel-tab-background-color: var(--vd-bg-panel);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--vd-bg-elevated);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--vd-bg-elevated);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--vd-bg-elevated);
   --dv-activegroup-visiblepanel-tab-color: var(--vd-text-primary);
   --dv-inactivegroup-visiblepanel-tab-color: var(--vd-text-secondary);
   --dv-tab-divider-color: var(--vd-border-subtle);
   --dv-separator-border: var(--vd-border-subtle);
+  --dv-sash-color: var(--vd-border-subtle);
+  --dv-active-sash-color: var(--vd-border-active);
+}
+
+.dockview-theme-dark .dv-tab {
+  border-radius: 0 !important;
+  font-size: 11px !important;
+}
+
+.dockview-theme-dark .dv-tab.dv-active-tab {
+  border-top: 2px solid var(--vd-border-active) !important;
+}
+
+.dockview-theme-dark .dv-sash {
+  background-color: var(--vd-border-subtle) !important;
+}
+
+.dockview-theme-dark .dv-sash:hover {
+  background-color: var(--vd-border-active) !important;
 }

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-const lockPath = process.env.ACTIONS_LOCK_PATH || '.github/workflows/actions.lock';
+const lockPath = process.env.ACTIONS_LOCK_PATH || '.github/actions-pins.lock.json';
 const workflowsDir = process.env.WORKFLOWS_DIR || '.github/workflows';
 
 if (!fs.existsSync(lockPath)) {
@@ -58,5 +58,5 @@ if (failed) {
   console.error('\nActions lock verification FAILED.');
   process.exit(1);
 } else {
-  console.log('\nAll GitHub Action SHAs match .github/workflows/actions.lock cleanly.');
+  console.log(`\nAll GitHub Action SHAs match ${lockPath} cleanly.`);
 }

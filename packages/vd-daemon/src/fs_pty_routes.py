@@ -208,7 +208,68 @@ def _atomic_write_utf8(target: pathlib.Path, content: str) -> None:
         raise
 
 
+def _list_local_drives() -> List[Dict[str, str]]:
+    if os.name == "nt":
+        import string
+        drives = []
+        for letter in string.ascii_uppercase:
+            p = f"{letter}:\\"
+            if os.path.exists(p):
+                drives.append({"label": f"{letter}:\\", "path": p})
+        return drives
+    return [{"label": "/", "path": "/"}]
+
+
+def _quick_bookmarks() -> List[Dict[str, str]]:
+    home = pathlib.Path.home()
+    marks = [
+        {"label": "Home", "path": str(home)},
+        {"label": "Desktop", "path": str(home / "Desktop")},
+        {"label": "Documents", "path": str(home / "Documents")},
+        {"label": "Projects", "path": str(home / "VajraDhirProjects")},
+        {"label": "Workspace", "path": str(_ensure_active_workspace())},
+    ]
+    return [m for m in marks if pathlib.Path(m["path"]).exists() or m["label"] in ("Home", "Workspace")]
+
+
 def handle_fs_pty_get(handler: Any, path: str, full_path: str = "", con: Optional[sqlite3.Connection] = None) -> bool:
+    if path in ("/api/v1/fs/browse", "/api/fs/browse"):
+        q = _parse_query(full_path or getattr(handler, "path", path))
+        raw_dir = urllib.parse.unquote(q.get("path", "")).strip()
+        ext_filter = [e.strip().lower() for e in q.get("ext", "").split(",") if e.strip()]
+        target = pathlib.Path(raw_dir) if raw_dir else pathlib.Path.cwd()
+        try:
+            target = target.resolve()
+        except Exception:
+            target = pathlib.Path.cwd().resolve()
+        if not target.exists() or not target.is_dir():
+            target = pathlib.Path.cwd().resolve()
+        items: List[Dict[str, Any]] = []
+        try:
+            for child in sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+                if child.name.startswith(".") and child.name not in (".vd-plugins",):
+                    continue
+                is_dir = child.is_dir()
+                if not is_dir and ext_filter and child.suffix.lower() not in ext_filter:
+                    continue
+                items.append({
+                    "name": child.name,
+                    "path": str(child),
+                    "kind": "dir" if is_dir else "file",
+                    "ext": child.suffix.lower(),
+                })
+        except PermissionError:
+            pass
+        parent_dir = str(target.parent) if target.parent != target else ""
+        _send_json(handler, 200, {
+            "current_path": str(target),
+            "parent_path": parent_dir,
+            "drives": _list_local_drives(),
+            "bookmarks": _quick_bookmarks(),
+            "entries": items[:300],
+        })
+        return True
+
     if path in ("/api/v1/fs/tree", "/api/fs/tree"):
         root = ensure_ide_starter_files(_ensure_active_workspace())
         entries: List[Dict[str, Any]] = []
@@ -256,6 +317,24 @@ def handle_fs_pty_get(handler: Any, path: str, full_path: str = "", con: Optiona
 
 
 def handle_fs_pty_post(handler: Any, path: str, req: Dict[str, Any], con: Optional[sqlite3.Connection] = None) -> bool:
+    if path in ("/api/v1/fs/mkdir", "/api/fs/mkdir"):
+        parent_raw = str(req.get("parent_path") or "").strip()
+        folder_name = str(req.get("name") or "").strip()
+        if not folder_name or any(sep in folder_name for sep in ("/", "\\", "..")) or "\x00" in folder_name:
+            _send_json(handler, 400, {"error": "INVALID_FOLDER_NAME"})
+            return True
+        parent_dir = (pathlib.Path(parent_raw) if parent_raw else pathlib.Path.cwd()).resolve()
+        if not parent_dir.exists() or not parent_dir.is_dir():
+            _send_json(handler, 404, {"error": "PARENT_DIR_NOT_FOUND"})
+            return True
+        new_dir = (parent_dir / folder_name).resolve()
+        if not new_dir.is_relative_to(parent_dir):
+            _send_json(handler, 403, {"error": "PATH_TRAVERSAL_BLOCKED"})
+            return True
+        new_dir.mkdir(parents=True, exist_ok=True)
+        _send_json(handler, 200, {"created": True, "path": str(new_dir), "name": new_dir.name})
+        return True
+
     if path in ("/api/v1/fs/write", "/api/fs/write"):
         root = ensure_ide_starter_files(_ensure_active_workspace())
         rel = str(req.get("path", ""))

@@ -286,6 +286,8 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
 
+  packages/tracespace-vendor: {}
+
   packages/ui-apps: {}
 
   packages/webgpu-cad-engine:

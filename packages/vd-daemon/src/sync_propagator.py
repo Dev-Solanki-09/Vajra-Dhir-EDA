@@ -361,6 +361,7 @@ def commit_tx(con: sqlite3.Connection, req: Dict[str, Any]) -> tuple[int, Dict[s
         post_files = _snapshot_project_files(proj_dir)
         post_entities = _current_entities(con)
         _UNDO_STACK.append({
+            "actor": actor_kind,
             "summary": summary,
             "proj_dir": str(proj_dir),
             "pre_files": pre_files,
@@ -369,12 +370,15 @@ def commit_tx(con: sqlite3.Connection, req: Dict[str, Any]) -> tuple[int, Dict[s
             "post_entities": post_entities,
             "pre_freshness": dict(_STAGE_FRESHNESS),
         })
+        if len(_UNDO_STACK) > 50:
+            del _UNDO_STACK[:-50]
         _REDO_STACK.clear()
 
         canonical = build_canonical_state(con)
         delta = {
             "type": "STATE_DELTA",
             "rev_id": new_rev,
+            "actor": actor_kind,
             "origin_pane_id": origin_pane_id,
             "summary": summary,
             "changed_entities": sorted(set(changed_entities)),

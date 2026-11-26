@@ -1,6 +1,6 @@
 {
   "name": "@vajradhir/webgpu-cad-engine",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "description": "High-performance WebGPU 2D/3D PCB canvas renderer with WebGL2 and Canvas2D fallback for Vajra-Dhīr EDA",
   "main": "dist/index.js",

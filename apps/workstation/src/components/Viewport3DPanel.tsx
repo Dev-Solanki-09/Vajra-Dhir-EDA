@@ -230,9 +230,20 @@ export const Viewport3DPanel: React.FC = () => {
       return;
     }
 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.setClearColor(0x0b0e14, 1);
     renderer.localClippingEnabled = true;
+
+    const onContextLost = (ev: Event) => {
+      ev.preventDefault();
+      setStatusNote('WebGL context paused cleanly (waiting for GPU restore)');
+    };
+    const onContextRestored = () => {
+      if (activeCamRef.current) renderer.render(scene, activeCamRef.current);
+      setStatusNote('WebGL context restored');
+    };
+    canvas.addEventListener('webglcontextlost', onContextLost);
+    canvas.addEventListener('webglcontextrestored', onContextRestored);
     const width = Math.max(container.clientWidth, 320);
     const height = Math.max(container.clientHeight, 260);
     renderer.setSize(width, height, false);
@@ -385,12 +396,19 @@ export const Viewport3DPanel: React.FC = () => {
 
     return () => {
       cancelAnimationFrame(rafId);
+      canvas.removeEventListener('webglcontextlost', onContextLost);
+      canvas.removeEventListener('webglcontextrestored', onContextRestored);
       resizeObserver.disconnect();
       tc.detach();
       tc.dispose();
       orbit.dispose();
       disposeObjectTree(boardRoot);
       renderer.dispose();
+      try {
+        renderer.forceContextLoss();
+      } catch {
+        /* ignore unsupported drivers */
+      }
       rendererRef.current = null;
     };
   }, []);
