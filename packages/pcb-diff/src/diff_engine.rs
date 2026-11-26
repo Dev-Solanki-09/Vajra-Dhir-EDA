@@ -117,7 +117,7 @@ impl PcbDiffEngine {
         }
 
         // 2. Check for added components
-        for (refdes, _) in &comp_b_map {
+        for refdes in comp_b_map.keys() {
             if !comp_a_map.contains_key(refdes) {
                 comp_changes.push(ComponentChange {
                     refdes: refdes.clone(),
@@ -183,14 +183,15 @@ impl PcbDiffEngine {
     }
 
     /// Clean-room MIT trace + layer delta diff across two i64 nanometer PCB revisions.
+    #[allow(clippy::type_complexity)]
     pub fn compute_trace_and_layer_diff(
         rev_a_label: &str,
         traces_a: &[(String, String, Nm, Nm, Nm, Nm, Nm)], // (id, layer, x1, y1, x2, y2, width)
         rev_b_label: &str,
         traces_b: &[(String, String, Nm, Nm, Nm, Nm, Nm)],
     ) -> PcbDiffReport {
-        let mut by_id_a: BTreeMap<&str, &(String, String, Nm, Nm, Nm, Nm, Nm)> = BTreeMap::new();
-        let mut by_id_b: BTreeMap<&str, &(String, String, Nm, Nm, Nm, Nm, Nm)> = BTreeMap::new();
+        let mut by_id_a = BTreeMap::new();
+        let mut by_id_b = BTreeMap::new();
         let mut layers: BTreeSet<String> = BTreeSet::new();
 
         for t in traces_a {

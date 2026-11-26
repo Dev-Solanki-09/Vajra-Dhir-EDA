@@ -232,17 +232,17 @@ impl WireHarnessCompiler {
                         cur_id = trimmed.trim_end_matches(':').to_string();
                         conn_order.push(cur_id.clone());
                         conn_pins.entry(cur_id.clone()).or_insert_with(|| (String::from("GENERIC"), 0));
-                    } else if let Some((k, v)) = trimmed.split_once(':') {
-                        if let Some(entry) = conn_pins.get_mut(&cur_id) {
-                            let val = v.trim();
-                            match k.trim() {
-                                "type" => entry.0 = val.to_string(),
-                                "pins" => {
-                                    let count = val.trim_matches(&['[', ']'][..]).split(',').filter(|s| !s.trim().is_empty()).count();
-                                    entry.1 = count;
-                                }
-                                _ => {}
+                    } else if let Some((k, v)) = trimmed.split_once(':')
+                        && let Some(entry) = conn_pins.get_mut(&cur_id)
+                    {
+                        let val = v.trim();
+                        match k.trim() {
+                            "type" => entry.0 = val.to_string(),
+                            "pins" => {
+                                let count = val.trim_matches(&['[', ']'][..]).split(',').filter(|s| !s.trim().is_empty()).count();
+                                entry.1 = count;
                             }
+                            _ => {}
                         }
                     }
                 }
@@ -250,17 +250,17 @@ impl WireHarnessCompiler {
                     if indent == 2 && trimmed.ends_with(':') {
                         cur_id = trimmed.trim_end_matches(':').to_string();
                         cables.entry(cur_id.clone()).or_default();
-                    } else if let Some((k, v)) = trimmed.split_once(':') {
-                        if let Some(cab) = cables.get_mut(&cur_id) {
-                            let val = v.trim();
-                            match k.trim() {
-                                "gauge" => cab.gauge = Some(parse_awg(val)),
-                                "length" => cab.length_m = val.parse::<f64>().unwrap_or(0.25),
-                                "colors" => {
-                                    cab.colors = val.trim_matches(&['[', ']'][..]).split(',').map(parse_color).collect();
-                                }
-                                _ => {}
+                    } else if let Some((k, v)) = trimmed.split_once(':')
+                        && let Some(cab) = cables.get_mut(&cur_id)
+                    {
+                        let val = v.trim();
+                        match k.trim() {
+                            "gauge" => cab.gauge = Some(parse_awg(val)),
+                            "length" => cab.length_m = val.parse::<f64>().unwrap_or(0.25),
+                            "colors" => {
+                                cab.colors = val.trim_matches(&['[', ']'][..]).split(',').map(parse_color).collect();
                             }
+                            _ => {}
                         }
                     }
                 }
@@ -276,27 +276,27 @@ impl WireHarnessCompiler {
                                 pending_cable = Some(node_name);
                             } else if pending_from.is_none() {
                                 pending_from = Some(node_name);
-                            } else if let (Some(from_c), Some(cab_name)) = (pending_from.take(), pending_cable.take()) {
-                                if let Some(cab) = cables.get(&cab_name) {
-                                    let pin_cnt = conn_pins.get(&from_c).map(|v| v.1).unwrap_or(1).max(cab.colors.len());
-                                    let len_mm = (cab.length_m * 1000.0).max(1.0);
-                                    let gauge = cab.gauge.unwrap_or(AwgGauge::Awg24);
-                                    for p in 1..=pin_cnt {
-                                        let color = cab.colors.get(p - 1).copied().unwrap_or(Iec60757Color::White);
-                                        wires_out.push(HarnessWire {
-                                            signal_name: format!("{}_{}", cab_name, p),
-                                            from_connector: from_c.clone(),
-                                            from_pin: p,
-                                            to_connector: node_name.clone(),
-                                            to_pin: p,
-                                            gauge,
-                                            color,
-                                            length_mm: len_mm,
-                                            rated_current_a: 1.0,
-                                            is_twisted_pair: false,
-                                            pair_partner_signal: None,
-                                        });
-                                    }
+                            } else if let (Some(from_c), Some(cab_name)) = (pending_from.take(), pending_cable.take())
+                                && let Some(cab) = cables.get(&cab_name)
+                            {
+                                let pin_cnt = conn_pins.get(&from_c).map(|v| v.1).unwrap_or(1).max(cab.colors.len());
+                                let len_mm = (cab.length_m * 1000.0).max(1.0);
+                                let gauge = cab.gauge.unwrap_or(AwgGauge::Awg24);
+                                for p in 1..=pin_cnt {
+                                    let color = cab.colors.get(p - 1).copied().unwrap_or(Iec60757Color::White);
+                                    wires_out.push(HarnessWire {
+                                        signal_name: format!("{}_{}", cab_name, p),
+                                        from_connector: from_c.clone(),
+                                        from_pin: p,
+                                        to_connector: node_name.clone(),
+                                        to_pin: p,
+                                        gauge,
+                                        color,
+                                        length_mm: len_mm,
+                                        rated_current_a: 1.0,
+                                        is_twisted_pair: false,
+                                        pair_partner_signal: None,
+                                    });
                                 }
                             }
                         }
