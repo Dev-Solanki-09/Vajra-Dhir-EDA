@@ -11,6 +11,10 @@ export default defineConfig({
   resolve: {
     alias: {
       'occt-import-js': occtRoot,
+      '@tracespace/identify-layers': path.resolve(__dirname, '../../vendor/ring1-refs/tracespace/packages/identify-layers/src/index.ts'),
+      '@tracespace/parser': path.resolve(__dirname, '../../vendor/ring1-refs/tracespace/packages/parser/src/index.ts'),
+      '@tracespace/plotter': path.resolve(__dirname, '../../vendor/ring1-refs/tracespace/packages/plotter/src/index.ts'),
+      'moo': path.resolve(__dirname, './src/shims/moo.ts'),
     },
   },
   worker: {

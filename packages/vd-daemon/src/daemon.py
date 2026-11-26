@@ -29,6 +29,7 @@ try:
     from .atopile_engine import handle_ato_get, handle_ato_post
     from .cosim_routes import handle_cosim_get, handle_cosim_post
     from .ee_audit_routes import handle_ee_get, handle_ee_post
+    from .fab_routes import handle_fab_get, handle_fab_post
     from .fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
     from .spice_routes import handle_spice_get, handle_spice_post
     from .kg_routes import handle_kg_get, handle_kg_post
@@ -55,6 +56,7 @@ except ImportError:
     from atopile_engine import handle_ato_get, handle_ato_post
     from cosim_routes import handle_cosim_get, handle_cosim_post
     from ee_audit_routes import handle_ee_get, handle_ee_post
+    from fab_routes import handle_fab_get, handle_fab_post
     from fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
     from spice_routes import handle_spice_get, handle_spice_post
     from kg_routes import handle_kg_get, handle_kg_post
@@ -1046,6 +1048,8 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                     return
                 if handle_mcad_get(self, path, full_path=self.path, con=self.con):
                     return
+                if handle_fab_get(self, path, full_path=self.path, con=self.con):
+                    return
             if not path.startswith("/api/") and not path.startswith("/stitch/") and not path.startswith("/ws/"):
                 asset = resolve_studio_static_asset(path)
                 if asset["status"] == 200:
@@ -1890,6 +1894,9 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             return
 
         elif handle_mcad_post(self, path, req, self.con):
+            return
+
+        elif handle_fab_post(self, path, req, self.con):
             return
 
         elif handle_x1_post(self, path, req):

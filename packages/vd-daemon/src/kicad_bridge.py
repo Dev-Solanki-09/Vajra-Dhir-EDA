@@ -1469,6 +1469,39 @@ class KiCad10Bridge:
             "cas_artifact": manifest_cas,
         }
 
+    def export_gerbers_with_contents(self, pcb_path: pathlib.Path) -> Dict[str, Any]:
+        pcb_path = pathlib.Path(pcb_path).resolve()
+        if not pcb_path.is_file():
+            raise FileNotFoundError(f"PCB file not found: {pcb_path}")
+        pcb_sha = sha256_text(pcb_path.read_text(encoding="utf-8", errors="replace"))
+        with tempfile.TemporaryDirectory(prefix="vd_gerb_txt_") as tmp:
+            out_dir = pathlib.Path(tmp) / "fab"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            g_res = _run_kicad_cli(["pcb", "export", "gerbers", "-o", str(out_dir) + os.sep, str(pcb_path)])
+            if g_res["returncode"] != 0:
+                raise RuntimeError(f"kicad-cli gerbers failed: {g_res['stderr']}")
+            d_res = _run_kicad_cli(["pcb", "export", "drill", "-o", str(out_dir) + os.sep, str(pcb_path)])
+            if d_res["returncode"] != 0:
+                raise RuntimeError(f"kicad-cli drill failed: {d_res['stderr']}")
+            files_out = []
+            for f in sorted(out_dir.iterdir()):
+                if f.is_file() and f.stat().st_size > 0 and f.suffix.lower() in (".gbr", ".drl", ".gko", ".gm1", ".gm2", ".gtl", ".gbl", ".gts", ".gbs", ".gto", ".gbo", ".gtp", ".gbp", ".g1", ".g2", ".g3", ".g4"):
+                    meta = self.cas.put_file(f)
+                    files_out.append({
+                        "filename": f.name,
+                        "sha256": meta["sha256"],
+                        "bytes": meta.get("bytes", meta.get("size_bytes", f.stat().st_size)),
+                        "content": f.read_text(encoding="utf-8", errors="replace"),
+                    })
+        return {
+            "success": len(files_out) > 0,
+            "channel": "C:kicad-cli",
+            "kicad_version": g_res["kicad_version"],
+            "pcb_sha256": pcb_sha,
+            "file_count": len(files_out),
+            "files": files_out,
+        }
+
     def export_ipc2581(self, pcb_path: pathlib.Path) -> Dict[str, Any]:
         pcb_path = pathlib.Path(pcb_path).resolve()
         if not pcb_path.is_file():

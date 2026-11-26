@@ -230,6 +230,9 @@ const LazySimulationLabPanel = React.lazy(() =>
 const LazyCosimPanel = React.lazy(() =>
   import('./CosimPanel').then((m) => ({ default: m.CosimPanel }))
 );
+const LazyGerberInspectorPanel = React.lazy(() =>
+  import('./GerberInspectorPanel').then((m) => ({ default: m.GerberInspectorPanel }))
+);
 
 const DockViewport3DPanel: React.FC<IDockviewPanelProps> = () => (
   <PanelErrorBoundary panelTitle="Viewport 3D (STEP)">
@@ -319,6 +322,16 @@ const DockCosimPanel: React.FC<IDockviewPanelProps> = () => (
   </PanelErrorBoundary>
 );
 
+const DockGerberInspectorPanel: React.FC<IDockviewPanelProps> = () => (
+  <PanelErrorBoundary panelTitle="Gerber Fab (P15)">
+    <div style={{ padding: 8, height: '100%', backgroundColor: 'var(--vd-bg-canvas)', overflowY: 'auto' }}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading tracespace Gerber Worker...</div>}>
+        <LazyGerberInspectorPanel autoLoad={false} />
+      </Suspense>
+    </div>
+  </PanelErrorBoundary>
+);
+
 const DockPcb2DPanel: React.FC<IDockviewPanelProps> = () => {
   const ctx = React.useContext(ShellContext);
   return (
@@ -360,6 +373,7 @@ const DOCK_COMPONENTS = {
   eeAudit: DockEeAuditPanel,
   simLab: DockSimulationLabPanel,
   cosimLab: DockCosimPanel,
+  gerberInspector: DockGerberInspectorPanel,
   explorer: ExplorerPanel,
   inspector: InspectorPanel,
 };
@@ -565,6 +579,12 @@ export const WorkstationShell: React.FC = () => {
       id: 'cosim_panel',
       component: 'cosimLab',
       title: 'Renode Co-Sim (P11)',
+      position: { referencePanel: center, direction: 'within' },
+    });
+    event.api.addPanel({
+      id: 'gerber_panel',
+      component: 'gerberInspector',
+      title: 'Gerber Fab (P15)',
       position: { referencePanel: center, direction: 'within' },
     });
     center.api.setActive();

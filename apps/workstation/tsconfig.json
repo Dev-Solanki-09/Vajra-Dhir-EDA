@@ -7,7 +7,13 @@
     "jsx": "react-jsx",
     "strict": true,
     "noEmit": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "@tracespace/identify-layers": ["../../vendor/ring1-refs/tracespace/packages/identify-layers/src/index.ts"],
+      "@tracespace/parser": ["../../vendor/ring1-refs/tracespace/packages/parser/src/index.ts"],
+      "@tracespace/plotter": ["../../vendor/ring1-refs/tracespace/packages/plotter/src/index.ts"],
+      "moo": ["./src/shims/moo.ts"]
+    }
   },
   "include": ["src"]
 }
