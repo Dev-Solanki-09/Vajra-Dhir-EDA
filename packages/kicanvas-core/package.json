@@ -1,6 +1,6 @@
 {
   "name": "@vajradhir/kicanvas-core",
-  "version": "0.0.5",
+  "version": "0.0.2",
   "type": "module",
   "license": "MIT",
   "description": "Extracted MIT-licensed KiCanvas TypeScript/WebGL2+Canvas2D schematic and PCB rendering engine for Vajra-Dhir EDA",

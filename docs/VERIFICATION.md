@@ -1,4 +1,4 @@
-# Verification Guide — Vajra-Dhīr EDA (`v0.0.5`)
+# Verification Guide — Vajra-Dhīr EDA (`v0.0.2`)
 
 > **Physical Hardware Status:** `0/3 Physically Fabricated` (`NOT_FABRICATED_0_OF_3`). Reference boards in `designs/` are software-verified blueprints pending factory fabrication and bench testing.
 

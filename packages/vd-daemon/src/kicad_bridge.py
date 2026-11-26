@@ -675,7 +675,7 @@ def sync_hwir_to_kicad_pcb(
             SAtom("kicad_pcb"),
             [SAtom("version"), SAtom("20260101")],
             [SAtom("generator"), SStr("vajra-dhir-eda")],
-            [SAtom("generator_version"), SStr("0.0.5")],
+            [SAtom("generator_version"), SStr("0.0.2")],
             [SAtom("general"), [SAtom("thickness"), SAtom(nm_to_mm_str(board[3]))]],
             [SAtom("layers"), [SAtom("0"), SStr("F.Cu"), SAtom("signal")], [SAtom("31"), SStr("B.Cu"), SAtom("signal")], [SAtom("44"), SStr("Edge.Cuts"), SAtom("user")]],
             [SAtom("net"), SAtom("0"), SStr("")],

@@ -1,6 +1,6 @@
 [project]
 name = "vajra-dhir-eda-py"
-version = "0.0.5"
+version = "0.0.2"
 description = "Vajra-Dhīr EDA — Python Neuro-Symbolic Brain Workspace"
 requires-python = ">=3.14,<3.15"
 license = { text = "MIT" }

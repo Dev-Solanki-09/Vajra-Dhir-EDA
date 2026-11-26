@@ -1,4 +1,4 @@
-# Threat Model — Vajra-Dhīr EDA (`v0.0.5`)
+# Threat Model — Vajra-Dhīr EDA (`v0.0.2`)
 
 > **Framework:** STRIDE + OWASP Top 10 for Agentic AI (`ASI01`–`ASI10`)
 

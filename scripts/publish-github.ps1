@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param (
     [string]$RepoName = "vajra-dhir-eda"
 )
@@ -55,13 +55,13 @@ gh repo edit $FullRepo `
 
 gh api -X PATCH "repos/$FullRepo" -f web_commit_signoff_required=true
 
-Write-Host "=== 5. Tag & Publish v0.0.1 Release ===" -ForegroundColor Cyan
-git tag -a v0.0.1 -m "Vajra-Dhīr EDA — Frozen Architecture Standard (VD-SAD-001 Rev 2.0)"
-git push origin v0.0.1
-gh release create v0.0.1 `
+Write-Host "=== 5. Tag & Publish v0.0.2 Release ===" -ForegroundColor Cyan
+git tag -a v0.0.2 -m "Vajra-Dhīr EDA v0.0.2 — Frozen Architecture Standard & Milestone 1 Build"
+git push origin v0.0.2
+gh release create v0.0.2 `
     --repo $FullRepo `
-    --title "v0.0.1 — Frozen VD-SAD-001 Specification & Milestone 1 Launch" `
-    --notes "Initial public architecture release of Vajra-Dhīr EDA. Includes frozen industrial specification (VD-SAD-001 Rev 2.0), canonical SQLite WAL HW-IR DDL with human-lock triggers, MCP v2 / WorkerContract JSON schemas, STRIDE + OWASP Agentic AI threat model, and Milestone 1 roadmap."
+    --title "v0.0.2 — Frozen VD-SAD-001 Specification & Milestone 1 Build" `
+    --notes "Public release v0.0.2 of Vajra-Dhīr EDA. Includes canonical SQLite WAL HW-IR DDL with human-lock triggers, MCP v2 / WorkerContract / Plugin JSON schemas, STRIDE + OWASP Agentic AI threat model, local workstation IDE, and software-verified Milestone 1 blueprints (0/3 physically fabricated)."
 
 Write-Host "=== 6. Live Repository Ready ===" -ForegroundColor Green
 Write-Host "LIVE AT: https://github.com/$FullRepo" -ForegroundColor Green

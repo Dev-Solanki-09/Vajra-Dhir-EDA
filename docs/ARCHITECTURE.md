@@ -1,4 +1,4 @@
-# Architecture Overview — Vajra-Dhīr EDA (`v0.0.5`)
+# Architecture Overview — Vajra-Dhīr EDA (`v0.0.2`)
 
 Vajra-Dhīr EDA is a local-first hardware and firmware co-design workspace combining a Rust geometry/state kernel, a Python neuro-symbolic verification layer, and a web-based workstation UI served strictly on `127.0.0.1:41900`.
 

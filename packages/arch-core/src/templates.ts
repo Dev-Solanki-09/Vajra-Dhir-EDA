@@ -101,7 +101,7 @@ export function instantiateCompositeTemplate(templateId: string, existingIds: Se
 export function createGoldenBuckArchitecture(): SystemArchitecture {
   return {
     project: 'golden-buck-mcu',
-    version: '0.0.5',
+    version: '0.0.2',
     purpose: 'USB-C PD 12V -> 3.3V Sync Buck Regulator + MCU/PD Controller Carrier',
     requirements: [
       'Deliver regulated +3V3_OUT rail up to 3.0A with < 40 mVpp ripple',

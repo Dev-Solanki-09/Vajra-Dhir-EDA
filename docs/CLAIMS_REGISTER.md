@@ -1,4 +1,4 @@
-# Claims Register — Vajra-Dhīr EDA (`v0.0.5`)
+# Claims Register — Vajra-Dhīr EDA (`v0.0.2`)
 
 > **Hardware Status:** `Software Reference Blueprints (0/3 Physically Fabricated)`. Reference designs in `designs/` are verified through software DRC, formal constraints, and simulation harnesses; physical bench testing has not yet been performed.
 
@@ -12,3 +12,6 @@
 | `CLM-006` | Workstation & Agent API | Loopback `apps/workstation`, `< 16 ms` `CrossProbeBus`, split entry JS `< 400 KB`, SSE agent proposals with `409` lock protection. | `scripts/test-p0-perf-budgets.py`, `scripts/test-g6c-agent-and-workspaces.py`, `scripts/test-g6d-e2e-golden-journeys.py` | 2026-11-25 |
 | `CLM-007` | Constraints, BOM & Collab | `vd-constraint-mgr`, `vd-bom-analytics`, DFM/DFA/PI scorecard, `@vajradhir/collab` (`Yjs` peer lock guard + `vd.hw.lock.v1`). | `scripts/test-x1-constraints-bom.py`, `scripts/test-x2-collab-hwlock.mjs` | 2026-11-25 |
 | `CLM-008` | Co-Sim, VCD, Silicon & 3D | Pure-MIT IEEE-1364 VCD parser, Ring-2 `network_mode: none` enforcement, `vd-silicon-pack`, integer `i64` nm MCAD 3D clearance DRC. | `scripts/test-x3-sim-vcd.py`, `scripts/test-x4-silicon-mcad.py` | 2026-11-25 |
+| `CLM-009` | Physics, Fab Pack & Dossier | 2.5D DC PI (`padne`), 3D MCAD Thermal (`CadQuery` + `Gmsh`/`ElmerFEM`), MIT `tracespace` 15-layer Gerber preview, IPC-2581 fab bundle with fail-closed Gate-8 signoff (`403`), and Typst 3-page bring-up PDF dossier. | `scripts/test-p13-padne-workstation.py`, `scripts/test-p14-mcad-workstation.py`, `scripts/test-p15-tracespace-workstation.py`, `scripts/test-p16-fab-pack.py`, `scripts/test-p17-typst-dossier.py` | 2026-11-26 |
+| `CLM-010` | Live MCP v2, ACP & Plugins | Unified 12-verb MCP v2 (`--stdio` + Streamable HTTP `/mcp`), `/ws/ui-control` bridge, ACP broker (`OFF`/`COPILOT`/`AUTONOMOUS`) with dual checkpoints, and 2-tier capability-gated plugin host (`requested ∩ policy_granted`). | `scripts/test-p18-acp-autonomous.py`, `scripts/test-live-mcp-harness-plugins.py` | 2026-11-26 |
+| `CLM-011` | Omnidirectional Sync & UI | `zustand` canonical store with 60 FPS transient previews + `rev_id` anti-loop propagation, multi-window BroadcastChannel/`/ws/sync`, KiCanvas RAF lifecycle guard, and Matte Industrial Precision workstation chrome (`125.1 KB` entry bundle `< 400 KB`). | `scripts/test-omnidirectional-sync.py`, `scripts/test-production-polish.py`, `scripts/test-enterprise-essentials.py`, `scripts/ultimate-xray.py` | 2026-11-26 |

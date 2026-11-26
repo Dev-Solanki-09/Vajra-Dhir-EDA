@@ -77,13 +77,13 @@ gh api -X POST "repos/${FULL_REPO}/rulesets" --input - <<'EOF' >/dev/null
 }
 EOF
 
-echo "=== 6. Tag & Publish v0.0.1 Release ==="
-git tag -a v0.0.1 -m "Vajra-Dhīr EDA — Frozen Architecture Standard (VD-SAD-001 Rev 2.0)"
-git push origin v0.0.1
-gh release create v0.0.1 \
+echo "=== 6. Tag & Publish v0.0.2 Release ==="
+git tag -a v0.0.2 -m "Vajra-Dhīr EDA v0.0.2 — Frozen Architecture Standard & Milestone 1 Build"
+git push origin v0.0.2
+gh release create v0.0.2 \
   --repo "$FULL_REPO" \
-  --title "v0.0.1 — Frozen VD-SAD-001 Specification & Milestone 1 Launch" \
-  --notes "Initial public architecture release of **Vajra-Dhīr EDA**. Includes frozen industrial specification (\`VD-SAD-001 Rev 2.0\`), canonical SQLite WAL \`HW-IR\` DDL with human-lock triggers, MCP v2 / WorkerContract JSON schemas, STRIDE + OWASP Agentic AI threat model, and Milestone 1 (\`T1.01\`–\`T1.20\`) roadmap."
+  --title "v0.0.2 — Frozen VD-SAD-001 Specification & Milestone 1 Build" \
+  --notes "Public release **v0.0.2** of **Vajra-Dhīr EDA**. Includes canonical SQLite WAL \`HW-IR\` DDL with human-lock triggers, MCP v2 / WorkerContract / Plugin JSON schemas, STRIDE + OWASP Agentic AI threat model, local workstation IDE, and software-verified Milestone 1 blueprints (\`0/3\` physically fabricated)."
 
 echo "=== 7. Watch First CI Run Turn Green ==="
 gh run watch --repo "$FULL_REPO" || true

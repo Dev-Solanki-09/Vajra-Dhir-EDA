@@ -1,6 +1,6 @@
 [package]
 name = "vd-cad-geom"
-version = "0.0.5"
+version = "0.0.2"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Deterministic Manual CAD Geometry Engine: R-Tree Indexing, Integer Polygon Booleans & Polyline Offsetting"

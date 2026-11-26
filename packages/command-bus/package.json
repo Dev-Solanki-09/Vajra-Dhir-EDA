@@ -1,6 +1,6 @@
 {
   "name": "@vajradhir/command-bus",
-  "version": "0.0.5",
+  "version": "0.0.2",
   "description": "Unified Deterministic Command Bus enforcing the Same-Hands Law for Vajra-Dhīr EDA",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

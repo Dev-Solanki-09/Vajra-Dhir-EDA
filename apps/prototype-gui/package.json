@@ -1,6 +1,6 @@
 {
   "name": "@vajradhir/prototype-gui",
-  "version": "0.0.5",
+  "version": "0.0.2",
   "private": true,
   "type": "module",
   "license": "MIT",

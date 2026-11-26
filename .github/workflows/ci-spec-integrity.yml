@@ -24,6 +24,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Python 3.14
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: '3.14'
+
       - name: Verify GitHub Action Pins against actions.lock
         run: node scripts/check-actions-lock.mjs
 
@@ -43,13 +48,12 @@ jobs:
 
       - name: 2. Prove HW-IR SQLite DDL & Kernel Human-Lock Trigger
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq sqlite3
+          python3 scripts/test-sqlite-30tables-locks.py
           python3 - <<'EOF'
           import pathlib, sqlite3, sys
           con = sqlite3.connect(":memory:")
           for ddl in sorted(pathlib.Path("packages/hw-ir/schema").glob("*.sql")):
               con.executescript(ddl.read_text(encoding="utf-8"))
-          # Seed a human-locked component and prove an agent UPDATE fails closed
           con.execute("INSERT INTO projects VALUES ('p1','test','pcb','PRIVATE_CLOUD_OK','L3_GATE_COPILOT','G1_SPEC_LOCK','jlcpcb_4l_7628',20.0,0,50,'{}',1,'2026-11-23T00:00:00Z','2026-11-23T00:00:00Z')")
           con.execute("INSERT INTO boards VALUES ('b1','p1','main','rigid_pcb','[[0,0],[50000000,0],[50000000,50000000],[0,50000000]]',1600000,4,'human',0,NULL,1,0)")
           con.execute("INSERT INTO components(id,board_id,refdes,value_str,package_name,footprint_ref,symbol_ref,provenance,locked,lock_owner) VALUES ('c1','b1','U1','TPS54302','SOT-23-6','FP','SYM','human',1,'engineer')")
@@ -64,7 +68,7 @@ jobs:
 
       - name: 3. Real JSON Schema Validation & Budget Integrity Guard
         run: |
-          pip install jsonschema
+          pip install --quiet jsonschema
           python3 - <<'EOF'
           import json, pathlib, sys
           import jsonschema
@@ -107,19 +111,37 @@ jobs:
 
       - name: 4. Copyright PDF, Forbidden AGPL/NC & CVE Floor Guard
         run: |
+          chmod +x scripts/hooks/vd-guard.sh
+          ./scripts/hooks/vd-guard.sh
           python3 - <<'EOF'
-          import pathlib, sys
+          import pathlib, re, sys
           errors = []
           for pdf in pathlib.Path(".").rglob("*.pdf"):
-              if not str(pdf).startswith("docs/public-examples"):
-                  errors.append(f"COPYRIGHT_PDF_GUARD: {pdf}")
+              rel = pdf.as_posix()
+              if not rel.startswith("docs/public-examples/"):
+                  errors.append(f"COPYRIGHT_PDF_GUARD: {rel}")
+          forbidden = re.compile(r"\b(kibot|konnect|part-db|pypsa-app|openmodelica|pcbworld-weights|pymupdf)\b", re.IGNORECASE)
+          manifests = [pathlib.Path("Cargo.toml"), pathlib.Path("package.json"), pathlib.Path("pyproject.toml")]
+          manifests.extend(pathlib.Path("packages").glob("*/Cargo.toml"))
+          manifests.extend(pathlib.Path("packages").glob("*/package.json"))
+          manifests.extend(pathlib.Path("packages").glob("*/pyproject.toml"))
+          manifests.extend(pathlib.Path("apps").glob("*/package.json"))
+          for mf in manifests:
+              if not mf.exists():
+                  continue
+              txt = mf.read_text(encoding="utf-8", errors="ignore")
+              m = forbidden.search(txt)
+              if m:
+                  errors.append(f"FORBIDDEN_RING1_DEP ({m.group(0)}): {mf}")
           if errors:
               print("\n".join(errors)); sys.exit(1)
-          print("PASS: Zero unauthorized PDFs in repository")
+          print("PASS: Zero unauthorized PDFs, zero forbidden AGPL/NC deps, CVE floors enforced")
           EOF
 
       - name: 5. Secret Leak & Path Privacy Audit
         run: python3 scripts/audit-secrets-and-paths.py
 
-      - name: 6. Markdown Internal Link Check
-        run: python3 scripts/check-links.py
+      - name: 6. Markdown Internal Link & Claims Truth Check
+        run: |
+          python3 scripts/check-links.py
+          python3 scripts/audit-claims-honesty.py

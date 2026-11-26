@@ -1,6 +1,6 @@
 [package]
 name = "vd-wire-harness"
-version = "0.0.5"
+version = "0.0.2"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Pure-MIT Declarative Cable, Wire Harness & Multi-Board Interconnect Compiler for Vajra-Dhīr EDA"

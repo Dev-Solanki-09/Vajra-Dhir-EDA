@@ -22,7 +22,7 @@ function parseList(raw: string): string[] {
 export function serializeSystemYaml(arch: SystemArchitecture): string {
   const lines: string[] = [];
   lines.push(`project: ${arch.project}`);
-  lines.push(`version: ${q(arch.version || '0.0.5')}`);
+  lines.push(`version: ${q(arch.version || '0.0.2')}`);
   lines.push(`purpose: ${q(arch.purpose)}`);
   lines.push('requirements:');
   for (const req of arch.requirements) {

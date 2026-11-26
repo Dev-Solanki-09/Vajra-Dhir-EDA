@@ -1,6 +1,6 @@
 [package]
 name = "vd-placer"
-version = "0.0.5"
+version = "0.0.2"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Deterministic Multi-threaded Simulated Annealing Component Placer for Vajra-Dhīr EDA"

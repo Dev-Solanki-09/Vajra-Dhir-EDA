@@ -1,14 +1,18 @@
 <p align="center">
-  <img alt="Vajra-Dhīr EDA — Open-Source Autonomous & Manual Hardware/Software Co-Design IDE" src="assets/Vajra-Dhīr-Banner.png" width="100%">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.svg">
+    <img alt="Vajra-Dhīr EDA — Open-Source Autonomous & Manual Hardware/Software Co-Design IDE" src="assets/banner-dark.svg" width="100%">
+  </picture>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Dev-Solanki-09/vajra-dhir-eda/actions/workflows/ci-spec-integrity.yml">
-    <img src="https://github.com/Dev-Solanki-09/vajra-dhir-eda/actions/workflows/ci-spec-integrity.yml/badge.svg" alt="Spec & Security CI">
+  <a href="https://github.com/Dev-Solanki-09/Vajra-Dhir-EDA/actions/workflows/ci-spec-integrity.yml">
+    <img src="https://github.com/Dev-Solanki-09/Vajra-Dhir-EDA/actions/workflows/ci-spec-integrity.yml/badge.svg" alt="Spec & Security CI">
   </a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0%20(%2B%20MIT%20Ring--1)-10B981.svg" alt="License: Apache-2.0"></a>
-  <a href="docs/ARCHITECTURE.md"><img src="https://img.shields.io/badge/Architecture-v0.0.5-3B82F6.svg" alt="Architecture Overview"></a>
-  <a href="#project-status--radical-transparency"><img src="https://img.shields.io/badge/Stage-v0.0.5%20Software%20Baseline-F59E0B.svg" alt="Stage: v0.0.5"></a>
+  <a href="docs/ARCHITECTURE.md"><img src="https://img.shields.io/badge/Architecture-Frozen%20·%20Milestone%201%20(v0.0.2)-3B82F6.svg" alt="Architecture Frozen · Milestone 1 (v0.0.2)"></a>
+  <a href="#project-status--radical-transparency"><img src="https://img.shields.io/badge/Hardware-0%2F3%20Physically%20Fabricated-F59E0B.svg" alt="Hardware: 0/3 Physically Fabricated"></a>
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/DCO-Signed--off--by-8B5CF6.svg" alt="DCO Required"></a>
 </p>
 
@@ -26,10 +30,10 @@ We publish our complete, frozen industrial architecture and executable contracts
 
 | Layer | Current Status | Verifiable Artifacts in This Repo |
 |---|---|---|
-| **Architecture Overview (`v0.0.5`)** | **Active (`Ring 1 / Ring 2`)** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
-| **Canonical `HW-IR` Schema** | **Schema-Verified (`SQLite WAL`)** | [`packages/hw-ir/schema/001_v001_init.sql`](packages/hw-ir/schema/001_v001_init.sql), [`packages/hw-ir/schema/002_manual_perfection.sql`](packages/hw-ir/schema/002_manual_perfection.sql) |
-| **Protocols & Security Model** | **Schema-Validated** | [`schemas/mcp-v2-12verbs.json`](schemas/mcp-v2-12verbs.json), [`schemas/worker_contract.v1.json`](schemas/worker_contract.v1.json), [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) |
-| **Release Readiness (`v0.0.5`)** | **Software Reference Blueprints (0/3 Physically Fabricated · Human Signoff Pending)** | [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md), [`docs/VERIFICATION.md`](docs/VERIFICATION.md), [`docs/CLAIMS_REGISTER.md`](docs/CLAIMS_REGISTER.md) |
+| **Architecture Overview (`v0.0.2`)** | **Architecture Frozen · Milestone 1 Build (`Ring 1 / Ring 2`)** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| **Canonical `HW-IR` Schema** | **Schema-Verified (`SQLite WAL`)** | [`packages/hw-ir/schema/001_init.sql`](packages/hw-ir/schema/001_init.sql), [`packages/hw-ir/schema/002_manual_perfection.sql`](packages/hw-ir/schema/002_manual_perfection.sql) |
+| **Protocols & Security Model** | **Schema-Validated** | [`schemas/mcp-v2-12verbs.json`](schemas/mcp-v2-12verbs.json), [`schemas/worker_contract.v1.json`](schemas/worker_contract.v1.json), [`schemas/hw-plugin.v1.json`](schemas/hw-plugin.v1.json), [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) |
+| **Release Readiness (`v0.0.2`)** | **Software Reference Blueprints (0/3 Physically Fabricated · Human Signoff Pending)** | [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md), [`docs/VERIFICATION.md`](docs/VERIFICATION.md), [`docs/CLAIMS_REGISTER.md`](docs/CLAIMS_REGISTER.md) |
 | **License & Acknowledgments** | **Apache-2.0 (+ Permissive Ring 1 Crates)** | [`LICENSE`](LICENSE), [`NOTICE`](NOTICE), [`docs/ACKNOWLEDGMENTS.md`](docs/ACKNOWLEDGMENTS.md), [`docs/LICENSE_EXCEPTIONS.md`](docs/LICENSE_EXCEPTIONS.md) |
 
 ---
@@ -114,10 +118,12 @@ vajra-dhir-eda/
 │   ├── bom-analytics/                      # Assembly Variants (DNP), Extended Feeder Fee & Risk Scorer
 │   ├── silicon-pack/                       # LibreLane Pack-2C Contract & C2P2B Ball Coordinate Bridge
 │   ├── collab/                             # Yjs CRDT Projection w/ Fail-Closed Peer Locks & `hw.lock` Digest
+│   ├── vd-daemon/                          # Local Loopback Daemon (127.0.0.1:41900), Live MCP v2 & ACP Broker
+│   ├── worker-sdk/                         # Ring 2 Stateless WorkerContract Interface & Runner
 │   ├── cli/                                # Unified `vd` Developer Command Line Tool
 │   └── ui-apps/                            # Portable MCP UI (Waveform & Interactive Lenses)
 ├── apps/
-│   ├── workstation/                        # Canonical Silicon Darkroom Studio (`vd studio`, React 19, Dockview MIT, WebGL2/Canvas2D, elkjs, uPlot, Pure-MIT VCD)
+│   ├── workstation/                        # Canonical Silicon Darkroom Studio (`vd studio`, React 19, Dockview MIT, WebGL2/Canvas2D, tracespace, elkjs, uPlot, Pure-MIT VCD)
 │   └── desktop/                            # Compatibility Desktop Package Target (React 19, Dockview)
 ├── scripts/                                # 83-Gate Classified Verification & Playwright E2E Harnesses
 └── .github/workflows/                      # Automated DDL, Schema, DCO & License Firewall CI
