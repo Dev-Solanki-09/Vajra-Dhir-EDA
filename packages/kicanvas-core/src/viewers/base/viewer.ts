@@ -28,6 +28,8 @@ export abstract class Viewer extends EventTarget {
 
     protected disposables = new Disposables();
     protected setup_finished = new Barrier();
+    protected disposed = false;
+    #raf_id: number | null = null;
 
     #selected: BBox | null;
 
@@ -39,6 +41,11 @@ export abstract class Viewer extends EventTarget {
     }
 
     dispose() {
+        this.disposed = true;
+        if (this.#raf_id !== null) {
+            window.cancelAnimationFrame(this.#raf_id);
+            this.#raf_id = null;
+        }
         this.disposables.dispose();
     }
 
@@ -135,7 +142,14 @@ export abstract class Viewer extends EventTarget {
     public abstract paint(): void;
 
     protected on_draw() {
-        this.renderer.clear_canvas();
+        if (this.disposed || !this.renderer) {
+            return;
+        }
+        try {
+            this.renderer.clear_canvas();
+        } catch {
+            return;
+        }
 
         if (!this.layers) {
             return;
@@ -163,11 +177,15 @@ export abstract class Viewer extends EventTarget {
     }
 
     public draw() {
-        if (!this.viewport) {
+        if (this.disposed || !this.viewport) {
             return;
         }
 
-        window.requestAnimationFrame(() => {
+        if (this.#raf_id !== null) {
+            window.cancelAnimationFrame(this.#raf_id);
+        }
+        this.#raf_id = window.requestAnimationFrame(() => {
+            this.#raf_id = null;
             this.on_draw();
         });
     }

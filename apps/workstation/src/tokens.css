@@ -1,19 +1,19 @@
-/* Hallmark · v2.0.0 · genre: modern-minimal · brand: silicon-darkroom (kept) · shape: app screen · redesign: full · scope: app · built: the project */
-/* Silicon Darkroom unified design tokens (single source for apps/workstation) */
+/* Vajra-Dhīr EDA — Matte Industrial Precision Design Tokens */
 
-:root[data-theme="silicon-darkroom"] {
-  --vd-bg-canvas:        #0B0E14;
-  --vd-bg-workbench:     #10141C;
-  --vd-bg-panel:         #151A24;
-  --vd-bg-elevated:      #1C2331;
-  --vd-bg-backdrop:      rgba(11, 14, 20, 0.78);
-  --vd-border-subtle:    #232B3B;
+:root[data-theme="silicon-darkroom"],
+:root {
+  --vd-bg-canvas:        #141416;
+  --vd-bg-workbench:     #18181B;
+  --vd-bg-panel:         #1C1C1F;
+  --vd-bg-elevated:      #232327;
+  --vd-bg-backdrop:      rgba(20, 20, 22, 0.86);
+  --vd-border-subtle:    #2A2A2F;
   --vd-border-active:    #3B82F6;
   --vd-font-ui:          "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --vd-font-mono:        "JetBrains Mono", "Cascadia Code", ui-monospace, monospace;
-  --vd-text-primary:     #E6EDF7;
-  --vd-text-secondary:   #94A3B8;
-  --vd-text-muted:       #64748B;
+  --vd-text-primary:     #F4F4F5;
+  --vd-text-secondary:   #A1A1AA;
+  --vd-text-muted:       #71717A;
   --vd-pass:             #10B981;
   --vd-warn:             #F59E0B;
   --vd-fail:             #EF4444;

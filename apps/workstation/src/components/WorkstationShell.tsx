@@ -21,6 +21,11 @@ import { useDesignStore } from '../store/useDesignStore';
 import { registerUiControlCallbacks, startUiControlBridge } from '../store/uiControlBridge';
 import { PolishToolsModal } from './PolishToolsModal';
 import { FOCUSED_PRESETS, formatCoordUnit, usePolishStore } from '../store/usePolishStore';
+import { VajraIcon } from './VajraIcons';
+import { HomeScreen } from './HomeScreen';
+import { SettingsModal } from './SettingsModal';
+import { EnterpriseDrawers, NotificationItem } from './EnterpriseDrawers';
+import { ScrubInput } from './ScrubInput';
 
 export type ToolMode = 'select' | 'route' | 'place' | 'inspect';
 
@@ -204,10 +209,24 @@ const InspectorPanel: React.FC<IDockviewPanelProps> = () => {
           Sync rev_id: {revId} · {staleCount > 0 ? `${staleCount} STALE` : 'FRESH'}
         </p>
         {displayXNm !== undefined && (
-          <p className="vd-metric" data-testid="inspector-live-coords" style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--vd-text-secondary)' }}>
-            {activeRef}: ({(displayXNm / 1_000_000).toFixed(2)}, {(Number(displayYNm ?? 0) / 1_000_000).toFixed(2)}) mm · {displaySide ?? 'top'}
-            {activeEntity?.value ? ` · ${activeEntity.value}` : ''}
-          </p>
+          <div style={{ margin: '0 0 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <p className="vd-metric" data-testid="inspector-live-coords" style={{ margin: 0, fontSize: 11, color: 'var(--vd-text-secondary)' }}>
+              {activeRef}: ({(displayXNm / 1_000_000).toFixed(2)}, {(Number(displayYNm ?? 0) / 1_000_000).toFixed(2)}) mm · {displaySide ?? 'top'}
+              {activeEntity?.value ? ` · ${activeEntity.value}` : ''}
+            </p>
+            <ScrubInput
+              label="X Pos"
+              value={Number((displayXNm / 1_000_000).toFixed(2))}
+              onChange={(nxMm) => {
+                void useDesignStore.getState().commitTx(
+                  'inspector-scrub',
+                  [{ op: 'MOVE_COMPONENT', refdes: activeRef, x_nm: Math.round(nxMm * 1_000_000), y_nm: Number(displayYNm ?? 0) }],
+                  `Scrub ${activeRef} X=${nxMm}mm`,
+                  'human'
+                );
+              }}
+            />
+          </div>
         )}
         <p className="vd-metric" style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--vd-border-active)' }}>
           Probe: {probe.selection.entityIds.join(', ') || ctx.selectedRefdes} · Net:{' '}
@@ -444,6 +463,12 @@ export const WorkstationShell: React.FC = () => {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [showCalculators, setShowCalculators] = useState(false);
+  const [showHomeScreen, setShowHomeScreen] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [enterpriseDrawer, setEnterpriseDrawer] = useState<'none' | 'notifications' | 'search' | 'files' | 'plugins'>('none');
+  const [notifications, setNotifications] = useState<NotificationItem[]>([
+    { id: 'n1', severity: 'pass', title: 'Kernel Armed', detail: 'SQLite HW-IR WAL + _tx_actor_ctx triggers ready (NDA_AIRGAPPED)' },
+  ]);
   const [paletteQuery, setPaletteQuery] = useState('');
   const [fps, setFps] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState('Loopback 127.0.0.1:41900 ready');
@@ -569,6 +594,14 @@ export const WorkstationShell: React.FC = () => {
         setShowTemplates(false);
         setShowShortcuts(false);
         setShowPalette(false);
+        setShowHomeScreen(false);
+        setShowSettingsModal(false);
+        setEnterpriseDrawer('none');
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setEnterpriseDrawer('search');
         return;
       }
       if ((e.ctrlKey || e.metaKey) && ((e.shiftKey && e.key.toLowerCase() === 'p') || (!e.shiftKey && e.key.toLowerCase() === 'k'))) {
@@ -598,6 +631,17 @@ export const WorkstationShell: React.FC = () => {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+
+  useEffect(() => {
+    const beforeUnload = (ev: BeforeUnloadEvent) => {
+      if (dirty) {
+        ev.preventDefault();
+        ev.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => window.removeEventListener('beforeunload', beforeUnload);
+  }, [dirty]);
 
   const executeCommand = async (cmd: EdaCommand) => {
     setDirty(true);
@@ -736,6 +780,9 @@ export const WorkstationShell: React.FC = () => {
       <div className="vd-shell">
         <header className="vd-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button type="button" data-testid="topbar-home-btn" className="vd-btn" style={{ minHeight: 26, padding: '2px 8px' }} onClick={() => setShowHomeScreen(true)} title="Home Launcher">
+              <VajraIcon name="home" size={14} /> Home
+            </button>
             <strong style={{ fontSize: 14 }}>Vajra-Dhīr Studio</strong>
             <span style={{ color: 'var(--vd-text-secondary)', fontSize: 13 }}>
               {projectName}
@@ -790,6 +837,18 @@ export const WorkstationShell: React.FC = () => {
             </button>
             <button type="button" data-testid="tool-manager-btn" className="vd-btn" onClick={() => setShowToolManagerModal(true)}>
               Tools & Fabs
+            </button>
+            <button type="button" data-testid="topbar-search-btn" className="vd-btn" onClick={() => setEnterpriseDrawer('search')} title="Global Search (Ctrl+Shift+F)">
+              <VajraIcon name="search" size={14} />
+            </button>
+            <button type="button" data-testid="topbar-plugins-btn" className="vd-btn" onClick={() => setEnterpriseDrawer('plugins')} title="Plugins & MCP Apps">
+              <VajraIcon name="plugin" size={14} />
+            </button>
+            <button type="button" data-testid="topbar-notifications-btn" className="vd-btn" onClick={() => setEnterpriseDrawer('notifications')} title="Notifications">
+              <VajraIcon name="bell" size={14} /> {notifications.length}
+            </button>
+            <button type="button" data-testid="topbar-settings-btn" className="vd-btn" onClick={() => setShowSettingsModal(true)} title="Settings">
+              <VajraIcon name="settings" size={14} />
             </button>
             <button type="button" className="vd-btn" onClick={() => setShowCalculators((v) => !v)} aria-pressed={showCalculators}>
               Calculators
@@ -992,6 +1051,23 @@ export const WorkstationShell: React.FC = () => {
         )}
         <CalculatorDrawer open={showCalculators} onClose={() => setShowCalculators(false)} />
         <PolishToolsModal open={showToolManagerModal} onClose={() => setShowToolManagerModal(false)} />
+        <HomeScreen
+          open={showHomeScreen}
+          onClose={() => setShowHomeScreen(false)}
+          onSelectProject={(_id, name) => {
+            setProjectName(name);
+            setDirty(false);
+            setStatusMessage(`Loaded ${name}`);
+          }}
+          onOpenFileBrowser={() => setEnterpriseDrawer('files')}
+        />
+        <SettingsModal open={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
+        <EnterpriseDrawers
+          mode={enterpriseDrawer}
+          onClose={() => setEnterpriseDrawer('none')}
+          notifications={notifications}
+          onClearNotifications={() => setNotifications([])}
+        />
       </div>
     </ShellContext.Provider>
   );
