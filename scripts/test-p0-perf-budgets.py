@@ -34,6 +34,10 @@ import { WebGpuCadEngine, createSampleBuckScene, createGpuFrameBuffers, runGeome
 import { runElkSchematicLayout, BUCK_PD_SCHEMATIC_INPUT } from './apps/workstation/src/engines/elkLayout.ts';
 
 const bus = new CrossProbeBus();
+for (let w = 0; w < 5; w++) {
+  bus.select(['U2'], 'pcb');
+  bus.highlightNet('SW_NODE', 'pcb');
+}
 const busTimes = [];
 for (let i = 0; i < 200; i++) {
   const t0 = performance.now();
