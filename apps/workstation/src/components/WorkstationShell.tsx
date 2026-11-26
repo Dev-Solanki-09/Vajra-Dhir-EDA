@@ -18,6 +18,8 @@ import { AgentDockPanel } from './AgentDockPanel';
 import { CalculatorDrawer } from './CalculatorDrawer';
 import { ActiveWorkspaceView } from './Workspaces';
 import { useDesignStore } from '../store/useDesignStore';
+import { PolishToolsModal } from './PolishToolsModal';
+import { FOCUSED_PRESETS, formatCoordUnit, usePolishStore } from '../store/usePolishStore';
 
 export type ToolMode = 'select' | 'route' | 'place' | 'inspect';
 
@@ -448,6 +450,16 @@ export const WorkstationShell: React.FC = () => {
   const [boardComponents, setBoardComponents] = useState<BoardComponentMeta[]>(DEFAULT_COMPONENTS);
   const frameCountRef = useRef(0);
 
+  const unitMode = usePolishStore((s) => s.unitMode);
+  const activePreset = usePolishStore((s) => s.activePreset);
+  const rulerActive = usePolishStore((s) => s.rulerActive);
+  const rulerMm = usePolishStore((s) => s.rulerMm);
+  const showToolManagerModal = usePolishStore((s) => s.showToolManagerModal);
+  const toggleUnitMode = usePolishStore((s) => s.toggleUnitMode);
+  const setActivePreset = usePolishStore((s) => s.setActivePreset);
+  const setRulerActive = usePolishStore((s) => s.setRulerActive);
+  const setShowToolManagerModal = usePolishStore((s) => s.setShowToolManagerModal);
+
   const probeSnapshot = useSyncExternalStore(
     globalCrossProbeBus.subscribeSnapshot,
     globalCrossProbeBus.getSnapshot
@@ -543,9 +555,11 @@ export const WorkstationShell: React.FC = () => {
         setShowPalette(false);
         return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
+      if ((e.ctrlKey || e.metaKey) && ((e.shiftKey && e.key.toLowerCase() === 'p') || (!e.shiftKey && e.key.toLowerCase() === 'k'))) {
         e.preventDefault();
         setShowPalette((prev) => !prev);
+      } else if (!inInput && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'm') {
+        setRulerActive(!usePolishStore.getState().rulerActive);
       } else if (e.key === 'F1' || (e.key === '?' && !inInput)) {
         e.preventDefault();
         setShowShortcuts((prev) => !prev);
@@ -751,11 +765,20 @@ export const WorkstationShell: React.FC = () => {
             <button type="button" className="vd-btn" onClick={() => setShowTemplates(true)}>
               New template
             </button>
+            <button type="button" data-testid="unit-toggle-btn" className="vd-btn vd-metric" onClick={toggleUnitMode}>
+              {unitMode}
+            </button>
+            <button type="button" data-testid="ruler-toggle-btn" className={`vd-btn ${rulerActive ? 'vd-btn-primary' : ''}`} onClick={() => setRulerActive(!rulerActive)}>
+              {rulerActive ? `Ruler: ${formatCoordUnit(rulerMm, unitMode)}` : 'Ruler (M)'}
+            </button>
+            <button type="button" data-testid="tool-manager-btn" className="vd-btn" onClick={() => setShowToolManagerModal(true)}>
+              Tools & Fabs
+            </button>
             <button type="button" className="vd-btn" onClick={() => setShowCalculators((v) => !v)} aria-pressed={showCalculators}>
               Calculators
             </button>
             <button type="button" className="vd-btn" onClick={() => setShowPalette(true)}>
-              Palette (Ctrl+Shift+P)
+              Palette (Ctrl+K)
             </button>
             <button type="button" className="vd-btn" onClick={() => setShowShortcuts(true)} aria-label="Keyboard shortcuts">
               <WorkbenchIcon name="help" size={16} />
@@ -782,6 +805,24 @@ export const WorkstationShell: React.FC = () => {
           </nav>
 
           <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
+            <div data-testid="focused-presets-bar" style={{ display: 'flex', gap: 6, padding: '4px 10px', borderBottom: '1px solid var(--vd-border-subtle)', backgroundColor: 'var(--vd-bg-panel)', alignItems: 'center' }}>
+              <span className="vd-metric" style={{ fontSize: 11, color: 'var(--vd-text-secondary)' }}>Presets:</span>
+              {FOCUSED_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  data-testid={`preset-btn-${p.id}`}
+                  className={`vd-btn ${activePreset === p.id ? 'vd-btn-primary' : ''}`}
+                  style={{ minHeight: 20, padding: '1px 7px', fontSize: 11 }}
+                  onClick={() => {
+                    setActivePreset(p.id);
+                    setActiveWorkspace(p.targetWorkspace);
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
             {autosaveAvailable && (
               <div
                 data-testid="crash-recovery-banner"
@@ -933,6 +974,7 @@ export const WorkstationShell: React.FC = () => {
           </div>
         )}
         <CalculatorDrawer open={showCalculators} onClose={() => setShowCalculators(false)} />
+        <PolishToolsModal open={showToolManagerModal} onClose={() => setShowToolManagerModal(false)} />
       </div>
     </ShellContext.Provider>
   );
