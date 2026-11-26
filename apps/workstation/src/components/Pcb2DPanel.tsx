@@ -5,6 +5,7 @@ import { globalKiCadSyncStore, useKiCadSync } from '../kicadSyncClient';
 import { globalSpiceOverlayStore, useSpiceOverlay } from '../spiceSimStore';
 import { globalPiHeatmapStore, lookupPiSampleAtWorldMm, samplePiColormapHex, usePiHeatmap } from '../piHeatmapStore';
 import { useMcadThermal } from '../mcadThermalStore';
+import { useDesignStore } from '../store/useDesignStore';
 
 type PcbTool = 'select' | 'drag' | 'route' | 'via';
 
@@ -69,6 +70,7 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
   const spiceOverlay = useSpiceOverlay();
   const piHeatmap = usePiHeatmap();
   const mcadThermal = useMcadThermal();
+  const transientPreviews = useDesignStore((s) => s.transientPreviews);
   const [tool, setTool] = useState<PcbTool>('select');
   const [backendLabel, setBackendLabel] = useState<'WebGL2' | 'Canvas2D' | 'Initializing'>('Initializing');
   const [statusNote, setStatusNote] = useState('KiCanvas WebGL2/Canvas2D synced to P1');
@@ -760,6 +762,15 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
           }
           if (dragRefdes && w) {
             setDragPreviewMm({ refdes: dragRefdes, xMm: w.xMm, yMm: w.yMm });
+            useDesignStore.getState().setTransientPreview({
+              refdes: dragRefdes,
+              x_nm: Math.round(w.xMm * MM_TO_NM),
+              y_nm: Math.round(w.yMm * MM_TO_NM),
+              rot_mdeg: 0,
+              side: 'top',
+              sourcePaneId: 'pcb2d',
+              timestamp: performance.now(),
+            });
           }
         }}
         onPointerUp={async (e) => {
@@ -770,6 +781,7 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
             const y = dragPreviewMm.yMm;
             setDragRefdes(null);
             setDragPreviewMm(null);
+            useDesignStore.getState().clearTransientPreview(r);
             await commitMove(r, x, y, target?.rotDeg ?? 0);
             return;
           }

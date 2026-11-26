@@ -31,6 +31,7 @@ try:
     from .ee_audit_routes import handle_ee_get, handle_ee_post
     from .fab_routes import handle_fab_get, handle_fab_post
     from .report_routes import handle_report_get, handle_report_post
+    from .sync_propagator import handle_tx_get, handle_tx_post
     from .fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
     from .spice_routes import handle_spice_get, handle_spice_post
     from .kg_routes import handle_kg_get, handle_kg_post
@@ -59,6 +60,7 @@ except ImportError:
     from ee_audit_routes import handle_ee_get, handle_ee_post
     from fab_routes import handle_fab_get, handle_fab_post
     from report_routes import handle_report_get, handle_report_post
+    from sync_propagator import handle_tx_get, handle_tx_post
     from fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
     from spice_routes import handle_spice_get, handle_spice_post
     from kg_routes import handle_kg_get, handle_kg_post
@@ -968,7 +970,7 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(preview).encode("utf-8"))
 
-        elif path in ("/api/v1/ws", "/api/ws"):
+        elif path in ("/api/v1/ws", "/api/ws", "/ws/sync"):
             ws_key = self.headers.get("Sec-WebSocket-Key")
             if not ws_key:
                 self.send_response(400)
@@ -1055,6 +1057,8 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                 if handle_report_get(self, path, full_path=self.path, con=self.con):
                     return
                 if handle_agent_get(self, path, full_path=self.path, con=self.con):
+                    return
+                if handle_tx_get(self, path, full_path=self.path, con=self.con):
                     return
             if not path.startswith("/api/") and not path.startswith("/stitch/") and not path.startswith("/ws/"):
                 asset = resolve_studio_static_asset(path)
@@ -1906,6 +1910,9 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             return
 
         elif handle_report_post(self, path, req, self.con):
+            return
+
+        elif handle_tx_post(self, path, req, self.con):
             return
 
         elif handle_x1_post(self, path, req):

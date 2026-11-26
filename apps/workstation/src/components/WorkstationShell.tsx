@@ -17,6 +17,7 @@ import { PanelErrorBoundary } from './PanelErrorBoundary';
 import { AgentDockPanel } from './AgentDockPanel';
 import { CalculatorDrawer } from './CalculatorDrawer';
 import { ActiveWorkspaceView } from './Workspaces';
+import { useDesignStore } from '../store/useDesignStore';
 
 export type ToolMode = 'select' | 'route' | 'place' | 'inspect';
 
@@ -176,6 +177,18 @@ const InspectorPanel: React.FC<IDockviewPanelProps> = () => {
     globalCrossProbeBus.subscribeSnapshot,
     globalCrossProbeBus.getSnapshot
   );
+  const revId = useDesignStore((s) => s.revId);
+  const entitiesByRefdes = useDesignStore((s) => s.entitiesByRefdes);
+  const transientPreviews = useDesignStore((s) => s.transientPreviews);
+  const stageFreshness = useDesignStore((s) => s.stageFreshness);
+
+  const activeRef = probe.selection.entityIds[0] || ctx.selectedRefdes;
+  const activeEntity = entitiesByRefdes[activeRef];
+  const livePreview = transientPreviews[activeRef];
+  const displayXNm = livePreview ? livePreview.x_nm : activeEntity?.x_nm;
+  const displayYNm = livePreview ? livePreview.y_nm : activeEntity?.y_nm;
+  const displaySide = livePreview ? livePreview.side : activeEntity?.side;
+  const staleCount = Object.values(stageFreshness).filter((v) => v === 'STALE').length;
 
   return (
     <PanelErrorBoundary panelTitle="Inspector">
@@ -184,6 +197,15 @@ const InspectorPanel: React.FC<IDockviewPanelProps> = () => {
         <p style={{ margin: '0 0 8px', color: 'var(--vd-text-secondary)' }}>
           Mode: {ctx.toolMode} | Locked entities: <span className="vd-metric">{ctx.lockedCount}</span>
         </p>
+        <p className="vd-metric" data-testid="inspector-sync-rev" style={{ margin: '0 0 6px', fontSize: 11, color: '#6ee7b7' }}>
+          Sync rev_id: {revId} · {staleCount > 0 ? `${staleCount} STALE` : 'FRESH'}
+        </p>
+        {displayXNm !== undefined && (
+          <p className="vd-metric" data-testid="inspector-live-coords" style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--vd-text-secondary)' }}>
+            {activeRef}: ({(displayXNm / 1_000_000).toFixed(2)}, {(Number(displayYNm ?? 0) / 1_000_000).toFixed(2)}) mm · {displaySide ?? 'top'}
+            {activeEntity?.value ? ` · ${activeEntity.value}` : ''}
+          </p>
+        )}
         <p className="vd-metric" style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--vd-border-active)' }}>
           Probe: {probe.selection.entityIds.join(', ') || ctx.selectedRefdes} · Net:{' '}
           {probe.activeHighlight.netId ?? 'none'} ({probe.lastLatencyMs.toFixed(2)} ms)
@@ -432,6 +454,7 @@ export const WorkstationShell: React.FC = () => {
   );
 
   useEffect(() => {
+    useDesignStore.getState().connectSyncChannels();
     globalCrossProbeBus.select(['U2'], 'tree');
     let cancelled = false;
     fetch('/api/v1/project')
@@ -528,10 +551,18 @@ export const WorkstationShell: React.FC = () => {
         setShowShortcuts((prev) => !prev);
       } else if (!inInput && (e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
         e.preventDefault();
-        void executeCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === 'edit.undo')!);
+        void useDesignStore.getState().undoTx().then((ok) => {
+          if (!ok) {
+            void executeCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === 'edit.undo')!);
+          }
+        });
       } else if (!inInput && (e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
         e.preventDefault();
-        void executeCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === 'edit.redo')!);
+        void useDesignStore.getState().redoTx().then((ok) => {
+          if (!ok) {
+            void executeCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === 'edit.redo')!);
+          }
+        });
       }
     };
     window.addEventListener('keydown', onKeyDown);

@@ -7,6 +7,7 @@ import { globalKiCadSyncStore, useKiCadSync } from '../kicadSyncClient';
 import { globalStepWorkerClient } from '../workers/stepClient';
 import { globalPiHeatmapStore, lookupPiSampleAtWorldMm, samplePiColormapRgb, usePiHeatmap } from '../piHeatmapStore';
 import { globalMcadThermalStore, useMcadThermal } from '../mcadThermalStore';
+import { useDesignStore } from '../store/useDesignStore';
 
 export interface Component3DMeta {
   uuid: string;
@@ -298,6 +299,21 @@ export const Viewport3DPanel: React.FC = () => {
     orbitRef.current = orbit;
 
     const tc = new TransformControls(persp, canvas);
+    tc.addEventListener('objectChange', () => {
+      if (!tc.object || !tc.dragging) return;
+      const ref = tc.object.userData?.refdes as string | undefined;
+      const meta = ref ? compMetaMapRef.current.get(ref) : undefined;
+      if (!ref || !meta) return;
+      useDesignStore.getState().setTransientPreview({
+        refdes: ref,
+        x_nm: Math.round(tc.object.position.x * MM_TO_NM),
+        y_nm: Math.round(tc.object.position.z * MM_TO_NM),
+        rot_mdeg: Math.round(((tc.object.rotation.y * 180) / Math.PI) * 1000),
+        side: meta.side,
+        sourcePaneId: 'viewport3d',
+        timestamp: performance.now(),
+      });
+    });
     tc.addEventListener('dragging-changed', (event) => {
       orbit.enabled = !event.value;
       if (!event.value && tc.object) {
@@ -310,30 +326,33 @@ export const Viewport3DPanel: React.FC = () => {
         const nextRotMdeg = Math.round(((tc.object.rotation.y * 180) / Math.PI) * 1000);
         const effActor = meta.locked ? 'agent' : actorKindRef.current;
 
-        void globalKiCadSyncStore
-          .dispatchOps(
-            `3D transform ${ref}`,
+        void useDesignStore
+          .getState()
+          .commitTx(
+            'viewport3d',
             [
               {
                 op: 'MOVE_COMPONENT',
                 component_id: ref,
+                refdes: ref,
                 x_nm: nextXNm,
                 y_nm: nextYNm,
                 rot_mdeg: nextRotMdeg,
                 side: meta.side,
               },
             ],
-            effActor,
-            ref
+            `3D transform ${ref}`,
+            effActor
           )
           .then((res) => {
+            useDesignStore.getState().clearTransientPreview(ref);
             if (!res.applied) {
               // Restore exact locked coordinates on KERNEL_LOCK_VIOLATION
               tc.object?.position.set(meta.x_mm, tc.object.position.y, meta.y_mm);
               tc.object?.rotation.set(0, (meta.rot_deg * Math.PI) / 180, 0);
-              setStatusNote(`${res.errorCode ?? 'LOCKED'}: ${ref} restored`);
+              setStatusNote(`${res.error_code ?? 'LOCKED'}: ${ref} restored`);
             } else {
-              setStatusNote(`Persisted 3D move ${ref} -> (${nextXNm} nm, ${nextYNm} nm)`);
+              setStatusNote(`Synced rev ${res.rev_id ?? '?'}: 3D ${ref} -> (${nextXNm} nm, ${nextYNm} nm)`);
             }
           });
       }
