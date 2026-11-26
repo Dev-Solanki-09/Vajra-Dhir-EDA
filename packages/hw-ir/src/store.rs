@@ -120,12 +120,14 @@ impl HwIrStore {
             Err(e) => {
                 let _ = tx.rollback();
                 // Map SQLite failure from lock trigger to LockViolation
-                if let HwIrError::Sqlite(rusqlite::Error::SqliteFailure(_, Some(ref msg))) = e {
-                    if msg.contains("KERNEL_LOCK_VIOLATION") {
-                        return Err(HwIrError::LockViolation(msg.clone()));
+                match e {
+                    HwIrError::Sqlite(rusqlite::Error::SqliteFailure(_, Some(msg)))
+                        if msg.contains("KERNEL_LOCK_VIOLATION") =>
+                    {
+                        Err(HwIrError::LockViolation(msg))
                     }
+                    other => Err(other),
                 }
-                Err(e)
             }
         }
     }
@@ -299,7 +301,7 @@ impl HwIrStore {
     pub fn checkpoint_wal_ladder(&self, patch_count: usize, idle: bool) -> Result<(), HwIrError> {
         if idle {
             self.conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")?;
-        } else if patch_count > 0 && patch_count % 250 == 0 {
+        } else if patch_count > 0 && patch_count.is_multiple_of(250) {
             self.conn.execute_batch("PRAGMA wal_checkpoint(PASSIVE);")?;
         }
         Ok(())

@@ -25,7 +25,16 @@ import time
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
 
-from lxml import etree  # type: ignore
+try:
+    from lxml import etree  # type: ignore
+
+    HAS_LXML = True
+    _XMLSyntaxError = etree.XMLSyntaxError
+except ImportError:  # pragma: no cover - stdlib fallback when lxml wheel is absent
+    import xml.etree.ElementTree as etree  # type: ignore
+
+    HAS_LXML = False
+    _XMLSyntaxError = etree.ParseError
 
 try:
     from .kicad_bridge import (
@@ -110,19 +119,22 @@ def validate_ipc2581_xml(xml_path: pathlib.Path, xsd_path: Optional[pathlib.Path
     warnings: List[str] = []
 
     try:
-        parser = etree.XMLParser(resolve_entities=False, no_network=True, huge_tree=True)
-        doc = etree.fromstring(raw_text.encode("utf-8"), parser=parser)
-    except etree.XMLSyntaxError as exc:
+        if HAS_LXML:
+            parser = etree.XMLParser(resolve_entities=False, no_network=True, huge_tree=True)
+            doc = etree.fromstring(raw_text.encode("utf-8"), parser=parser)
+        else:
+            doc = etree.fromstring(raw_text.encode("utf-8"))
+    except _XMLSyntaxError as exc:
         return {
             "valid": False,
             "error_count": 1,
             "errors": [{"line": getattr(exc, "lineno", 1), "message": f"XML syntax error: {exc}"}],
             "line_count": line_count,
-            "validator": "2581check-lxml-offline",
+            "validator": "2581check-lxml-offline" if HAS_LXML else "2581check-stdlib-offline",
         }
 
     # Optional external XSD validation (never fetches HTTP/HTTPS URLs offline)
-    if xsd_path and pathlib.Path(xsd_path).is_file():
+    if HAS_LXML and xsd_path and pathlib.Path(xsd_path).is_file():
         try:
             xsd_doc = etree.parse(str(xsd_path), parser=etree.XMLParser(no_network=True))
             schema = etree.XMLSchema(xsd_doc)
@@ -139,7 +151,7 @@ def validate_ipc2581_xml(xml_path: pathlib.Path, xsd_path: Optional[pathlib.Path
     root_name = _strip_ns(doc.tag)
     revision = doc.attrib.get("revision", "")
     if root_name != "IPC-2581":
-        errors.append({"line": doc.sourceline or 1, "message": f"Expected root <IPC-2581>, got <{root_name}>"})
+        errors.append({"line": getattr(doc, "sourceline", None) or 1, "message": f"Expected root <IPC-2581>, got <{root_name}>"})
 
     top_tags = {_strip_ns(el.tag): el for el in doc}
     for req_sec in ("Content", "Ecad"):

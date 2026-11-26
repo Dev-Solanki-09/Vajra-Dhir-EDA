@@ -60,10 +60,13 @@ jobs:
       - name: Install dependencies (frozen lockfile)
         run: pnpm install --frozen-lockfile
 
+      - name: Build packages (emit workspace type declarations)
+        run: pnpm --filter './packages/*' build
+
       - name: TypeScript typecheck
         run: pnpm -r exec bash -c 'if [ -f tsconfig.json ]; then pnpm exec tsc --noEmit; fi'
 
-      - name: Build packages & apps
+      - name: Build apps & remaining targets
         run: pnpm build
 
       - name: Run Package Tests
