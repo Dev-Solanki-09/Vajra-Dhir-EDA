@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+#[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DielectricType {
     C0G_NP0, // Class 1: Ultra-stable, 0% DC-bias drop, 0% temp coefficient
@@ -60,7 +61,7 @@ impl MlccDeratingEngine {
             };
         }
 
-        let voltage_ratio = (operating_voltage_v / spec.rated_voltage_v).clamp(0.0, 1.5);
+        let _voltage_ratio = (operating_voltage_v / spec.rated_voltage_v).clamp(0.0, 1.5);
 
         // Parameters determined by package volume and dielectric
         let (vknee_factor, alpha, beta) = match spec.case_size {

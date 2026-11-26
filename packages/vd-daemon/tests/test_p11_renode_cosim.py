@@ -14,6 +14,8 @@ import time
 import urllib.error
 import urllib.request
 
+import pytest
+
 
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -93,6 +95,9 @@ def test_p11_4case_cosim_suite_lockstep_and_fixes() -> None:
 
             cases = {c["scenario"]: c["result"] for c in suite["cases"]}
             assert cases["nominal"]["ok"] is True
+            _, sim_stat = _req(base, "GET", "/api/v1/sim/status")
+            if not sim_stat.get("ngspice_native", {}).get("installed"):
+                pytest.skip("native ngspice binary/dll not installed for analog lockstep test")
             assert len(cases["nominal"]["analog_lockstep"]["vout_v"]) > 10
             assert "$var wire" in cases["nominal"]["vcd_text"]
 

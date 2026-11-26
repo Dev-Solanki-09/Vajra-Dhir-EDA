@@ -20,7 +20,7 @@ impl DatasheetFactCitation {
         let mut hasher = Sha256::new();
         hasher.update(self.pdf_sha256.as_bytes());
         hasher.update(self.mpn.as_bytes());
-        hasher.update(&self.page_number.to_le_bytes());
+        hasher.update(self.page_number.to_le_bytes());
         hasher.update(format!("{:?}", self.bbox_norm).as_bytes());
         hasher.update(self.extracted_fact_json.to_string().as_bytes());
         format!("{:x}", hasher.finalize())
