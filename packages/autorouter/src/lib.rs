@@ -206,11 +206,9 @@ impl AutorouterOrchestrator {
                 if let Some(end) = rest.find('"') {
                     current_net = rest[..end].to_string();
                 }
-            } else if trimmed.starts_with("(path ") {
-                let parts: Vec<&str> = trimmed
-                    .trim_matches(|c| c == '(' || c == ')')
-                    .split_whitespace()
-                    .collect();
+            } else if let Some(path_idx) = trimmed.find("(path ") {
+                let path_slice = trimmed[path_idx + 1..].split(')').next().unwrap_or("");
+                let parts: Vec<&str> = path_slice.split_whitespace().collect();
 
                 // Format: path <layer> <width_um> <x1_um> <y1_um> <x2_um> <y2_um>
                 if parts.len() >= 7 && parts[0] == "path" {
