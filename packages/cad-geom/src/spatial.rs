@@ -105,7 +105,7 @@ impl CadSpatialIndex {
     ) {
         out.clear();
         let envelope = AABB::from_corners([min_x, min_y], [max_x, max_y]);
-        out.extend(self.tree.locate_in_envelope(&envelope));
+        out.extend(self.tree.locate_in_envelope_intersecting(&envelope));
     }
 
     /// Query all elements whose bounding boxes intersect the given rectangular window.
@@ -133,7 +133,7 @@ impl CadSpatialIndex {
         );
 
         self.tree
-            .locate_in_envelope(&expanded_envelope)
+            .locate_in_envelope_intersecting(&expanded_envelope)
             .filter(|other| {
                 if other.id == element.id {
                     return false;

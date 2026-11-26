@@ -57,7 +57,7 @@ impl DrcWaiverGuard {
 
         let mut hex = String::with_capacity(64);
         for i in 0..4 {
-            let chunk = hasher_state.wrapping_add(i as u64 * 0x9e3779b97f4a7c15);
+            let chunk = hasher_state.wrapping_add((i as u64).wrapping_mul(0x9e3779b97f4a7c15));
             let _ = write!(hex, "{:016x}", chunk);
         }
         hex

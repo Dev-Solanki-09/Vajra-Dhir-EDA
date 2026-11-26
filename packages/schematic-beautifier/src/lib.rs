@@ -166,8 +166,8 @@ impl SchematicBeautifier {
         for symbol in &mut sheet.symbols {
             for pin in &mut symbol.pins {
                 let name_upper = pin.name.to_uppercase();
-                // Assign signal pin orientations if not already power
-                if pin.orientation != Orientation::Up && pin.orientation != Orientation::Down {
+                // Assign signal pin orientations unless explicitly typed as power
+                if pin.pin_type != PinType::PowerIn && pin.pin_type != PinType::PowerOut {
                     if pin.pin_type == PinType::Input
                         || name_upper.contains("IN")
                         || name_upper.contains("RX")

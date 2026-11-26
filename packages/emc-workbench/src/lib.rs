@@ -77,11 +77,14 @@ mod tests {
 
     #[test]
     fn test_harmonic_collision_detection() {
-        // 40 MHz ESP32 crystal clock: 40 * 60 = 2400 MHz (Wi-Fi collision)
+        // 40 MHz ESP32 crystal clock: 40 * 46 = 1840 MHz (LTE B3) and 40 * 60 = 2400 MHz (Wi-Fi)
         let collisions = HarmonicMatrix::scan_harmonics("ESP32_XTAL_40MHZ", 40.0, 65);
-        assert!(!collisions.is_empty(), "Expected collision in 2.4 GHz band");
-        assert_eq!(collisions[0].harmonic_order, 60);
-        assert_eq!(collisions[0].frequency_mhz, 2400.0);
+        assert!(!collisions.is_empty(), "Expected collision in RF bands");
+        let wifi_hit = collisions
+            .iter()
+            .find(|c| c.harmonic_order == 60)
+            .expect("Expected 60th harmonic collision in 2.4 GHz band");
+        assert_eq!(wifi_hit.frequency_mhz, 2400.0);
     }
 
     #[test]

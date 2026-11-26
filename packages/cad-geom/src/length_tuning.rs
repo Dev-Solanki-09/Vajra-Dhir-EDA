@@ -77,32 +77,34 @@ impl LengthTuningEngine {
             1
         };
 
-        let pitch = (params.pitch_nm as f64).min(base_length / (num_cycles as f64 + 1.0));
+        let slot = base_length / (num_cycles as f64);
+        let bump_w = (params.pitch_nm as f64).min(slot * 0.6);
         let mut pts = vec![start];
-
-        let mut current_pos = pitch / 2.0;
         let mut direction = 1.0;
 
-        for _ in 0..num_cycles {
-            if current_pos + pitch > base_length {
+        for k in 0..num_cycles {
+            let t1 = (k as f64 + 0.2) * slot;
+            let t2 = (t1 + bump_w).min(base_length - 1.0);
+            if t2 <= t1 {
                 break;
             }
 
-            let cx = start[0] as f64 + ux * current_pos;
-            let cy = start[1] as f64 + uy * current_pos;
+            let c1x = start[0] as f64 + ux * t1;
+            let c1y = start[1] as f64 + uy * t1;
+            let c2x = start[0] as f64 + ux * t2;
+            let c2y = start[1] as f64 + uy * t2;
 
             let amp = params.amplitude_nm as f64 * direction;
-            let p1 = [(cx + nx * amp).round() as Nm, (cy + ny * amp).round() as Nm];
-
-            let next_pos = current_pos + pitch;
-            let c2x = start[0] as f64 + ux * next_pos;
-            let c2y = start[1] as f64 + uy * next_pos;
+            let entry = [c1x.round() as Nm, c1y.round() as Nm];
+            let p1 = [(c1x + nx * amp).round() as Nm, (c1y + ny * amp).round() as Nm];
             let p2 = [(c2x + nx * amp).round() as Nm, (c2y + ny * amp).round() as Nm];
+            let exit = [c2x.round() as Nm, c2y.round() as Nm];
 
+            pts.push(entry);
             pts.push(p1);
             pts.push(p2);
+            pts.push(exit);
 
-            current_pos = next_pos + pitch / 2.0;
             direction = -direction;
         }
 

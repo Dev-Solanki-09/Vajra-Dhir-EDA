@@ -59,18 +59,37 @@ impl DialectTranspiler {
     }
 
     fn rewrite_limit_expression(line: &str) -> String {
-        // Replaces LIMIT(x, a, b) with (min(max(x, a), b))
+        // Replaces LIMIT(x, a, b) with (min(max(x, a), b)), respecting nested parentheses
         let lower = line.to_lowercase();
-        if let Some(pos) = lower.find("limit(") {
-            let start = pos + 6;
-            if let Some(end) = line[start..].find(')') {
-                let inner = &line[start..start + end];
-                let parts: Vec<&str> = inner.split(',').map(|s| s.trim()).collect();
-                if parts.len() == 3 {
-                    let rewritten = format!("(min(max({}, {}), {}))", parts[0], parts[1], parts[2]);
-                    return format!("{}{}{}", &line[..pos], rewritten, &line[start + end + 1..]);
+        let Some(pos) = lower.find("limit(") else {
+            return line.to_string();
+        };
+        let start = pos + 6;
+        let mut depth = 1usize;
+        let mut close_idx = None;
+        let mut comma_offsets = Vec::new();
+
+        for (offset, ch) in line[start..].char_indices() {
+            match ch {
+                '(' => depth += 1,
+                ')' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        close_idx = Some(start + offset);
+                        break;
+                    }
                 }
+                ',' if depth == 1 => comma_offsets.push(start + offset),
+                _ => {}
             }
+        }
+
+        if let (Some(end), 2) = (close_idx, comma_offsets.len()) {
+            let arg0 = line[start..comma_offsets[0]].trim();
+            let arg1 = line[comma_offsets[0] + 1..comma_offsets[1]].trim();
+            let arg2 = line[comma_offsets[1] + 1..end].trim();
+            let rewritten = format!("(min(max({}, {}), {}))", arg0, arg1, arg2);
+            return format!("{}{}{}", &line[..pos], rewritten, &line[end + 1..]);
         }
         line.to_string()
     }
