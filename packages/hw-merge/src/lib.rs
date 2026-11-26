@@ -184,10 +184,8 @@ impl HwMergeDriver {
         // Rule 3: Spatial Courtyard Collision Check for components
         let mut components: Vec<&HardwareEntity> = Vec::new();
         for ent in merged_map.values() {
-            if let HardwareEntity::Component { meta, .. } = ent {
-                if !meta.deleted {
-                    components.push(ent);
-                }
+            if matches!(ent, HardwareEntity::Component { meta, .. } if !meta.deleted) {
+                components.push(ent);
             }
         }
 

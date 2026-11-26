@@ -120,10 +120,8 @@ impl ControlLoopSynthesizer {
         }
 
         // Safety verification: Crossover must be < RHPZ / 3 for non-minimum phase topologies
-        if let Some(frhpz) = plant.frhpz_hz {
-            if fc > frhpz / 3.0 {
-                return Err(ControlError::RhpzCollision(fc, frhpz));
-            }
+        if let Some(frhpz) = plant.frhpz_hz.filter(|&f| fc > f / 3.0) {
+            return Err(ControlError::RhpzCollision(fc, frhpz));
         }
 
         if pm < 45.0 {

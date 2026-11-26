@@ -44,7 +44,7 @@ impl SExpr {
         out
     }
 
-    fn format_internal(&self, out: &mut String, indent: usize) {
+    fn format_internal(&self, out: &mut String, _indent: usize) {
         match self {
             SExpr::Atom(s) => out.push_str(s),
             SExpr::StringLit(s) => {
@@ -63,7 +63,7 @@ impl SExpr {
                     if i > 0 {
                         out.push(' ');
                     }
-                    item.format_internal(out, indent + 1);
+                    item.format_internal(out, _indent + 1);
                 }
                 out.push(')');
             }

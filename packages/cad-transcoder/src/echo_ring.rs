@@ -33,10 +33,10 @@ impl EchoSuppressionRing {
     /// a self-originated write within the suppression window (default 5.0 seconds).
     pub fn should_suppress(&mut self, sha256_hex: &str) -> bool {
         self.prune();
-        if let Some(recorded_at) = self.records.get(sha256_hex) {
-            if recorded_at.elapsed() <= self.window {
-                return true;
-            }
+        if let Some(recorded_at) = self.records.get(sha256_hex)
+            && recorded_at.elapsed() <= self.window
+        {
+            return true;
         }
         false
     }

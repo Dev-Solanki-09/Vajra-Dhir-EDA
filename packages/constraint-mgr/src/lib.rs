@@ -111,41 +111,35 @@ impl ConstraintEvaluator {
                     severity: "CRITICAL".to_string(),
                 });
             }
-            if let Some(max_skew) = rule.max_skew_nm {
-                if skew_nm > max_skew {
-                    violations.push(ConstraintViolation {
-                        net: net.name.clone(),
-                        netclass: rule.name.clone(),
-                        rule: "DIFF_PAIR_MAX_SKEW".to_string(),
-                        actual_nm: skew_nm,
-                        limit_nm: max_skew,
-                        severity: "CRITICAL".to_string(),
-                    });
-                }
+            if let Some(max_skew) = rule.max_skew_nm.filter(|&m| skew_nm > m) {
+                violations.push(ConstraintViolation {
+                    net: net.name.clone(),
+                    netclass: rule.name.clone(),
+                    rule: "DIFF_PAIR_MAX_SKEW".to_string(),
+                    actual_nm: skew_nm,
+                    limit_nm: max_skew,
+                    severity: "CRITICAL".to_string(),
+                });
             }
-            if let Some(min_len) = rule.min_length_nm {
-                if net.p_length_nm < min_len {
-                    violations.push(ConstraintViolation {
-                        net: net.name.clone(),
-                        netclass: rule.name.clone(),
-                        rule: "MIN_ROUTED_LENGTH".to_string(),
-                        actual_nm: net.p_length_nm,
-                        limit_nm: min_len,
-                        severity: "ERROR".to_string(),
-                    });
-                }
+            if let Some(min_len) = rule.min_length_nm.filter(|&m| net.p_length_nm < m) {
+                violations.push(ConstraintViolation {
+                    net: net.name.clone(),
+                    netclass: rule.name.clone(),
+                    rule: "MIN_ROUTED_LENGTH".to_string(),
+                    actual_nm: net.p_length_nm,
+                    limit_nm: min_len,
+                    severity: "ERROR".to_string(),
+                });
             }
-            if let Some(max_len) = rule.max_length_nm {
-                if net.p_length_nm > max_len {
-                    violations.push(ConstraintViolation {
-                        net: net.name.clone(),
-                        netclass: rule.name.clone(),
-                        rule: "MAX_ROUTED_LENGTH".to_string(),
-                        actual_nm: net.p_length_nm,
-                        limit_nm: max_len,
-                        severity: "ERROR".to_string(),
-                    });
-                }
+            if let Some(max_len) = rule.max_length_nm.filter(|&m| net.p_length_nm > m) {
+                violations.push(ConstraintViolation {
+                    net: net.name.clone(),
+                    netclass: rule.name.clone(),
+                    rule: "MAX_ROUTED_LENGTH".to_string(),
+                    actual_nm: net.p_length_nm,
+                    limit_nm: max_len,
+                    severity: "ERROR".to_string(),
+                });
             }
         }
 

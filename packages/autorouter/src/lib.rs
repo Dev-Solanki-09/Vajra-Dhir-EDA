@@ -199,11 +199,12 @@ impl AutorouterOrchestrator {
 
         for line in ses_content.lines() {
             let trimmed = line.trim();
-            if trimmed.starts_with("(net \"") || trimmed.starts_with("(net ") {
-                if let Some(start) = trimmed.find('"') {
-                    if let Some(end) = trimmed[start + 1..].find('"') {
-                        current_net = trimmed[start + 1..start + 1 + end].to_string();
-                    }
+            if (trimmed.starts_with("(net \"") || trimmed.starts_with("(net "))
+                && let Some(start) = trimmed.find('"')
+            {
+                let rest = &trimmed[start + 1..];
+                if let Some(end) = rest.find('"') {
+                    current_net = rest[..end].to_string();
                 }
             } else if trimmed.starts_with("(path ") {
                 let parts: Vec<&str> = trimmed

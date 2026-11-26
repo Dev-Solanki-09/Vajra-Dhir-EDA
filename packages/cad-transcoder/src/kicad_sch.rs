@@ -23,16 +23,14 @@ impl KiCadSchTranscoder {
         for root in sch_ast {
             if let SExpr::List(root_items) = root {
                 for item in root_items {
-                    if let SExpr::List(sym_items) = item {
-                        if sym_items.first().and_then(|t| match t {
+                    if let SExpr::List(sym_items) = item
+                        && sym_items.first().and_then(|t| match t {
                             SExpr::Atom(s) => Some(s.as_str()),
                             _ => None,
                         }) == Some("symbol")
-                        {
-                            if let Some(comp) = parse_symbol_block(sym_items) {
-                                components.push(comp);
-                            }
-                        }
+                        && let Some(comp) = parse_symbol_block(sym_items)
+                    {
+                        components.push(comp);
                     }
                 }
             }
@@ -95,49 +93,49 @@ fn parse_symbol_block(items: &[SExpr]) -> Option<KiCadSchComponent> {
     let mut rot_deg = 0.0;
 
     for item in items {
-        if let SExpr::List(prop_items) = item {
-            if let Some(tag) = prop_items.first().and_then(|t| match t {
+        if let SExpr::List(prop_items) = item
+            && let Some(tag) = prop_items.first().and_then(|t| match t {
                 SExpr::Atom(s) => Some(s.as_str()),
                 _ => None,
-            }) {
-                match tag {
-                    "lib_id" if prop_items.len() >= 2 => {
-                        if let SExpr::StringLit(ref s) | SExpr::Atom(ref s) = prop_items[1] {
-                            lib_id = s.clone();
-                        }
+            })
+        {
+            match tag {
+                "lib_id" if prop_items.len() >= 2 => {
+                    if let SExpr::StringLit(ref s) | SExpr::Atom(ref s) = prop_items[1] {
+                        lib_id = s.clone();
                     }
-                    "at" if prop_items.len() >= 3 => {
-                        if let SExpr::Atom(ref x_str) = prop_items[1] {
-                            x_mils = x_str.parse().unwrap_or(0.0);
-                        }
-                        if let SExpr::Atom(ref y_str) = prop_items[2] {
-                            y_mils = y_str.parse().unwrap_or(0.0);
-                        }
-                        if prop_items.len() >= 4 {
-                            if let SExpr::Atom(ref r_str) = prop_items[3] {
-                                rot_deg = r_str.parse().unwrap_or(0.0);
-                            }
-                        }
-                    }
-                    "property" if prop_items.len() >= 3 => {
-                        let prop_name = match &prop_items[1] {
-                            SExpr::StringLit(s) | SExpr::Atom(s) => s.as_str(),
-                            _ => "",
-                        };
-                        let prop_val = match &prop_items[2] {
-                            SExpr::StringLit(s) | SExpr::Atom(s) => s.clone(),
-                            _ => String::new(),
-                        };
-
-                        match prop_name {
-                            "Reference" => refdes = prop_val,
-                            "Value" => value = prop_val,
-                            "Footprint" => footprint = prop_val,
-                            _ => {}
-                        }
-                    }
-                    _ => {}
                 }
+                "at" if prop_items.len() >= 3 => {
+                    if let SExpr::Atom(ref x_str) = prop_items[1] {
+                        x_mils = x_str.parse().unwrap_or(0.0);
+                    }
+                    if let SExpr::Atom(ref y_str) = prop_items[2] {
+                        y_mils = y_str.parse().unwrap_or(0.0);
+                    }
+                    if prop_items.len() >= 4
+                        && let SExpr::Atom(ref r_str) = prop_items[3]
+                    {
+                        rot_deg = r_str.parse().unwrap_or(0.0);
+                    }
+                }
+                "property" if prop_items.len() >= 3 => {
+                    let prop_name = match &prop_items[1] {
+                        SExpr::StringLit(s) | SExpr::Atom(s) => s.as_str(),
+                        _ => "",
+                    };
+                    let prop_val = match &prop_items[2] {
+                        SExpr::StringLit(s) | SExpr::Atom(s) => s.clone(),
+                        _ => String::new(),
+                    };
+
+                    match prop_name {
+                        "Reference" => refdes = prop_val,
+                        "Value" => value = prop_val,
+                        "Footprint" => footprint = prop_val,
+                        _ => {}
+                    }
+                }
+                _ => {}
             }
         }
     }

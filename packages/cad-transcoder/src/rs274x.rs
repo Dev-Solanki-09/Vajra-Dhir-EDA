@@ -128,10 +128,10 @@ impl GerberParser {
             }
             if line.starts_with('D') && line.ends_with('*') && !line.contains('X') && !line.contains('Y') {
                 let digits = line.trim_start_matches('D').trim_end_matches('*');
-                if let Ok(code) = digits.parse::<u32>() {
-                    if code >= 10 {
-                        current_d_code = code;
-                    }
+                if let Ok(code) = digits.parse::<u32>()
+                    && code >= 10
+                {
+                    current_d_code = code;
                 }
                 continue;
             }
