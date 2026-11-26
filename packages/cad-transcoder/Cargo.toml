@@ -8,6 +8,7 @@ description = "Deterministic KiCad 10 3-Channel Bridge, S-Expression Transcoder 
 [dependencies]
 vd-ir = { path = "../hw-ir" }
 sha2 = { workspace = true }
+uuid = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

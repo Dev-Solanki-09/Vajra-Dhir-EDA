@@ -2512,6 +2512,7 @@ dependencies = [
  "sha2",
  "tempfile",
  "thiserror 2.0.21",
+ "uuid",
  "vd-ir",
 ]
 

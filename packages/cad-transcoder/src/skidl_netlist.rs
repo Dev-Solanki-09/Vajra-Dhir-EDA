@@ -24,11 +24,18 @@ pub struct SkidlImportedNetlist {
 }
 
 pub fn parse_skidl_sexpr_netlist(input: &str) -> Result<SkidlImportedNetlist, String> {
-    let expr = SExpr::parse(input).map_err(|e| format!("SKiDL S-expr parse error: {e:?}"))?;
+    let exprs = SExpr::parse(input).map_err(|e| format!("SKiDL S-expr parse error: {e:?}"))?;
     let mut components = Vec::new();
     let mut nets = Vec::new();
 
-    if let Some(comp_list) = expr.find_child("components") {
+    let comp_list = exprs.iter().find_map(|e| {
+        if e.get_tag() == Some("components") {
+            Some(e)
+        } else {
+            e.find_child("components")
+        }
+    });
+    if let Some(comp_list) = comp_list {
         for c in comp_list.find_children("comp") {
             let refdes = c.get_attr("ref").unwrap_or("U?").to_string();
             let value = c.get_attr("value").unwrap_or("UNSPEC").to_string();
@@ -36,7 +43,14 @@ pub fn parse_skidl_sexpr_netlist(input: &str) -> Result<SkidlImportedNetlist, St
             components.push(SkidlComponent { refdes, value, footprint });
         }
     }
-    if let Some(net_list) = expr.find_child("nets") {
+    let net_list = exprs.iter().find_map(|e| {
+        if e.get_tag() == Some("nets") {
+            Some(e)
+        } else {
+            e.find_child("nets")
+        }
+    });
+    if let Some(net_list) = net_list {
         for n in net_list.find_children("net") {
             let name = n.get_attr("name").unwrap_or("UNCONNECTED").to_string();
             let mut nodes = Vec::new();

@@ -86,6 +86,31 @@ impl SExpr {
             _ => None,
         }
     }
+
+    pub fn find_child(&self, tag: &str) -> Option<&SExpr> {
+        self.find_child_by_tag(tag)
+    }
+
+    pub fn find_children(&self, tag: &str) -> Vec<&SExpr> {
+        match self {
+            SExpr::List(items) => items
+                .iter()
+                .filter(|item| item.get_tag() == Some(tag))
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    pub fn get_attr(&self, key: &str) -> Option<&str> {
+        let child = self.find_child_by_tag(key)?;
+        match child {
+            SExpr::List(items) if items.len() >= 2 => match &items[1] {
+                SExpr::Atom(s) | SExpr::StringLit(s) => Some(s.as_str()),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
 }
 
 fn skip_whitespace(chars: &[char], idx: &mut usize) {

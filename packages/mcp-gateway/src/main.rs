@@ -1,7 +1,4 @@
 use std::io::{self, BufRead, Write};
-use vd_ir::store::HwIrStore;
-use vd_dlp::BudgetConfig;
-use vd_wasm_sandbox::WasmSandboxRunner;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stdin = io::stdin();
