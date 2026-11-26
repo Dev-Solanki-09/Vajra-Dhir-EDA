@@ -6,6 +6,7 @@ import { globalCrossProbeBus } from '@vajradhir/crossprobe-bus';
 import { globalKiCadSyncStore, useKiCadSync } from '../kicadSyncClient';
 import { globalStepWorkerClient } from '../workers/stepClient';
 import { globalPiHeatmapStore, lookupPiSampleAtWorldMm, samplePiColormapRgb, usePiHeatmap } from '../piHeatmapStore';
+import { globalMcadThermalStore, useMcadThermal } from '../mcadThermalStore';
 
 export interface Component3DMeta {
   uuid: string;
@@ -119,6 +120,8 @@ export const Viewport3DPanel: React.FC = () => {
   const partsGroupRef = useRef<THREE.Group | null>(null);
   const markersGroupRef = useRef<THREE.Group | null>(null);
   const ghostGroupRef = useRef<THREE.Group | null>(null);
+  const enclosureGroupRef = useRef<THREE.Group | null>(null);
+  const thermalGroupRef = useRef<THREE.Group | null>(null);
   const compAnchorsRef = useRef<Map<string, THREE.Group>>(new Map());
   const compMetaMapRef = useRef<Map<string, Component3DMeta>>(new Map());
   const camInitializedRef = useRef(false);
@@ -136,6 +139,7 @@ export const Viewport3DPanel: React.FC = () => {
   const [statusNote, setStatusNote] = useState('Blender Orbit · MMB/LMB · G Move · R Rotate · F Flip · L Lock');
   const [aiGhost, setAiGhost] = useState<{ refdes: string; xMm: number; yMm: number } | null>(null);
   const piHeatmap = usePiHeatmap();
+  const mcad = useMcadThermal();
 
   const selectedRefdes = probe.selection.entityIds[0] ?? 'J1';
   const actorKindRef = useRef(actorKind);
@@ -155,8 +159,10 @@ export const Viewport3DPanel: React.FC = () => {
         }
       }
     }
+    const mcadSet = new Set(mcad.showEnclosure ? (mcad.clash?.clashing_refdes ?? []) : []);
+    for (const r of mcadSet) out.add(r);
     return out;
-  }, [meshPayload]);
+  }, [meshPayload, mcad.showEnclosure, mcad.clash]);
 
   // Fetch /api/v1/3d/board-mesh whenever P1 revision changes
   const fetchBoardMesh = useCallback(async () => {
@@ -174,6 +180,12 @@ export const Viewport3DPanel: React.FC = () => {
   useEffect(() => {
     void fetchBoardMesh();
   }, [fetchBoardMesh, sync.revision, sync.pcbSha256]);
+
+  useEffect(() => {
+    if (sync.lastEventType === 'mcad:updated') {
+      void globalMcadThermalStore.syncFromStatus();
+    }
+  }, [sync.lastEventType, sync.wsEventSeq]);
 
   // Snap camera helper (keeps +X right, +Y up, +Z down identically aligned with KiCanvas 2D)
   const snapCamera = useCallback((view: 'iso' | 'top' | 'bottom') => {
@@ -219,6 +231,7 @@ export const Viewport3DPanel: React.FC = () => {
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setClearColor(0x0b0e14, 1);
+    renderer.localClippingEnabled = true;
     const width = Math.max(container.clientWidth, 320);
     const height = Math.max(container.clientHeight, 260);
     renderer.setSize(width, height, false);
@@ -263,7 +276,9 @@ export const Viewport3DPanel: React.FC = () => {
     const partsGroup = new THREE.Group();
     const markersGroup = new THREE.Group();
     const ghostGroup = new THREE.Group();
-    boardRoot.add(copperGroup, viaGroup, partsGroup, markersGroup, ghostGroup);
+    const enclosureGroup = new THREE.Group();
+    const thermalGroup = new THREE.Group();
+    boardRoot.add(copperGroup, viaGroup, partsGroup, markersGroup, ghostGroup, enclosureGroup, thermalGroup);
     scene.add(boardRoot);
 
     boardRootRef.current = boardRoot;
@@ -272,6 +287,8 @@ export const Viewport3DPanel: React.FC = () => {
     partsGroupRef.current = partsGroup;
     markersGroupRef.current = markersGroup;
     ghostGroupRef.current = ghostGroup;
+    enclosureGroupRef.current = enclosureGroup;
+    thermalGroupRef.current = thermalGroup;
 
     const orbit = new OrbitControls(persp, canvas);
     orbit.enableDamping = true;
@@ -583,8 +600,18 @@ export const Viewport3DPanel: React.FC = () => {
 
       // Placeholder prism (replaced automatically once occt-import-js Worker returns STEP triangles)
       const bodyGeo = new THREE.BoxGeometry(Math.max(bwC * 0.72, 1.0), bThick, Math.max(bhC * 0.72, 0.8));
+      const thermalComp = mcad.showThermal
+        ? mcad.thermal?.components.find((tc) => tc.refdes === comp.refdes)
+        : undefined;
       const bodyMat = new THREE.MeshStandardMaterial({
-        color: comp.locked ? '#92400E' : '#334155',
+        color: isClash
+          ? '#EF4444'
+          : thermalComp
+          ? thermalComp.color
+          : comp.locked
+          ? '#92400E'
+          : '#334155',
+        emissive: isClash ? new THREE.Color('#7F1D1D') : new THREE.Color('#000000'),
         roughness: 0.45,
         metalness: 0.2,
       });
@@ -677,7 +704,116 @@ export const Viewport3DPanel: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [meshPayload, xray, showFr4, showCopper, showParts, selectedRefdes, clashRefs, snapCamera, piHeatmap.enabled, piHeatmap.result, piHeatmap.metric, piHeatmap.colormap]);
+  }, [meshPayload, xray, showFr4, showCopper, showParts, selectedRefdes, clashRefs, snapCamera, piHeatmap.enabled, piHeatmap.result, piHeatmap.metric, piHeatmap.colormap, mcad.showThermal, mcad.thermal]);
+
+  // Render P14 CadQuery Parametric Enclosure, Clash Intersections, 3D Cross-Section Slicing Plane, & ElmerFEM Thermal Surface
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    const encGroup = enclosureGroupRef.current;
+    const thermGroup = thermalGroupRef.current;
+    if (!renderer || !encGroup || !thermGroup) return;
+
+    renderer.clippingPlanes = mcad.sliceEnabled
+      ? [new THREE.Plane(new THREE.Vector3(0, -1, 0), mcad.sliceOffsetMm)]
+      : [];
+
+    disposeObjectTree(encGroup);
+    encGroup.clear();
+    if (mcad.showEnclosure && mcad.enclosure) {
+      for (const w of mcad.enclosure.walls) {
+        const sx = Math.max(0.2, w.max_mm[0] - w.min_mm[0]);
+        const sy = Math.max(0.2, w.max_mm[1] - w.min_mm[1]);
+        const sz = Math.max(0.2, w.max_mm[2] - w.min_mm[2]);
+        const cx = (w.min_mm[0] + w.max_mm[0]) * 0.5;
+        const cy = (w.min_mm[1] + w.max_mm[1]) * 0.5;
+        const cz = (w.min_mm[2] + w.max_mm[2]) * 0.5;
+        // PCB (x, y, z) -> Three.js (x, z, y)
+        const geo = new THREE.BoxGeometry(sx, sz, sy);
+        const hasClash = Boolean(mcad.clash && !mcad.clash.passed && w.kind === 'lid');
+        const mat = new THREE.MeshStandardMaterial({
+          color: hasClash ? '#F87171' : w.kind === 'standoff' ? '#64748B' : '#38BDF8',
+          transparent: true,
+          opacity: w.kind === 'standoff' ? Math.min(0.8, mcad.enclosureOpacity + 0.25) : mcad.enclosureOpacity,
+          roughness: 0.4,
+          metalness: 0.15,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
+        const box = new THREE.Mesh(geo, mat);
+        box.position.set(cx, cz, cy);
+        box.userData = { enclosurePart: w.id };
+        encGroup.add(box);
+      }
+
+      if (mcad.clash && !mcad.clash.passed) {
+        for (const cl of mcad.clash.clashes) {
+          const b = cl.overlap_box_mm;
+          const sx = Math.max(0.3, b[3] - b[0]);
+          const sy = Math.max(0.3, b[4] - b[1]);
+          const sz = Math.max(0.3, b[5] - b[2]);
+          const cGeo = new THREE.BoxGeometry(sx, sz, sy);
+          const cMat = new THREE.MeshBasicMaterial({
+            color: '#EF4444',
+            transparent: true,
+            opacity: 0.72,
+          });
+          const cMesh = new THREE.Mesh(cGeo, cMat);
+          cMesh.position.set((b[0] + b[3]) * 0.5, (b[2] + b[5]) * 0.5, (b[1] + b[4]) * 0.5);
+          cMesh.userData = { clashRef: cl.refdes };
+          encGroup.add(cMesh);
+        }
+      }
+    }
+
+    disposeObjectTree(thermGroup);
+    thermGroup.clear();
+    if (mcad.showThermal && mcad.thermal && mcad.thermal.surface_grid.length > 0 && meshPayload?.board) {
+      const th = meshPayload.board.thickness_mm || 1.6;
+      const bw = meshPayload.board.width_mm || 60;
+      const bh = meshPayload.board.height_mm || 40;
+      const ox = meshPayload.board.origin_x_mm || 0;
+      const oy = meshPayload.board.origin_y_mm || 0;
+      const nx = mcad.thermal.grid_cols;
+      const ny = mcad.thermal.grid_rows;
+      const planeGeo = new THREE.PlaneGeometry(bw, bh, Math.max(1, nx - 1), Math.max(1, ny - 1));
+      planeGeo.rotateX(-Math.PI / 2);
+      const posAttr = planeGeo.attributes.position;
+      const colors = new Float32Array(posAttr.count * 3);
+      const grid = mcad.thermal.surface_grid;
+      for (let iy = 0; iy < ny; iy++) {
+        for (let ix = 0; ix < nx; ix++) {
+          const src = grid[iy * nx + ix];
+          const vIdx = iy * nx + ix;
+          if (vIdx < posAttr.count && src) {
+            const col = new THREE.Color(src.color);
+            colors[vIdx * 3] = col.r;
+            colors[vIdx * 3 + 1] = col.g;
+            colors[vIdx * 3 + 2] = col.b;
+          }
+        }
+      }
+      planeGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      const tMat = new THREE.MeshBasicMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.78,
+        side: THREE.DoubleSide,
+      });
+      const tMesh = new THREE.Mesh(planeGeo, tMat);
+      tMesh.position.set(ox + bw / 2, th / 2 + 0.06, oy + bh / 2);
+      thermGroup.add(tMesh);
+    }
+  }, [
+    mcad.showEnclosure,
+    mcad.enclosure,
+    mcad.enclosureOpacity,
+    mcad.clash,
+    mcad.sliceEnabled,
+    mcad.sliceOffsetMm,
+    mcad.showThermal,
+    mcad.thermal,
+    meshPayload?.board,
+  ]);
 
   // Attach TransformControls dynamically to currently selected anchor
   useEffect(() => {
@@ -993,6 +1129,75 @@ export const Viewport3DPanel: React.FC = () => {
           >
             {piHeatmap.loading ? 'Solving PI...' : piHeatmap.enabled ? 'PI Heatmap: On' : 'PI Heatmap'}
           </button>
+          <button
+            type="button"
+            data-testid="v3d-enclosure-btn"
+            className={`vd-btn ${mcad.showEnclosure ? 'vd-btn-primary' : ''}`}
+            style={{ minHeight: 22, padding: '2px 7px', fontSize: 11 }}
+            disabled={mcad.loadingEnclosure}
+            onClick={() => {
+              if (mcad.showEnclosure) {
+                globalMcadThermalStore.toggleEnclosureOff();
+              } else {
+                void globalMcadThermalStore.generateEnclosure({ pcbPath: sync.pcbPath });
+              }
+            }}
+          >
+            {mcad.loadingEnclosure ? 'CadQuery...' : mcad.showEnclosure ? 'Enclosure: On' : 'Enclosure (CadQuery)'}
+          </button>
+          {mcad.showEnclosure && (
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10 }}>
+              Alpha
+              <input
+                data-testid="v3d-enclosure-opacity"
+                type="range"
+                min={0.1}
+                max={0.9}
+                step={0.05}
+                value={mcad.enclosureOpacity}
+                onChange={(e) => globalMcadThermalStore.setEnclosureOpacity(Number(e.target.value))}
+                style={{ width: 52 }}
+              />
+            </label>
+          )}
+          <button
+            type="button"
+            data-testid="v3d-slice-toggle"
+            className={`vd-btn ${mcad.sliceEnabled ? 'vd-btn-primary' : ''}`}
+            style={{ minHeight: 22, padding: '2px 7px', fontSize: 11 }}
+            onClick={() => globalMcadThermalStore.setSliceEnabled(!mcad.sliceEnabled)}
+          >
+            {mcad.sliceEnabled ? 'Slice: On' : 'Slice Plane'}
+          </button>
+          {mcad.sliceEnabled && (
+            <input
+              data-testid="v3d-slice-slider"
+              aria-label="3D Cross-Section Slice Height mm"
+              type="range"
+              min={-4}
+              max={14}
+              step={0.5}
+              value={mcad.sliceOffsetMm}
+              onChange={(e) => globalMcadThermalStore.setSliceOffsetMm(Number(e.target.value))}
+              style={{ width: 64 }}
+            />
+          )}
+          <button
+            type="button"
+            data-testid="v3d-thermal-btn"
+            className={`vd-btn ${mcad.showThermal ? 'vd-btn-primary' : ''}`}
+            style={{ minHeight: 22, padding: '2px 7px', fontSize: 11 }}
+            disabled={mcad.loadingThermal}
+            onClick={() => {
+              if (mcad.showThermal) {
+                globalMcadThermalStore.toggleThermalOff();
+              } else {
+                void globalMcadThermalStore.solveThermal({ pcbPath: sync.pcbPath });
+              }
+            }}
+          >
+            {mcad.loadingThermal ? 'ElmerFEM...' : mcad.showThermal ? 'Thermal FEM: On' : 'Thermal FEM'}
+          </button>
           <select
             aria-label="3D Actor Mode"
             value={actorKind}
@@ -1106,6 +1311,57 @@ export const Viewport3DPanel: React.FC = () => {
                 ? `${piHeatmap.hoverSample.voltageV.toFixed(3)} V @ ${piHeatmap.hoverSample.currentDensityAMm2.toFixed(1)} A/mm²`
                 : `${(piHeatmap.result.worst_case?.min_delivered_v ?? 3.3).toFixed(3)} V @ ${(piHeatmap.result.worst_case?.peak_current_density_a_mm2 ?? 0).toFixed(1)} A/mm²`}
             </span>
+          </div>
+        )}
+
+        {/* P14 CadQuery Enclosure Clash & ElmerFEM Thermal HUD */}
+        {(mcad.showEnclosure || mcad.showThermal) && (
+          <div
+            data-testid="v3d-thermal-scale-bar"
+            className="vd-metric"
+            style={{
+              position: 'absolute',
+              right: 10,
+              bottom: 10,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+              padding: '6px 10px',
+              backgroundColor: 'rgba(11, 14, 20, 0.92)',
+              border: `1px solid ${mcad.clash && !mcad.clash.passed ? '#EF4444' : 'var(--vd-border-subtle)'}`,
+              borderRadius: 6,
+              fontSize: 10,
+              pointerEvents: 'none',
+            }}
+          >
+            {mcad.showEnclosure && mcad.clash && (
+              <span
+                data-testid="v3d-mcad-status"
+                style={{ color: mcad.clash.passed ? '#6ee7b7' : '#FCA5A5' }}
+              >
+                {mcad.clash.passed
+                  ? `MCAD CLASH: 0.0 mm³ (PASS · lid ${mcad.enclosure?.params.lid_height_mm.toFixed(1)}mm)`
+                  : `MCAD CLASH: ${mcad.clash.clash_mm3.toFixed(2)} mm³ (${mcad.clash.clashing_refdes.join(', ')})`}
+              </span>
+            )}
+            {mcad.showThermal && mcad.thermal && (
+              <>
+                <span
+                  data-testid="v3d-thermal-status"
+                  style={{ color: mcad.thermal.passed ? '#FDBA74' : '#FCA5A5' }}
+                >
+                  ElmerFEM {mcad.thermal.min_temp_c.toFixed(1)}°C — {mcad.thermal.max_temp_c.toFixed(1)}°C (Tj max {mcad.thermal.peak_junction_temp_c.toFixed(1)}°C)
+                </span>
+                <div
+                  style={{
+                    height: 8,
+                    width: 210,
+                    borderRadius: 4,
+                    background: `linear-gradient(90deg, ${mcad.thermal.color_stops.join(', ')})`,
+                  }}
+                />
+              </>
+            )}
           </div>
         )}
 

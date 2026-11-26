@@ -194,6 +194,9 @@ class IdeWorkspaceStore {
       this.update({ tabs: nextTabs, statusNote: `Saved ${tab.path}` });
       if (tab.path.toLowerCase().endsWith('.ato')) {
         await this.compileAto(true);
+      } else if (tab.path.toLowerCase().endsWith('enclosure.py')) {
+        void import('./mcadThermalStore').then((m) => m.globalMcadThermalStore.syncFromStatus());
+        await globalKiCadSyncStore.pollEvents();
       } else {
         await globalKiCadSyncStore.pollEvents();
       }

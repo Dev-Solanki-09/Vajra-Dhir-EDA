@@ -15,11 +15,13 @@ from typing import Any, Dict, List, Optional
 
 try:
     from .kicad_bridge import sha256_text
-    from .kicad_routes import _ensure_active_workspace, poll_external_changes
+    from .kicad_routes import _ensure_active_workspace, _resolve_project_file, poll_external_changes
+    from .mcad_thermal_worker import STARTER_ENCLOSURE_PY, generate_parametric_enclosure
     from .pty_win import WorkspacePty
 except ImportError:
     from kicad_bridge import sha256_text
-    from kicad_routes import _ensure_active_workspace, poll_external_changes
+    from kicad_routes import _ensure_active_workspace, _resolve_project_file, poll_external_changes
+    from mcad_thermal_worker import STARTER_ENCLOSURE_PY, generate_parametric_enclosure
     from pty_win import WorkspacePty
 
 _TOKEN_LOCK = threading.Lock()
@@ -128,6 +130,7 @@ def ensure_ide_starter_files(root: pathlib.Path) -> pathlib.Path:
     defaults = {
         root / "elec" / "src" / "main.ato": _STARTER_ATO,
         root / "firmware" / "board_pins.h": _STARTER_PINS_H,
+        root / "mcad" / "enclosure.py": STARTER_ENCLOSURE_PY,
         root / "system.yaml": _STARTER_SYSTEM_YAML,
     }
     for fp, body in defaults.items():
@@ -263,9 +266,16 @@ def handle_fs_pty_post(handler: Any, path: str, req: Dict[str, Any], con: Option
             _send_json(handler, 403, {"error": "PATH_TRAVERSAL_BLOCKED", "path": rel})
             return True
         _atomic_write_utf8(target, content)
+        mcad_sync = None
         if target.suffix.lower() in (".kicad_pcb", ".kicad_sch"):
             try:
                 poll_external_changes(con)
+            except Exception:
+                pass
+        elif target.name == "enclosure.py":
+            try:
+                pcb_p = _resolve_project_file({"project_dir": str(root)}, "pcb_path", ".kicad_pcb", prefer_active=True)
+                mcad_sync = generate_parametric_enclosure(con, pcb_p, script_text=content)
             except Exception:
                 pass
         _send_json(handler, 200, {
@@ -273,6 +283,7 @@ def handle_fs_pty_post(handler: Any, path: str, req: Dict[str, Any], con: Option
             "path": target.relative_to(root).as_posix(),
             "sha256": sha256_text(content),
             "size_bytes": len(content.encode("utf-8")),
+            **({"mcad": {"clash": mcad_sync.get("clash"), "step_artifact": mcad_sync.get("step_artifact")}} if mcad_sync else {}),
         })
         return True
 

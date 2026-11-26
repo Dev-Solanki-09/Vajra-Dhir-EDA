@@ -32,6 +32,7 @@ export interface KiCadSyncSnapshot {
   revision: number;
   wsConnected: boolean;
   lastEventType: string;
+  wsEventSeq: number;
   ercFindings: KiCadFinding[];
   drcFindings: KiCadFinding[];
   ercSummary: string;
@@ -54,6 +55,7 @@ class KiCadSyncStore {
     revision: 0,
     wsConnected: false,
     lastEventType: 'init',
+    wsEventSeq: 0,
     ercFindings: [],
     drcFindings: [],
     ercSummary: 'ERC not yet run',
@@ -156,8 +158,10 @@ class KiCadSyncStore {
         try {
           const msg = JSON.parse(String(ev.data)) as { type?: string };
           if (msg.type === 'patch_applied' || msg.type === 'external_file_changed' || msg.type === 'ato_build_complete') {
-            this.update({ lastEventType: msg.type });
+            this.update({ lastEventType: msg.type, wsEventSeq: this.snapshot.wsEventSeq + 1 });
             void this.fetchFiles();
+          } else if (msg.type === 'mcad:updated' || msg.type === 'thermal:solved') {
+            this.update({ lastEventType: msg.type, wsEventSeq: this.snapshot.wsEventSeq + 1 });
           }
         } catch {
           /* ignore malformed WS frame */

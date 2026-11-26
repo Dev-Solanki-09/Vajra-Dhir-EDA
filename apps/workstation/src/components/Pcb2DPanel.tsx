@@ -4,6 +4,7 @@ import type { BoardViewer, KicadPCB } from '@vajradhir/kicanvas-core';
 import { globalKiCadSyncStore, useKiCadSync } from '../kicadSyncClient';
 import { globalSpiceOverlayStore, useSpiceOverlay } from '../spiceSimStore';
 import { globalPiHeatmapStore, lookupPiSampleAtWorldMm, samplePiColormapHex, usePiHeatmap } from '../piHeatmapStore';
+import { useMcadThermal } from '../mcadThermalStore';
 
 type PcbTool = 'select' | 'drag' | 'route' | 'via';
 
@@ -67,6 +68,7 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
 
   const spiceOverlay = useSpiceOverlay();
   const piHeatmap = usePiHeatmap();
+  const mcadThermal = useMcadThermal();
   const [tool, setTool] = useState<PcbTool>('select');
   const [backendLabel, setBackendLabel] = useState<'WebGL2' | 'Canvas2D' | 'Initializing'>('Initializing');
   const [statusNote, setStatusNote] = useState('KiCanvas WebGL2/Canvas2D synced to P1');
@@ -685,6 +687,11 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
               }}
             >
               PI {piHeatmap.result.passed ? 'PASS' : 'BOTTLENECK'} · ΔV {piHeatmap.result.worst_case.max_ir_drop_mv.toFixed(1)}mV · J {piHeatmap.result.worst_case.peak_current_density_a_mm2.toFixed(1)}A/mm² · Vmin {piHeatmap.result.worst_case.min_delivered_v.toFixed(3)}V
+            </span>
+          )}
+          {mcadThermal.showEnclosure && mcadThermal.clash && !mcadThermal.clash.passed && (
+            <span data-testid="pcb-mcad-clash-badge" style={{ fontSize: 10, color: '#FCA5A5' }}>
+              3D Clash: {mcadThermal.clash.clashing_refdes.join(', ')} ({mcadThermal.clash.clash_mm3.toFixed(1)}mm³)
             </span>
           )}
         </div>
