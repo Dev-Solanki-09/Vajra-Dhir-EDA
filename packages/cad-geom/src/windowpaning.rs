@@ -26,6 +26,7 @@ pub struct WindowpaneGrid {
 pub struct WindowpaningEngine;
 
 impl WindowpaningEngine {
+    #[allow(clippy::too_many_arguments)]
     pub fn compute_stencil_grid(
         center_x: Nm,
         center_y: Nm,

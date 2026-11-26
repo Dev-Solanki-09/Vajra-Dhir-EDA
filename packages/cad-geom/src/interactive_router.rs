@@ -229,6 +229,7 @@ impl InteractiveSpatialKernel {
         vec![(x0, y0), knee, (x1, y1)]
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn check_segment_live_drc(
         &self,
         active_net_id: &str,
@@ -295,6 +296,7 @@ pub fn point_to_segment_dist_nm(px: Nm, py: Nm, x1: Nm, y1: Nm, x2: Nm, y2: Nm) 
     dx.hypot(dy).round() as Nm
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn segment_to_segment_dist_nm(
     ax1: Nm,
     ay1: Nm,

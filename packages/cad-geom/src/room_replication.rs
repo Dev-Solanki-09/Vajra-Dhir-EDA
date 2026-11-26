@@ -49,6 +49,7 @@ impl RoomReplicationEngine {
         (rx, ry)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn replicate_channel(
         room_group: &str,
         channel_index: usize,

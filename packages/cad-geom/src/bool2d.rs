@@ -27,8 +27,7 @@ impl PolygonBooleanEngine {
 
         // Convert i64 nanometer vertices to i_overlay IntShape format (i32 scaled if needed or direct if i32 range)
         // Since i_overlay typically uses i32 coordinate space, we can scale or pass points
-        let mut result_polygons = Vec::new();
-        result_polygons.push(subject.to_vec());
+        let result_polygons = vec![subject.to_vec()];
 
         // Simple bounding box and containment clipping fallback for copper voids
         // Full i_overlay pipeline is attached for complex polygons
