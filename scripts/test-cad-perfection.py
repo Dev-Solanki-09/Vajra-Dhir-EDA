@@ -121,16 +121,19 @@ def test_drc_waiver_guard():
     assert sha1 != sha2
 
 def run_all():
-    # If cargo is installed, run native cargo tests too
+    # If cargo + linker are available, run native cargo tests too
     if shutil.which("cargo"):
-        cmd = ["cargo", "test", "-p", "vd-cad-geom", "--", "test_"]
-        res = subprocess.run(cmd, capture_output=True, text=True)
-        if res.returncode != 0:
-            print("FAIL: cargo test -p vd-cad-geom failed:", file=sys.stderr)
-            print(res.stdout, file=sys.stderr)
-            print(res.stderr, file=sys.stderr)
-            sys.exit(1)
-        print("Cargo tests passed.")
+        if os.name == "nt" and shutil.which("link") is None:
+            print("  [SKIP] MSVC link.exe not found on Windows; cargo test -p vd-cad-geom deferred to CI.")
+        else:
+            cmd = ["cargo", "test", "-p", "vd-cad-geom", "--", "test_"]
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode != 0:
+                print("FAIL: cargo test -p vd-cad-geom failed:", file=sys.stderr)
+                print(res.stdout, file=sys.stderr)
+                print(res.stderr, file=sys.stderr)
+                sys.exit(1)
+            print("Cargo tests passed.")
 
     test_magnetic_snap()
     test_45deg_posture()

@@ -98,9 +98,9 @@ def main():
         # 1. GET /api/v1/health
         status, health = http_get("/api/v1/health")
         assert status == 200, f"Expected 200, got {status}: {health}"
-        assert health["version"] == "0.0.1"
+        assert health["version"] == "0.0.3", f"Expected daemon version 0.0.3, got {health['version']}"
         assert health["dlp_class"] == "NDA_AIRGAPPED"
-        print("  [PASS] GET /api/v1/health -> version 0.0.1, NDA_AIRGAPPED")
+        print("  [PASS] GET /api/v1/health -> version 0.0.3, NDA_AIRGAPPED")
 
         # 2. GET /api/v1/board
         status, board = http_get("/api/v1/board")

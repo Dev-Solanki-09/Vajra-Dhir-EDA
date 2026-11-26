@@ -192,6 +192,7 @@ export const MenuBar: React.FC<{
             type="button"
             role="tab"
             aria-selected={activePreset === t.id}
+            aria-current={activePreset === t.id ? 'page' : undefined}
             data-testid={`ws-tab-${t.id}`}
             data-active={activePreset === t.id}
             className="vd-ws-tab"

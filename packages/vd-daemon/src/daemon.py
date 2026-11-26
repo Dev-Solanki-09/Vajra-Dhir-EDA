@@ -1989,6 +1989,9 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
         elif path.startswith(("/api/v1/ee/", "/api/ee/")) and _lazy_fn("ee_audit_routes", "handle_ee_post")(self, path, req, self.con):
             return
 
+        elif handle_x3_post(self, path, req):
+            return
+
         elif path.startswith(("/api/v1/sim/", "/api/sim/")) and _lazy_fn("spice_routes", "handle_spice_post")(self, path, req, self.con):
             return
 
@@ -2029,9 +2032,6 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             return
 
         elif handle_x1_post(self, path, req):
-            return
-
-        elif handle_x3_post(self, path, req):
             return
 
         elif handle_x4_post(self, path, req):

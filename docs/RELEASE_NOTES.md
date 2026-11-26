@@ -44,5 +44,5 @@ node scripts/check-spdx-firewall.mjs
 
 - `pnpm-lock.yaml`: `d049f18b2719b896fffb5525f65481848bbe28971b210c0111adf0801542520c`
 - `uv.lock`: `7c2c8258fa1425c259d838e92afe3a4d744230de0f0d6548b94db3f53f1f78d5`
-- `Cargo.lock`: `1c2145599820ba440cf84865c7b9c74a03f9535cb0e4d99f6cc131db5ac86c95`
-- `apps/workstation/dist/index.html`: `15c33d33231c373db59a1c9f732d2b7076bc8ab9b64c02ce28a4c5c2b71fa6f8`
+- `Cargo.lock`: `2b35cf111cbb5c7232017e4227f8d5093e2e3d22294656ef1174833bb6efd6ad`
+- `apps/workstation/dist/index.html`: `306ae193a6b93252364e3a1191712f8f1a246b32bd07ac3e38f7480cd552bf49`
