@@ -87,10 +87,6 @@ impl ResourceLimiter for MemoryLimiter {
 
 struct SandboxState {
     limiter: MemoryLimiter,
-    stdout_buffer: Arc<Mutex<Vec<u8>>>,
-    stderr_buffer: Arc<Mutex<Vec<u8>>>,
-    max_output: usize,
-    timed_out: Arc<AtomicBool>,
 }
 
 pub struct WasmSandboxRunner {
@@ -104,7 +100,6 @@ impl WasmSandboxRunner {
         config.consume_fuel(true);
         config.epoch_interruption(true);
         config.wasm_component_model(true);
-        config.async_support(false);
 
         let engine = Engine::new(&config).map_err(|e| SandboxError::Engine(e.to_string()))?;
         Ok(Self { engine })
@@ -133,10 +128,6 @@ impl WasmSandboxRunner {
             limiter: MemoryLimiter {
                 max_bytes: limits.max_memory_bytes,
             },
-            stdout_buffer: stdout_buf.clone(),
-            stderr_buffer: stderr_buf.clone(),
-            max_output: limits.max_output_bytes,
-            timed_out: timed_out.clone(),
         };
 
         let mut store = Store::new(&self.engine, state);
