@@ -190,6 +190,7 @@ impl FootprintSynthesizer {
     }
 
     /// Synthesizes a QFN/DFN package with perimeter pads and optional central thermal pad
+    #[allow(clippy::too_many_arguments)]
     pub fn synthesize_qfn(
         name: &str,
         pin_count: u32,
@@ -200,7 +201,7 @@ impl FootprintSynthesizer {
         thermal_pad_size_nm: Option<i64>,
         density: DensityLevel,
     ) -> Result<GeneratedFootprint, FootprintError> {
-        if pin_count % 4 != 0 || pin_count == 0 {
+        if !pin_count.is_multiple_of(4) || pin_count == 0 {
             return Err(FootprintError::InvalidDimensions("QFN pin count must be multiple of 4".into()));
         }
 

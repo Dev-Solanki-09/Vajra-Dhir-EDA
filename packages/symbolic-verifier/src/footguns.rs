@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use vd_component_kg::{CaseSize, DielectricType, MlccDeratingEngine, MlccSpec};
+use vd_component_kg::{MlccDeratingEngine, MlccSpec};
 use vd_ir::model::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -131,6 +131,7 @@ impl FootgunChecker {
     }
 
     /// 4. Missing local ceramic decoupling within 2.0 mm (2_000_000 nm)
+    #[allow(clippy::too_many_arguments)]
     pub fn check_decoupling_distance(
         ic_refdes: &str,
         ic_id: &str,

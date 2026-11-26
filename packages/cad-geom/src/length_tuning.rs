@@ -78,8 +78,7 @@ impl LengthTuningEngine {
         };
 
         let pitch = (params.pitch_nm as f64).min(base_length / (num_cycles as f64 + 1.0));
-        let mut pts = Vec::new();
-        pts.push(start);
+        let mut pts = vec![start];
 
         let mut current_pos = pitch / 2.0;
         let mut direction = 1.0;

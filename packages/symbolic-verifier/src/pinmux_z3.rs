@@ -115,3 +115,9 @@ impl PinmuxConstraintSolver {
         false
     }
 }
+
+impl Default for PinmuxConstraintSolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}

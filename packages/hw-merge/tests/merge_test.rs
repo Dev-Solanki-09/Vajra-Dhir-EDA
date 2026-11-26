@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use vd_ir::model::*;
 use vd_merge::{ConflictKind, HwMergeDriver};
 
+#[allow(clippy::too_many_arguments)]
 fn make_component(
     id: &str,
     refdes: &str,

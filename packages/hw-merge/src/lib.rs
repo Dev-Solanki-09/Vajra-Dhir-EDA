@@ -261,6 +261,7 @@ pub fn get_entity_meta(entity: &HardwareEntity) -> &HardwareEntityMeta {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn check_courtyard_overlap(
     x1: Nm, y1: Nm, w1: Nm, h1: Nm, rot1: Mdeg,
     x2: Nm, y2: Nm, w2: Nm, h2: Nm, rot2: Mdeg,
