@@ -25,7 +25,7 @@ import urllib.parse
 import uuid
 
 try:
-    from .agent_routes import handle_agent_post
+    from .agent_routes import handle_agent_get, handle_agent_post
     from .atopile_engine import handle_ato_get, handle_ato_post
     from .cosim_routes import handle_cosim_get, handle_cosim_post
     from .ee_audit_routes import handle_ee_get, handle_ee_post
@@ -53,7 +53,7 @@ except ImportError:
     _DAEMON_SRC_DIR = str(pathlib.Path(__file__).resolve().parent)
     if _DAEMON_SRC_DIR not in sys.path:
         sys.path.insert(0, _DAEMON_SRC_DIR)
-    from agent_routes import handle_agent_post
+    from agent_routes import handle_agent_get, handle_agent_post
     from atopile_engine import handle_ato_get, handle_ato_post
     from cosim_routes import handle_cosim_get, handle_cosim_post
     from ee_audit_routes import handle_ee_get, handle_ee_post
@@ -1053,6 +1053,8 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                 if handle_fab_get(self, path, full_path=self.path, con=self.con):
                     return
                 if handle_report_get(self, path, full_path=self.path, con=self.con):
+                    return
+                if handle_agent_get(self, path, full_path=self.path, con=self.con):
                     return
             if not path.startswith("/api/") and not path.startswith("/stitch/") and not path.startswith("/ws/"):
                 asset = resolve_studio_static_asset(path)

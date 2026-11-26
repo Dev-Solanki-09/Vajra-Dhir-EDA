@@ -139,7 +139,18 @@ export class EdaMcpServer {
 
   private dispatchVerb(name: string, args: Record<string, unknown>): Record<string, unknown> {
     switch (name) {
-      case 'eda_patch_circuit':
+      case 'hw_discover':
+        return { status: 'success', query: args.query ?? '', evidence_found: true, datasheet_verified: true };
+      case 'hw_inspect':
+        return {
+          status: 'success',
+          entity_type: args.entity_type ?? 'component',
+          sandbox: 'wasmtime-51',
+          memory_cap_mib: 256,
+          stdout_cap_bytes: 16384,
+          records: [],
+        };
+      case 'hw_patch':
         return {
           status: 'success',
           action: 'applied',
@@ -147,93 +158,33 @@ export class EdaMcpServer {
           dry_run: Boolean(args.dry_run),
           applied_ops_count: Array.isArray(args.forward_ops) ? args.forward_ops.length : 0,
         };
-
-      case 'eda_query_design':
+      case 'hw_lock':
+        return { status: 'success', entity_id: args.entity_id, locked: Boolean(args.locked) };
+      case 'hw_compile':
+        return { status: 'success', target: args.target ?? 'kicad_sync', diagnostics: [] };
+      case 'hw_verify':
+        return { status: 'success', verdict: 'PASS', violations_count: 0, violations: [] };
+      case 'hw_simulate':
         return {
           status: 'success',
-          entity_type: args.entity_type,
-          count: 0,
-          records: [],
-        };
-
-      case 'eda_verify_drc':
-        return {
-          status: 'success',
-          verdict: 'PASS',
-          violations_count: 0,
-          violations: [],
-        };
-
-      case 'eda_run_spice':
-        return {
-          status: 'success',
-          analysis: args.analysis_type,
-          transpiled_mode: 'ngspice:ltpsa',
+          analysis: args.analysis_type ?? 'tran',
+          transpiled_mode: 'ngspice:wasm',
           convergence: true,
-          datapoints_count: 1000,
         };
-
-      case 'eda_synthesize_block':
+      case 'hw_layout':
+        return { status: 'success', mode: args.mode ?? 'auto_route', routes_generated: 1 };
+      case 'hw_signoff':
         return {
-          status: 'success',
-          block_kind: args.block_kind,
-          instantiated_components: ['U1', 'C1', 'C2', 'L1'],
+          status: args.human_confirmed ? 'success' : 'blocked',
+          release_authorized: Boolean(args.human_confirmed && args.waived_by),
+          gate: 'GATE_8_HUMAN_ONLY',
         };
-
-      case 'eda_pinmux_solve':
-        return {
-          status: 'success',
-          solver: 'Z3',
-          satisfiable: true,
-          pin_assignments: {},
-        };
-
-      case 'eda_export_fab':
-        return {
-          status: 'success',
-          format: args.format,
-          files_generated: [`${args.board_id}-fab.zip`],
-        };
-
-      case 'eda_diff_revisions':
-        return {
-          status: 'success',
-          clean: true,
-          conflicts_count: 0,
-        };
-
-      case 'eda_route_walkaround':
-        return {
-          status: 'success',
-          routes_generated: 1,
-          total_length_nm: 25000000,
-        };
-
-      case 'eda_check_datasheet':
-        return {
-          status: 'success',
-          mpn: args.mpn,
-          evidence_found: true,
-          citation_page: 12,
-          crop_available: true,
-        };
-
-      case 'eda_signoff_waiver':
-        return {
-          status: 'success',
-          waiver_id: 'waiver-01',
-          signature_valid: true,
-          geometry_sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-        };
-
-      case 'eda_run_code_mode':
-        return {
-          status: 'success',
-          exit_code: 0,
-          fuel_consumed: 1250,
-          output: 'Code execution completed inside Wasmtime 50 sandbox.',
-        };
-
+      case 'hw_firmware':
+        return { status: 'success', action: args.action ?? 'cosim_run', cosim_pass: true };
+      case 'hw_export':
+        return { status: 'success', format: args.format ?? 'fab_bundle', output: 'Execution via Wasmtime 51 gateway ready.' };
+      case 'hw_diff':
+        return { status: 'success', clean: true, conflicts_count: 0 };
       default:
         return { status: 'unknown_verb', name };
     }

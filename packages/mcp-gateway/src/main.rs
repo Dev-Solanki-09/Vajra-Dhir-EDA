@@ -54,18 +54,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "id": id,
                 "result": {
                     "tools": [
-                        { "name": "eda_patch_circuit", "description": "Apply atomic HardwarePatch" },
-                        { "name": "eda_query_design", "description": "Query HW-IR database" },
-                        { "name": "eda_verify_drc", "description": "Deterministic DRC signoff" },
-                        { "name": "eda_run_spice", "description": "Execute SPICE simulation" },
-                        { "name": "eda_synthesize_block", "description": "Synthesize circuit block" },
-                        { "name": "eda_pinmux_solve", "description": "Solve pinmux with Z3" },
-                        { "name": "eda_export_fab", "description": "Export Gerber / IPC-2581C" },
-                        { "name": "eda_diff_revisions", "description": "Semantic 3-way hardware diff" },
-                        { "name": "eda_route_walkaround", "description": "Interactive walkaround routing" },
-                        { "name": "eda_check_datasheet", "description": "Query datasheet citations" },
-                        { "name": "eda_signoff_waiver", "description": "Cryptographically sign DRC waiver" },
-                        { "name": "eda_run_code_mode", "description": "Execute sandboxed Wasm code" }
+                        { "name": "hw_discover", "description": "Discover parts and verified datasheet evidence" },
+                        { "name": "hw_inspect", "description": "Query HW-IR or run Wasmtime 51 Code Mode filter" },
+                        { "name": "hw_patch", "description": "Apply atomic HardwarePatch with human-lock guards" },
+                        { "name": "hw_lock", "description": "Set/query entity human lock status" },
+                        { "name": "hw_compile", "description": "Compile atopile/KiCad schematics & enclosure" },
+                        { "name": "hw_verify", "description": "Run ERC/DRC, EE Audit, PI, MCAD Clash & 2581check" },
+                        { "name": "hw_simulate", "description": "Run SPICE analog & FEM simulations" },
+                        { "name": "hw_layout", "description": "Run OrthoRoute / Fast-RTR & Gerber inspection" },
+                        { "name": "hw_signoff", "description": "Gate 8 human cryptographic signoff & waivers" },
+                        { "name": "hw_firmware", "description": "Compile firmware and run Renode co-simulation" },
+                        { "name": "hw_export", "description": "Export Gerbers, IPC-2581C, STEP, iBom, PcbDraw & Typst PDF" },
+                        { "name": "hw_diff", "description": "Compute hardware diffs & Dual Checkpoints" }
                     ]
                 }
             }),

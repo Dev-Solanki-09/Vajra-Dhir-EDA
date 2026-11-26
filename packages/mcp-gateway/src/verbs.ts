@@ -1,8 +1,7 @@
 /**
- * Vajra-Dhīr EDA — Harness MCP v2 (The 12 EDA Verbs)
- * 
- * Strict typed verbs exposing deterministic compiler, placement, DRC, SPICE,
- * and patch operations to Frontier AI Agents.
+ * Vajra-Dhīr EDA — Harness MCP v2 (Canonical 12 EDA Verbs, Wasmtime 51 Code Mode)
+ *
+ * Unified single canonical 12-verb surface covering Stages P1..P17 and ACP agent harness.
  */
 
 export interface EdaVerbDefinition {
@@ -15,177 +14,171 @@ export interface EdaVerbDefinition {
   };
 }
 
+export const CANONICAL_12_MCP_VERBS = [
+  'hw_discover',
+  'hw_inspect',
+  'hw_patch',
+  'hw_lock',
+  'hw_compile',
+  'hw_verify',
+  'hw_simulate',
+  'hw_layout',
+  'hw_signoff',
+  'hw_firmware',
+  'hw_export',
+  'hw_diff',
+] as const;
+
 export const EDA_VERB_DEFINITIONS: EdaVerbDefinition[] = [
   {
-    name: 'eda_patch_circuit',
-    description: 'Apply an atomic HardwarePatch to the HW-IR database with automatic dry-run, undo logging, and human-lock protection.',
+    name: 'hw_discover',
+    description: 'Discover parts in DuckDB/jlcparts (P7), verify datasheet PDF evidence/crops (P8), and enumerate workspace artifacts.',
     parameters: {
       type: 'object',
       properties: {
-        project_id: { type: 'string', description: 'UUIDv7 of the target project' },
-        actor_id: { type: 'string', description: 'Identifier of the agent or engineer applying the patch' },
-        forward_ops: {
-          type: 'array',
-          items: { type: 'object' },
-          description: 'List of HardwarePatchOp operations (UPSERT_ENTITY, MOVE_COMPONENT, etc.)'
-        },
-        dry_run: { type: 'boolean', description: 'If true, validates lock guards and returns diff without writing to disk' },
+        query: { type: 'string', description: 'Component query, MPN, or LCSC code' },
+        check_datasheet: { type: 'boolean', description: 'Require verified datasheet citation evidence' },
       },
-      required: ['project_id', 'actor_id', 'forward_ops'],
+      required: ['query'],
     },
   },
   {
-    name: 'eda_query_design',
-    description: 'Run structured SQL or filter queries over the HW-IR database (components, nets, traces, vias, constraints).',
+    name: 'hw_inspect',
+    description: 'Query HW-IR SQLite entities/nets/constraints or filter large netlist/DRC JSON inside Wasmtime 51 Code Mode (256 MiB / 16 KiB stdout cap).',
     parameters: {
       type: 'object',
       properties: {
-        project_id: { type: 'string', description: 'UUIDv7 of the target project' },
-        entity_type: {
-          type: 'string',
-          enum: ['component', 'net', 'trace', 'via', 'copper_zone', 'constraint', 'raw_sql'],
-          description: 'Entity table to query'
-        },
-        filter_expr: { type: 'string', description: 'Filter expression or SQL SELECT statement' },
+        project_id: { type: 'string' },
+        entity_type: { type: 'string', enum: ['component', 'net', 'trace', 'via', 'constraint', 'code_mode'] },
+        filter_expr: { type: 'string', description: 'Filter expression or Wasmtime 51 sandboxed query script' },
       },
       required: ['project_id', 'entity_type'],
     },
   },
   {
-    name: 'eda_verify_drc',
-    description: 'Execute deterministic DRC/ERC verification against fab limits (clearance, shorts, open nets, courtyards).',
+    name: 'hw_patch',
+    description: 'Apply an atomic HardwarePatch or code/enclosure edit through CommandBus with undo logging and human-lock guard.',
     parameters: {
       type: 'object',
       properties: {
-        project_id: { type: 'string', description: 'UUIDv7 of the target project' },
-        board_id: { type: 'string', description: 'Target board UUIDv7' },
-        fab_profile: { type: 'string', description: 'Target fab ruleset (e.g. jlcpcb_4l_7628, pcbway_2l, sky130A)' },
+        project_id: { type: 'string' },
+        actor_id: { type: 'string' },
+        forward_ops: { type: 'array', items: { type: 'object' } },
+        dry_run: { type: 'boolean' },
       },
-      required: ['project_id', 'board_id'],
+      required: ['project_id', 'actor_id', 'forward_ops'],
     },
   },
   {
-    name: 'eda_run_spice',
-    description: 'Execute SPICE simulation (operating point, transient, AC, Monte Carlo) via dialect-transpiled ngspice/Xyce.',
+    name: 'hw_lock',
+    description: 'Set or query human lock status (`locked = 1`) on components, traces, or design constraints.',
     parameters: {
       type: 'object',
       properties: {
-        project_id: { type: 'string', description: 'UUIDv7 of the target project' },
-        analysis_type: { type: 'string', enum: ['tran', 'ac', 'dc', 'op', 'monte_carlo'] },
-        stop_time_s: { type: 'number', description: 'Transient simulation stop time in seconds' },
-        step_time_s: { type: 'number', description: 'Transient simulation max step time in seconds' },
+        entity_id: { type: 'string' },
+        locked: { type: 'boolean' },
+        reason: { type: 'string' },
+      },
+      required: ['entity_id', 'locked'],
+    },
+  },
+  {
+    name: 'hw_compile',
+    description: 'Compile atopile `.ato` / Open-CUBO blocks / `system.yaml` (P5, P6) and sync KiCad 10 schematics/PCB (P1).',
+    parameters: {
+      type: 'object',
+      properties: {
+        project_id: { type: 'string' },
+        target: { type: 'string', enum: ['ato', 'kicad_sync', 'cubo_block', 'enclosure'] },
+      },
+      required: ['project_id', 'target'],
+    },
+  },
+  {
+    name: 'hw_verify',
+    description: 'Run deterministic ERC/DRC (P1), Z3/SymPy/Pint EE Audit (P9), PI (P13 padne), 3D Clash + Thermal (P14), and IPC-2581 check (P16).',
+    parameters: {
+      type: 'object',
+      properties: {
+        project_id: { type: 'string' },
+        suites: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['project_id'],
+    },
+  },
+  {
+    name: 'hw_simulate',
+    description: 'Run ngspice analog/transient/fault simulation (P10) and power integrity FEM solve (P13).',
+    parameters: {
+      type: 'object',
+      properties: {
+        project_id: { type: 'string' },
+        analysis_type: { type: 'string', enum: ['tran', 'ac', 'dc', 'op', 'pi_fem', 'thermal_fem'] },
         signals_to_probe: { type: 'array', items: { type: 'string' } },
       },
-      required: ['project_id', 'analysis_type', 'signals_to_probe'],
+      required: ['project_id', 'analysis_type'],
     },
   },
   {
-    name: 'eda_synthesize_block',
-    description: 'Synthesize a verified Open-CUBO circuit block or atopile module into the design.',
+    name: 'hw_layout',
+    description: 'Run OrthoRoute / Fast-RTR placement/routing (P12) or Gerber geometry inspection (P15).',
     parameters: {
       type: 'object',
       properties: {
-        project_id: { type: 'string', description: 'UUIDv7 of the target project' },
-        block_kind: { type: 'string', description: 'e.g. buck_regulator, usb_pd_sink, ldo_linear, diff_rx' },
-        parameters: { type: 'object', description: 'Key-value input parameters (v_in, v_out, i_max, etc.)' },
+        board_id: { type: 'string' },
+        mode: { type: 'string', enum: ['auto_route', 'walkaround', 'gerber_inspect'] },
       },
-      required: ['project_id', 'block_kind', 'parameters'],
+      required: ['board_id', 'mode'],
     },
   },
   {
-    name: 'eda_pinmux_solve',
-    description: 'Run the Z3 pinmux constraint solver to assign MCU/FPGA peripherals to pins with zero conflicts.',
+    name: 'hw_signoff',
+    description: 'Surface Gate 8 human cryptographic signoff status or record verified human DRC waiver (always human-gated).',
     parameters: {
       type: 'object',
       properties: {
-        project_id: { type: 'string', description: 'UUIDv7 of the target project' },
-        mcu_component_id: { type: 'string', description: 'Component UUIDv7 of the microcontroller' },
-        required_peripherals: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'List of peripherals (e.g. ["I2C1", "SPI2", "UART1", "ADC1_CH4"])'
-        },
+        project_id: { type: 'string' },
+        waived_by: { type: 'string' },
+        human_confirmed: { type: 'boolean' },
       },
-      required: ['project_id', 'mcu_component_id', 'required_peripherals'],
+      required: ['project_id'],
     },
   },
   {
-    name: 'eda_export_fab',
-    description: 'Generate production manufacturing outputs (Gerber X3, IPC-2581C, drill files, BOM, Pick-and-Place, STEP).',
+    name: 'hw_firmware',
+    description: 'Compile firmware and execute deterministic Renode / QEMU MCU-on-circuit co-simulation (P11).',
     parameters: {
       type: 'object',
       properties: {
-        project_id: { type: 'string', description: 'UUIDv7 of the target project' },
-        board_id: { type: 'string', description: 'Target board UUIDv7' },
-        format: { type: 'string', enum: ['gerber_x3', 'ipc_2581c', 'step_mcad', 'bom_csv', 'pos_csv', 'all'] },
+        project_id: { type: 'string' },
+        action: { type: 'string', enum: ['build', 'cosim_run', 'patch_firmware'] },
       },
-      required: ['project_id', 'board_id', 'format'],
+      required: ['project_id', 'action'],
     },
   },
   {
-    name: 'eda_diff_revisions',
-    description: 'Compute a semantic 3-way hardware diff between git commits or branches with spatial collision check.',
+    name: 'hw_export',
+    description: 'Export Gerbers, IPC-2581C, STEP 3D, iBom, PcbDraw SVG, EMS BOM/CPL (P16), and Engineering Dossier PDF (P17).',
     parameters: {
       type: 'object',
       properties: {
-        project_id: { type: 'string', description: 'UUIDv7 of the target project' },
-        base_ref: { type: 'string', description: 'Git ref or commit for common ancestor' },
-        head_ref: { type: 'string', description: 'Git ref or commit for comparison' },
+        project_id: { type: 'string' },
+        format: { type: 'string', enum: ['gerbers', 'ipc2581', 'fab_bundle', 'dossier_pdf', 'all'] },
       },
-      required: ['project_id', 'base_ref', 'head_ref'],
+      required: ['project_id', 'format'],
     },
   },
   {
-    name: 'eda_route_walkaround',
-    description: 'Execute obstacle-avoidance walkaround or differential pair routing between two pins/pads.',
+    name: 'hw_diff',
+    description: 'Compute semantic hardware diff or manage Dual Checkpoints (`git_tree_sha`, `hw_ir_lamport_seq`, `cas_manifest_sha`).',
     parameters: {
       type: 'object',
       properties: {
-        board_id: { type: 'string', description: 'Target board UUIDv7' },
-        from_pin_id: { type: 'string', description: 'Source pin UUIDv7' },
-        to_pin_id: { type: 'string', description: 'Target pin UUIDv7' },
-        preferred_layer: { type: 'string', description: 'e.g. F.Cu, B.Cu' },
+        project_id: { type: 'string' },
+        base_ref: { type: 'string' },
+        head_ref: { type: 'string' },
       },
-      required: ['board_id', 'from_pin_id', 'to_pin_id'],
-    },
-  },
-  {
-    name: 'eda_check_datasheet',
-    description: 'Query the local zero-hallucination datasheet evidence ledger for cryptographic pin/limit citations and crops.',
-    parameters: {
-      type: 'object',
-      properties: {
-        mpn: { type: 'string', description: 'Manufacturer Part Number' },
-        query_fact: { type: 'string', description: 'Fact to retrieve (e.g. absolute_max_vcc, thermal_resistance, pinout)' },
-      },
-      required: ['mpn', 'query_fact'],
-    },
-  },
-  {
-    name: 'eda_signoff_waiver',
-    description: 'Cryptographically sign an active DRC waiver bound to the exact geometry SHA-256 fingerprint.',
-    parameters: {
-      type: 'object',
-      properties: {
-        project_id: { type: 'string', description: 'UUIDv7 of the target project' },
-        rule_code: { type: 'string', description: 'DRC rule code being waived (e.g. clearance, shorting_items)' },
-        entity_ids: { type: 'array', items: { type: 'string' } },
-        justification: { type: 'string', description: 'Technical rationale for waiver' },
-        waived_by: { type: 'string', description: 'Engineer identity or GPG fingerprint' },
-      },
-      required: ['project_id', 'rule_code', 'entity_ids', 'justification', 'waived_by'],
-    },
-  },
-  {
-    name: 'eda_run_code_mode',
-    description: 'Execute a sandboxed Python/Wasm script inside Wasmtime 51 with fuel, 256 MiB memory, and 5s watchdog ceiling.',
-    parameters: {
-      type: 'object',
-      properties: {
-        source_code: { type: 'string', description: 'Python/Wasm script source' },
-        timeout_ms: { type: 'number', description: 'Execution timeout in ms (max 5000)' },
-      },
-      required: ['source_code'],
+      required: ['project_id'],
     },
   },
 ];

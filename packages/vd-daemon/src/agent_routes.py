@@ -22,20 +22,26 @@ import urllib.parse
 import urllib.request
 from typing import Callable, Mapping
 
-ALLOWED_MCP_VERBS = frozenset({
-    "hw_query",
-    "hw_patch",
-    "hw_lock",
-    "hw_verify",
-    "hw_drc",
-    "hw_route",
-    "hw_sim",
-    "hw_search",
-    "hw_export",
-    "hw_cam",
-    "hw_diff",
-    "hw_project",
-})
+try:
+    from .acp_orchestrator import (
+        CANONICAL_12_VERBS,
+        create_dual_checkpoint,
+        get_dlp_policy,
+        rewind_dual_checkpoint,
+        run_autonomous_ee_loop,
+        set_dlp_policy,
+    )
+except ImportError:
+    from acp_orchestrator import (
+        CANONICAL_12_VERBS,
+        create_dual_checkpoint,
+        get_dlp_policy,
+        rewind_dual_checkpoint,
+        run_autonomous_ee_loop,
+        set_dlp_policy,
+    )
+
+ALLOWED_MCP_VERBS = frozenset(CANONICAL_12_VERBS)
 
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 PROPOSAL_PATH_RE = re.compile(r"^/api(?:/v1)?/agent/proposals/([0-9a-fA-F-]{8,64})/(accept|reject)$")
@@ -135,6 +141,15 @@ def _store_proposal(proposal: dict) -> None:
             _PROPOSAL_STORE.popitem(last=False)
 
 
+def handle_agent_get(handler, path: str, full_path: str = "", con: sqlite3.Connection | None = None) -> bool:
+    if path in ("/api/v1/agent/policy", "/api/agent/policy"):
+        pol = get_dlp_policy()
+        pol["canonical_verbs"] = list(CANONICAL_12_VERBS)
+        _send_json(handler, 200, pol)
+        return True
+    return False
+
+
 def handle_agent_post(
     handler,
     path: str,
@@ -143,7 +158,32 @@ def handle_agent_post(
     autosave_writer: Callable[[str, list], None],
     wal_checkpointer: Callable[[sqlite3.Connection, int, bool], None],
 ) -> bool:
+    if path in ("/api/v1/agent/policy", "/api/agent/policy"):
+        pol = set_dlp_policy(tier=req.get("tier"), mode=req.get("mode"))
+        _send_json(handler, 200, pol)
+        return True
+
+    if path in ("/api/v1/agent/checkpoint", "/api/agent/checkpoint"):
+        res = create_dual_checkpoint(handler.con, label=str(req.get("label") or "manual"))
+        _send_json(handler, 200, res)
+        return True
+
+    if path in ("/api/v1/agent/rewind", "/api/agent/rewind"):
+        res = rewind_dual_checkpoint(handler.con, checkpoint_id=req.get("checkpoint_id"))
+        _send_json(handler, 200 if res.get("success") else 404, res)
+        return True
+
+    if path in ("/api/v1/agent/autonomous", "/api/agent/autonomous"):
+        res = run_autonomous_ee_loop(handler.con, req, _PROPOSAL_STORE)
+        code = int(res.pop("_http_status", 200 if res.get("success") else 400))
+        _send_json(handler, code, res)
+        return True
+
     if path in ("/api/v1/agent/chat", "/api/agent/chat"):
+        pol = get_dlp_policy()
+        if pol.get("mode") == "OFF" and not req.get("allow_in_off_mode"):
+            _send_json(handler, 409, {"error_code": "AGENT_MODE_OFF", "error": "Agent dock is set to manual OFF mode."})
+            return True
         prompt = str(req.get("prompt", "")).strip() or "Analyze placement spacing on SW_NODE"
         try:
             provider, ollama_endpoint = resolve_llm_provider()
@@ -203,7 +243,7 @@ def handle_agent_post(
         )
         _write_sse(handler, "thought_delta", {"text": thought_msg})
 
-        verb = "hw_query"
+        verb = "hw_inspect"
         assert verb in ALLOWED_MCP_VERBS
         _write_sse(handler, "tool_call", {"verb": verb, "args": {"refdes": refdes, "component_id": comp_id}})
         _write_sse(
