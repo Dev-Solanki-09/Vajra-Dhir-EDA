@@ -26,6 +26,7 @@ export const AgentDockPanel: React.FC = () => {
   const [checkpointId, setCheckpointId] = useState<string>('');
   const [streaming, setStreaming] = useState(false);
   const [planStages, setPlanStages] = useState<Array<{ id: string; title: string; status: string }>>([]);
+  const [missionLayers, setMissionLayers] = useState<Array<{ layer: string; title: string; status: string; detail: string }>>([]);
   const [thoughts, setThoughts] = useState<string[]>([
     'Offline assistant ready (local planner + 16 hardware tools). Use @board, @drc, @spice or /rollback.',
   ]);
@@ -119,14 +120,17 @@ export const AgentDockPanel: React.FC = () => {
       }
       const logs = Array.isArray(data.trace_log) ? data.trace_log : [];
       setToolCalls(logs.map((t: { verb: string; verdict: string; detail: string }) => `${t.verb} [${t.verdict}]: ${t.detail}`));
+      if (Array.isArray(data.layers)) {
+        setMissionLayers(data.layers);
+      }
       const ghosts = Array.isArray(data.violet_ghost_proposals) ? data.violet_ghost_proposals : [];
       if (ghosts.length) {
         setProposals((prev) => [...ghosts.map((g: AgentProposalCard) => ({ ...g, status: 'pending' as const })), ...prev]);
       }
       setThoughts((prev) => [
         ...prev,
-        `Repairs applied: ${data.repairs_applied?.length ?? 0} | Violet Ghost lock proposals: ${ghosts.length}`,
-        'HALTED cleanly at Human Gate-8 Cryptographic Signoff (release_authorized=false).',
+        `Repairs applied: ${data.repairs_applied?.length ?? 0} | Violet Ghost lock proposals: ${ghosts.length}${data.oscillation_halted ? ' | Halted on repeated failure' : ''}`,
+        'Halted cleanly at Gate-8 Human Sign-off (release_authorized=false).',
       ]);
     } catch (err) {
       setThoughts((prev) => [...prev, err instanceof Error ? err.message : 'Autonomous loop error']);
@@ -376,6 +380,29 @@ export const AgentDockPanel: React.FC = () => {
           {planStages.map((s) => (
             <div key={s.id} style={{ color: s.status === 'done' ? 'var(--vd-pass)' : s.status === 'in_progress' ? '#3D7EC7' : 'var(--vd-text-secondary)' }}>
               [{s.status === 'done' ? 'x' : s.status === 'in_progress' ? '>' : ' '}] {s.title}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {missionLayers.length > 0 && (
+        <div
+          data-testid="agent-7layer-mission-card"
+          style={{
+            border: '1px solid var(--vd-border-subtle)',
+            backgroundColor: 'var(--vd-bg-canvas)',
+            borderRadius: 4,
+            padding: '6px 8px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            fontSize: 10.5,
+          }}
+        >
+          <strong style={{ color: 'var(--vd-text-primary)' }}>7-Layer Closed-Loop Proof</strong>
+          {missionLayers.map((ml) => (
+            <div key={ml.layer} className="vd-metric" style={{ color: ml.status === 'PASS' ? 'var(--vd-pass)' : ml.status === 'REPAIRED' ? '#3D7EC7' : 'var(--vd-warn)' }}>
+              [{ml.layer}:{ml.status}] {ml.title} — {ml.detail}
             </div>
           ))}
         </div>

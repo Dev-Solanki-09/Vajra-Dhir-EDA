@@ -23,6 +23,21 @@ from typing import Any, Dict, List, Optional
 from .providers import call_byok_chat, frame_untrusted_text
 from .vault import get_session_budget_status, redact_secrets, resolve_vault_dir
 
+try:
+    from ..hermes_bridge import (
+        get_progressive_skill,
+        hermes_hardening_status,
+        list_progressive_skills,
+        match_skills_for_prompt,
+    )
+except ImportError:
+    from hermes_bridge import (  # type: ignore
+        get_progressive_skill,
+        hermes_hardening_status,
+        list_progressive_skills,
+        match_skills_for_prompt,
+    )
+
 BUILTIN_EE_SKILLS: List[Dict[str, str]] = [
     {
         "id": "buck-converter-checklist",
@@ -139,23 +154,32 @@ class HermesRuntime:
             "skills_write_approval": True,
         }
 
-    def list_skills(self) -> List[Dict[str, str]]:
-        skills = [dict(s, source="builtin") for s in BUILTIN_EE_SKILLS]
+    def list_skills(self) -> List[Dict[str, Any]]:
+        seen: Dict[str, Dict[str, Any]] = {}
+        for ps in list_progressive_skills(include_body=False):
+            seen[ps["id"]] = dict(ps)
+        for s in BUILTIN_EE_SKILLS:
+            if s["id"] not in seen:
+                seen[s["id"]] = dict(s, source="builtin")
         for f in sorted(_skills_dir().glob("*.json")):
             try:
                 data = json.loads(f.read_text(encoding="utf-8"))
-                skills.append({
-                    "id": str(data.get("id") or f.stem),
+                sid = str(data.get("id") or f.stem)
+                seen[sid] = {
+                    "id": sid,
                     "title": str(data.get("title") or f.stem),
                     "summary": str(data.get("summary") or ""),
                     "body": str(data.get("body") or ""),
                     "source": "user",
-                })
+                }
             except Exception:
                 continue
-        return skills
+        return list(seen.values())
 
-    def get_skill(self, skill_id: str) -> Optional[Dict[str, str]]:
+    def get_skill(self, skill_id: str) -> Optional[Dict[str, Any]]:
+        prog = get_progressive_skill(skill_id)
+        if prog:
+            return prog
         for s in self.list_skills():
             if s["id"] == skill_id:
                 return s
@@ -329,6 +353,7 @@ class HermesRuntime:
 
         git_sha = _current_git_tree_sha(self.repo_root)
         lamport = int((con.execute("SELECT rev_lamport FROM projects LIMIT 1").fetchone() or [0])[0])
+        matched = match_skills_for_prompt(prompt, top_k=3)
 
         if prov == "deterministic_offline":
             return {
@@ -336,10 +361,11 @@ class HermesRuntime:
                 "provider": prov,
                 "git_tree_sha": git_sha,
                 "hwir_rev_id": lamport,
+                "matched_skills": [s["id"] for s in matched],
                 "thought": (
-                    f"Hermes offline planner checked HW-IR rev #{lamport} (git {git_sha}): "
+                    f"Hermes offline planner checked project rev #{lamport} (git {git_sha}): "
                     f"target {target_ref} ({'HUMAN_LOCKED -> Ghost Only' if locked else 'unlocked'}). "
-                    f"Resolved {len(at_ctx.get('tags', []))} @context ref(s)."
+                    f"Resolved {len(at_ctx.get('tags', []))} @context ref(s), {len(matched)} skill(s)."
                 ),
                 "plan": [dict(s) for s in self.active_plan],
             }

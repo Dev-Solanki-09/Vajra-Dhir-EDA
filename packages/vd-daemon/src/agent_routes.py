@@ -185,6 +185,12 @@ def handle_agent_get(handler, path: str, full_path: str = "", con: sqlite3.Conne
         _send_json(handler, 200, get_session_budget_status())
         return True
     if path == "/api/v1/agent/skills":
+        qs = urllib.parse.parse_qs(urllib.parse.urlparse(full_path or path).query)
+        sid = (qs.get("id") or [""])[0].strip()
+        if sid:
+            loaded = _HERMES_RUNTIME.get_skill(sid)
+            _send_json(handler, 200 if loaded else 404, {"skill": loaded} if loaded else {"error": "SKILL_NOT_FOUND"})
+            return True
         _send_json(handler, 200, {
             "skills": _HERMES_RUNTIME.list_skills(),
             "skills_write_approval": _HERMES_RUNTIME.agent_settings.get("skills_write_approval", True),

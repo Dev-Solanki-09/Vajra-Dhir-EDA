@@ -90,7 +90,14 @@ def load_plugin_dir(plugin_dir: pathlib.Path, policy_allowed: Optional[frozenset
 
 
 def scan_plugins(extra_dirs: Optional[List[pathlib.Path]] = None) -> List[Dict[str, Any]]:
-    dirs = [_REPO_ROOT / ".vd-plugins"]
+    dirs = [
+        _REPO_ROOT / ".vd-plugins",
+        _REPO_ROOT / ".vd-portable" / "packs" / "official-plugins",
+        _REPO_ROOT / ".vd-companion-staging" / "Vajra-Dhir-Packs" / "official-plugins",
+    ]
+    custom_packs = os.environ.get("VD_PACKS_DIR")
+    if custom_packs:
+        dirs.append(pathlib.Path(custom_packs) / "official-plugins")
     if extra_dirs:
         dirs.extend(extra_dirs)
     loaded: List[Dict[str, Any]] = []

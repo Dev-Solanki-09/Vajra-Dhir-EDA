@@ -200,7 +200,7 @@ def _list_all_tools() -> List[Dict[str, Any]]:
         meta = CORE_TOOL_SCHEMAS[v]
         tools.append({"name": v, "description": meta["description"], "inputSchema": meta["inputSchema"]})
     for pt in get_plugin_mcp_tools():
-        tools.append({"name": pt["name"], "description": pt["description"], "inputSchema": pt["inputSchema"]})
+        tools.append({"name": pt["name"], "description": pt["description"], "inputSchema": pt["inputSchema"], "defer_loading": True})
     return tools
 
 
@@ -232,7 +232,19 @@ def dispatch_mcp_tool(name: str, args: Dict[str, Any], con: Optional[sqlite3.Con
 
     # 3. Core 12 HW verbs
     if name == "hw_discover":
-        return {"ok": True, "tools": probe_tool_manager_status()["tools"], "evidence_source": "vd-daemon:polish_engine"}
+        q = str(args.get("query") or "")
+        try:
+            from .hermes_bridge import match_skills_for_prompt
+        except ImportError:
+            from hermes_bridge import match_skills_for_prompt
+        plugin_tools = [{"name": t["name"], "description": t["description"], "defer_loading": True} for t in get_plugin_mcp_tools()]
+        return {
+            "ok": True,
+            "tools": probe_tool_manager_status()["tools"],
+            "plugin_tools": plugin_tools,
+            "matched_skills": [{"id": s["id"], "title": s.get("title")} for s in match_skills_for_prompt(q or "hardware design", top_k=4)],
+            "evidence_source": "vd-daemon:polish_engine+hermes_bridge",
+        }
 
     if name == "hw_inspect":
         if con is None:
