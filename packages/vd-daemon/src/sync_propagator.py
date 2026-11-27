@@ -517,6 +517,36 @@ def commit_tx(con: sqlite3.Connection, req: Dict[str, Any]) -> tuple[int, Dict[s
                     sync_ops.append({"op": "SET_LOCK", "entity_id": str(cid), "locked": bool(lk)})
                     changed_entities.append(str(ref))
 
+                elif tag == "SYNC_PLAN_BLOCKS":
+                    blocks = list(op.get("blocks") or [])
+                    buses = list(op.get("buses") or [])
+                    prov = actor_kind if actor_kind in ("human", "agent", "cubo", "import", "compiler") else "cubo"
+                    for b_idx, blk in enumerate(blocks):
+                        blk_name = str(blk.get("name") or blk.get("id") or f"BLOCK_{b_idx + 1}")
+                        refs = [str(r) for r in (blk.get("memberRefdes") or []) if str(r).strip()]
+                        if not refs:
+                            refs = [f"U_BLK{b_idx + 1}"]
+                        bx = int(float(blk.get("x", 20 + (b_idx % 4) * 16)) * 1_000_000)
+                        by = int(float(blk.get("y", 20 + (b_idx // 4) * 14)) * 1_000_000)
+                        for r_idx, ref in enumerate(refs):
+                            ex = cur.execute("SELECT id, locked FROM components WHERE refdes = ?", (ref,)).fetchone()
+                            if ex is None:
+                                new_id = new_uuidv7()
+                                pkg = str(blk.get("mountingFootprint") or "Module")
+                                fp = pkg if ":" in pkg else f"Package_TO_SOT_SMD:{pkg}"
+                                cur.execute(
+                                    "INSERT INTO components (id, board_id, refdes, value_str, mpn, package_name, footprint_ref, functional_group, x_nm, y_nm, rot_mdeg, side, courtyard_w_nm, courtyard_h_nm, power_diss_mw, unit_cost_usd, params_json, provenance, locked, rev_lamport) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'top', 2400000, 1600000, ?, 0.50, ?, ?, 0, 1)",
+                                    (new_id, board_id, ref, blk_name, blk_name, pkg, fp, str(blk.get("role") or "architecture")[:32], bx + r_idx * 4_000_000, by, float(blk.get("expectedMa") or 0) * float(blk.get("railVoltageV") or 3.3), json.dumps({"block_id": blk.get("id")}), prov),
+                                )
+                                changed_entities.append(ref)
+                                electrical_touched = True
+                    for bus in buses:
+                        bname = str(bus.get("name") or bus.get("signal") or "").strip()
+                        if bname:
+                            _ensure_net(bname, voltage_v=float(bus.get("railVoltageV") or 0.0), role=str(bus.get("protocol") or "generic").lower())
+                            changed_entities.append(bname)
+                            electrical_touched = True
+
             cur.execute("UPDATE projects SET rev_lamport = rev_lamport + 1")
             new_rev = int(cur.execute("SELECT rev_lamport FROM projects LIMIT 1").fetchone()[0])
             con.commit()

@@ -6,6 +6,7 @@ import {
 } from '@vajradhir/webgpu-cad-engine';
 import { globalCrossProbeBus } from '@vajradhir/crossprobe-bus';
 import { WorkspaceId } from '../commandBus';
+import { useSpiceOverlay } from '../spiceSimStore';
 import { useDesignStore } from '../store/useDesignStore';
 
 const SchematicElkCanvas = React.lazy(() =>
@@ -258,6 +259,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
     mcad_3d: 'full',
     firmware_pinmux: 'full',
   });
+  const spiceOverlay = useSpiceOverlay();
   const [simResult, setSimResult] = useState<{
     phaseMarginDeg: number;
     irDropMv: number;
@@ -269,8 +271,14 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
     bodeFreqKhz: [1, 5, 10, 25, 50, 100, 200, 500],
     bodeGainDb: [38, 28, 21, 11, 2, -6, -15, -24],
   });
-  const transientTimeUs = useMemo(() => [0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0], []);
-  const transientSwV = useMemo(() => [0.1, 11.8, 12.1, 11.9, 0.2, 0.1, 11.9, 12.0, 0.15], []);
+  const transientTimeUs = useMemo(
+    () => (spiceOverlay.latestWaveX.length >= 2 ? spiceOverlay.latestWaveX : [0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]),
+    [spiceOverlay.latestWaveX]
+  );
+  const transientSwV = useMemo(
+    () => (spiceOverlay.latestWaveY.length >= 2 ? spiceOverlay.latestWaveY : [0.1, 11.8, 12.1, 11.9, 0.2, 0.1, 11.9, 12.0, 0.15]),
+    [spiceOverlay.latestWaveY]
+  );
 
   const [bomQuery, setBomQuery] = useState('');
   const [bomVariant, setBomVariant] = useState<'DEFAULT' | 'PROTO_NO_CAN'>('DEFAULT');

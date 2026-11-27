@@ -172,9 +172,66 @@ SMART_CIRCUIT_BLOCKS = [
 ]
 
 
+def _companion_lib_dir() -> pathlib.Path:
+    for cand in [
+        pathlib.Path(os.environ.get("VD_DATA_DIR") or ".vd-runtime") / "libraries",
+        pathlib.Path(".vd-portable") / "libraries",
+        pathlib.Path(".vd-runtime") / "libraries",
+        pathlib.Path(".vd-companion-staging") / "Vajra-Dhir-Libraries",
+    ]:
+        if cand.is_dir():
+            return cand
+    return pathlib.Path(".vd-runtime") / "libraries"
+
+
 def handle_kg_get(handler: Any, path: str, full_path: str = "") -> bool:
-    if path in ("/api/v1/blocks/catalog", "/api/blocks/catalog"):
-        _send_json(handler, 200, {"blocks": SMART_CIRCUIT_BLOCKS})
+    if path in ("/api/v1/blocks/catalog", "/api/blocks/catalog", "/api/v1/libraries/cubos"):
+        lib_dir = _companion_lib_dir()
+        open_cubos = []
+        for cdir in [lib_dir / "open-cubo"]:
+            if cdir.is_dir():
+                for jf in sorted(cdir.glob("*.json")):
+                    try:
+                        open_cubos.append(json.loads(jf.read_text(encoding="utf-8")))
+                    except Exception:
+                        pass
+        _send_json(handler, 200, {"blocks": SMART_CIRCUIT_BLOCKS, "open_cubo": open_cubos})
+        return True
+
+    if path in ("/api/v1/libraries/sbc-modules", "/api/v1/sbc-modules"):
+        lib_dir = _companion_lib_dir()
+        modules = []
+        for sdir in [lib_dir / "sbc-modules"]:
+            if sdir.is_dir():
+                for jf in sorted(sdir.glob("*.json")):
+                    try:
+                        modules.append(json.loads(jf.read_text(encoding="utf-8")))
+                    except Exception:
+                        pass
+        _send_json(handler, 200, {"modules": modules})
+        return True
+
+    if path in ("/api/v1/libraries/starter-parts",):
+        q = _parse_query(full_path or getattr(handler, "path", path))
+        query = q.get("q", "").strip().lower()
+        cat = q.get("category", "").strip().lower()
+        limit = int(q.get("limit", "60") or "60")
+        lib_dir = _companion_lib_dir()
+        parts: list[Dict[str, Any]] = []
+        for cand in [lib_dir / "starter" / "parts.json", lib_dir / "starter-parts" / "parts.json"]:
+            if cand.is_file():
+                try:
+                    raw = json.loads(cand.read_text(encoding="utf-8"))
+                    parts = list(raw.get("parts") or [])
+                    break
+                except Exception:
+                    pass
+        filtered = [
+            p for p in parts
+            if (not query or query in str(p.get("mpn", "")).lower() or query in str(p.get("value", "")).lower() or query in str(p.get("category", "")).lower() or query in str(p.get("lcsc_id", "")).lower())
+            and (not cat or cat in str(p.get("category", "")).lower())
+        ]
+        _send_json(handler, 200, {"total": len(filtered), "results": filtered[:limit]})
         return True
 
     if path in ("/api/v1/parts/search", "/api/parts/search"):

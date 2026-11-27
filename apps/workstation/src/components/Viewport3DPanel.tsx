@@ -769,7 +769,28 @@ export const Viewport3DPanel: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [meshPayload, xray, showFr4, showCopper, showParts, selectedRefdes, clashRefs, snapCamera, piHeatmap.enabled, piHeatmap.result, piHeatmap.metric, piHeatmap.colormap, mcad.showThermal, mcad.thermal]);
+  }, [meshPayload, xray, showFr4, showCopper, showParts, clashRefs, snapCamera, piHeatmap.enabled, piHeatmap.result, piHeatmap.metric, piHeatmap.colormap, mcad.showThermal, mcad.thermal]);
+
+  // In-place selection halo highlight (0 full-scene rebuilds on click/crossprobe)
+  useEffect(() => {
+    for (const [refdes, anchor] of compAnchorsRef.current.entries()) {
+      anchor.children.forEach((ch) => {
+        if (ch.userData?.isHalo && ch instanceof THREE.Mesh && ch.material instanceof THREE.MeshBasicMaterial) {
+          const isSel = refdes === selectedRefdes;
+          const isClash = clashRefs.has(refdes);
+          const meta = compMetaMapRef.current.get(refdes);
+          ch.material.color.set(isClash ? '#EF4444' : isSel ? '#38BDF8' : meta?.locked ? '#FBBF24' : '#334155');
+        }
+      });
+    }
+    if (rendererRef.current && sceneRef.current && activeCamRef.current) {
+      scheduleOnDemandRender(() => {
+        if (rendererRef.current && sceneRef.current && activeCamRef.current) {
+          rendererRef.current.render(sceneRef.current, activeCamRef.current);
+        }
+      });
+    }
+  }, [selectedRefdes, clashRefs]);
 
   // In-place uuid -> mesh patching (0 full-scene rebuilds on move/rotate/flip or solder mask color change)
   useEffect(() => {

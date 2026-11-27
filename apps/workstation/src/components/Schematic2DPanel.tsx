@@ -526,14 +526,22 @@ export const Schematic2DPanel: React.FC<Schematic2DPanelProps> = ({
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
         >
           {wirePolylines.map((w) => {
-            const dim = highlightedNet && w.net && w.net !== highlightedNet;
+            const isHighlighted = Boolean(highlightedNet && w.net && w.net === highlightedNet);
+            const dim = Boolean(highlightedNet && w.net && w.net !== highlightedNet);
             return (
               <polyline
                 key={w.key}
+                data-testid={w.net ? `sch-wire-${w.net}` : undefined}
                 points={w.points}
                 fill="none"
-                stroke={dim ? 'rgba(96, 165, 250, 0.25)' : 'rgba(96, 165, 250, 0.65)'}
-                strokeWidth={dim ? 1 : 2}
+                stroke={isHighlighted ? '#5B8DEF' : dim ? 'rgba(96, 165, 250, 0.22)' : 'rgba(96, 165, 250, 0.65)'}
+                strokeWidth={isHighlighted ? 3 : dim ? 1 : 2}
+                style={{ pointerEvents: 'stroke', cursor: w.net ? 'pointer' : undefined }}
+                onClick={(e) => {
+                  if (!w.net) return;
+                  e.stopPropagation();
+                  globalCrossProbeBus.highlightNet(highlightedNet === w.net ? null : w.net, 'schematic');
+                }}
               />
             );
           })}
@@ -632,20 +640,34 @@ export const Schematic2DPanel: React.FC<Schematic2DPanelProps> = ({
                 </text>
                 {spiceOverlay.xrayEnabled && (() => {
                   const mw = spiceOverlay.powerMw[sym.refdes];
-                  const v = spiceOverlay.dcNodes.vout_3v3;
+                  const overWatt = mw !== undefined && mw > 200;
+                  const v = spiceOverlay.dcNodes[sym.refdes] ?? spiceOverlay.dcNodes[spiceOverlay.activeProbeNet] ?? spiceOverlay.dcNodes.vout_3v3;
                   const txt = mw !== undefined ? `${mw.toFixed(0)}mW` : v !== undefined ? `${v.toFixed(2)}V` : '';
                   if (!txt) return null;
                   return (
-                    <text
-                      x={sym.screenX}
-                      y={sym.screenY + 25}
-                      textAnchor="middle"
-                      fill="#6EE7B7"
-                      fontSize={9}
-                      fontFamily="var(--vd-font-mono)"
-                    >
-                      {txt}
-                    </text>
+                    <g data-testid={`sch-xray-${sym.refdes}`}>
+                      {overWatt && (
+                        <circle
+                          cx={sym.screenX}
+                          cy={sym.screenY}
+                          r={22}
+                          fill="rgba(194, 75, 75, 0.14)"
+                          stroke="#C24B4B"
+                          strokeWidth={1.5}
+                          strokeDasharray="3 2"
+                        />
+                      )}
+                      <text
+                        x={sym.screenX}
+                        y={sym.screenY + 25}
+                        textAnchor="middle"
+                        fill={overWatt ? '#F87171' : '#6EE7B7'}
+                        fontSize={9}
+                        fontFamily="var(--vd-font-mono)"
+                      >
+                        {txt}
+                      </text>
+                    </g>
                   );
                 })()}
                 {sym.pins.map((p) => {

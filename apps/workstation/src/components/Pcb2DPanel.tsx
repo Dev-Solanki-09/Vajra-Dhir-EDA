@@ -1184,6 +1184,42 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
                   {fp.refdes}{fp.locked ? ' [LOCKED]' : ''}
                   {spiceOverlay.powerMw[fp.refdes] !== undefined ? ` (${spiceOverlay.powerMw[fp.refdes]}mW)` : ''}
                 </text>
+                {spiceOverlay.xrayEnabled && (() => {
+                  const netKey = fp.nets.find((n) => n && n.toLowerCase() !== 'gnd');
+                  const dcVal = netKey
+                    ? Object.entries(spiceOverlay.dcNodes).find(([k]) => k.toLowerCase().includes(netKey.toLowerCase().replace(/[^a-z0-9]/g, '_')))?.[1]
+                    : undefined;
+                  const pMw = spiceOverlay.powerMw[fp.refdes];
+                  const hot = pMw !== undefined && pMw > 100;
+                  if (dcVal === undefined && pMw === undefined) return null;
+                  return (
+                    <g data-testid={`pcb-xray-${fp.refdes}`}>
+                      {hot && (
+                        <circle
+                          cx={fp.screenX}
+                          cy={fp.screenY}
+                          r={Math.max(fp.screenW, fp.screenH) * 0.65}
+                          fill="rgba(194, 75, 75, 0.16)"
+                          stroke="#C24B4B"
+                          strokeWidth={1.5}
+                          strokeDasharray="3 2"
+                        />
+                      )}
+                      {dcVal !== undefined && (
+                        <text
+                          x={fp.screenX}
+                          y={fp.screenY + fp.screenH / 2 + 11}
+                          textAnchor="middle"
+                          fill="#479662"
+                          fontSize={9}
+                          fontFamily="var(--vd-font-mono)"
+                        >
+                          {dcVal.toFixed(2)}V
+                        </text>
+                      )}
+                    </g>
+                  );
+                })()}
               </g>
             );
           })}
@@ -1424,12 +1460,18 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
             </div>
             <div
               style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${Math.max(1, piHeatmap.result.heatmap.color_stops.length)}, 1fr)`,
                 height: 8,
                 width: 210,
-                borderRadius: 4,
-                background: `linear-gradient(90deg, ${piHeatmap.result.heatmap.color_stops.join(', ')})`,
+                borderRadius: 2,
+                overflow: 'hidden',
               }}
-            />
+            >
+              {piHeatmap.result.heatmap.color_stops.map((cs, idx) => (
+                <span key={`stop-${idx}`} style={{ backgroundColor: cs }} />
+              ))}
+            </div>
             <span data-testid="pcb-pi-hover-readout" style={{ color: '#93C5FD' }}>
               {piHeatmap.hoverSample
                 ? `${piHeatmap.hoverSample.voltageV.toFixed(3)} V @ ${piHeatmap.hoverSample.currentDensityAMm2.toFixed(1)} A/mm² (${piHeatmap.hoverSample.net})`

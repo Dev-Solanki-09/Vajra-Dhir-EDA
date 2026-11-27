@@ -170,23 +170,16 @@ def probe_tool_manager_status() -> Dict[str, Any]:
         if k_win.is_file():
             kicad_cli = str(k_win)
 
-    ngspice_ready = (_REPO_ROOT / "apps" / "workstation" / "src" / "workers" / "spiceWorker.worker.ts").is_file()
-    tracespace_ready = (
-        (_REPO_ROOT / "packages" / "tracespace-vendor").is_dir()
-        or (_REPO_ROOT / "vendor" / "ring1-refs" / "tracespace").is_dir()
-        or (_resolve_packs_root() / "tracespace").is_dir()
-    )
-    ibom_ok, ibom_src = _has_binary_or_pack(
-        ["generate_interactive_bom"],
-        ["interactivehtmlbom"],
-        [_REPO_ROOT / "vendor" / "ring1-refs" / "InteractiveHtmlBom"],
-    )
+    ngspice_ready = False
+    try:
+        from .ngspice_runner import find_ngspice_library
+        ngspice_ready = bool(find_ngspice_library().get("installed"))
+    except Exception:
+        ngspice_ready = (_REPO_ROOT / "apps" / "workstation" / "src" / "workers" / "spiceWorker.worker.ts").is_file()
+    tracespace_ready = (_REPO_ROOT / "packages" / "tracespace-vendor").is_dir() or (_resolve_packs_root() / "tracespace").is_dir()
+    ibom_ok, ibom_src = _has_binary_or_pack(["generate_interactive_bom"], ["interactivehtmlbom"], [])
     typst_ok, typst_src = _has_binary_or_pack(["typst"], ["typst"], [])
-    padne_ok, padne_src = _has_binary_or_pack(
-        ["padne"],
-        ["padne"],
-        [_REPO_ROOT / "workers" / "sources" / "pack-2a-pcb-physics" / "padne"],
-    )
+    padne_ok, padne_src = _has_binary_or_pack(["padne"], ["padne"], [])
     gmsh_ok, gmsh_src = _has_binary_or_pack(["gmsh"], ["gmsh"], [])
     elmer_ok, elmer_src = _has_binary_or_pack(["ElmerSolver", "ElmerSolver_mpi"], ["elmerfem"], [])
     renode_ok, renode_src = _has_binary_or_pack(["renode"], ["renode"], [])

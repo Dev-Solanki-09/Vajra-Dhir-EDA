@@ -91,31 +91,71 @@ def _build_workspace_circuit_spec(con: Optional[sqlite3.Connection]) -> Dict[str
     if con is not None:
         try:
             for ref_n, net_n in con.execute(
-                "SELECT component_refdes, net_name FROM pin_net_bindings"
+                "SELECT c.refdes, n.name FROM pin_net_bindings pnb JOIN component_pins cp ON cp.id = pnb.pin_id JOIN components c ON c.id = cp.component_id JOIN nets n ON n.id = pnb.net_id WHERE COALESCE(c.deleted, 0) = 0"
             ).fetchall():
                 if net_n and str(net_n).upper() not in ("GND", "VSS", ""):
                     net_by_ref[str(ref_n)] = str(net_n).upper()
         except Exception:
+            try:
+                for ref_n, net_n in con.execute(
+                    "SELECT component_refdes, net_name FROM pin_net_bindings"
+                ).fetchall():
+                    if net_n and str(net_n).upper() not in ("GND", "VSS", ""):
+                        net_by_ref[str(ref_n)] = str(net_n).upper()
+            except Exception:
+                pass
+
+        # Collect full pin->net bindings for resistor wattage and I2C pullup discovery
+        resistor_nets: Dict[str, List[str]] = {}
+        all_nets: List[str] = []
+        try:
+            all_nets = [str(r[0]) for r in con.execute("SELECT name FROM nets").fetchall()]
+            for ref_n, net_n in con.execute(
+                "SELECT c.refdes, n.name FROM pin_net_bindings pnb JOIN component_pins cp ON cp.id = pnb.pin_id JOIN components c ON c.id = cp.component_id JOIN nets n ON n.id = pnb.net_id WHERE COALESCE(c.deleted, 0) = 0"
+            ).fetchall():
+                resistor_nets.setdefault(str(ref_n), []).append(str(net_n))
+        except Exception:
             pass
+
+        def _net_v(nname: str) -> float:
+            nu = nname.upper()
+            if nu in ("GND", "VSS", "0"):
+                return 0.0
+            if "24" in nu:
+                return 24.0
+            if "12" in nu or "VBUS" in nu or "VIN" in nu:
+                return 12.0
+            if "5V" in nu:
+                return 5.0
+            if "3V3" in nu or "3.3" in nu or "VCC" in nu or "VDD" in nu:
+                return 3.3
+            if "1V8" in nu or "1.8" in nu:
+                return 1.8
+            return 3.3
 
         try:
             rows = con.execute(
-                "SELECT refdes, value_str, package_name FROM components ORDER BY refdes"
+                "SELECT refdes, value_str, package_name FROM components WHERE COALESCE(deleted, 0) = 0 ORDER BY refdes"
             ).fetchall()
             for ref, val, pkg in rows:
                 ref_s = str(ref or "")
                 val_s = str(val or "")
                 pkg_s = str(pkg or "0603")
                 net_hint = net_by_ref.get(ref_s, "")
-                v_rail = 12.0 if ("12" in net_hint or "VBUS" in net_hint or "VIN" in net_hint) else (5.0 if "5V" in net_hint else 3.3)
+                v_rail = _net_v(net_hint) if net_hint else 3.3
                 if ref_s.startswith("R"):
                     r_ohm = max(0.1, _parse_resistance_ohm(val_s))
-                    i_est = min(0.5, round(v_rail / max(1.0, r_ohm), 4))
+                    rnets = resistor_nets.get(ref_s, [])
+                    if len(rnets) >= 2:
+                        dv = abs(_net_v(rnets[0]) - _net_v(rnets[1]))
+                        i_est = round(dv / r_ohm, 4) if dv > 0 else 0.001
+                    else:
+                        i_est = min(0.5, round(v_rail / max(1.0, r_ohm), 4)) if r_ohm < 100 else 0.0033
                     resistors.append({
                         "refdes": ref_s,
-                        "package": "0603" if "0603" in pkg_s else ("1206" if "1206" in pkg_s else pkg_s),
+                        "package": "0603" if "0603" in pkg_s else ("1206" if "1206" in pkg_s else ("0402" if "0402" in pkg_s else pkg_s)),
                         "r_ohm": r_ohm,
-                        "current_a": i_est if r_ohm < 100 else 0.0033,
+                        "current_a": i_est,
                         "rated_w": 0.25 if "1206" in pkg_s else (0.063 if "0402" in pkg_s else 0.1),
                     })
                 elif ref_s.startswith("C"):
@@ -160,9 +200,28 @@ def _build_workspace_circuit_spec(con: Optional[sqlite3.Connection]) -> Dict[str
         except Exception:
             pass
 
-    i2c_buses: List[Dict[str, Any]] = [
-        {"name": "I2C1", "has_sda_pullup": True, "has_scl_pullup": True, "devices": {"U1": 0x76}}
-    ]
+    i2c_buses: List[Dict[str, Any]] = []
+    # Dynamically detect I2C SDA/SCL nets & verify real pullup resistors in HW-IR
+    if con is not None:
+        try:
+            net_names = [str(r[0]) for r in con.execute("SELECT name FROM nets").fetchall()]
+            sda_nets = [n for n in net_names if "SDA" in n.upper()]
+            scl_nets = [n for n in net_names if "SCL" in n.upper()]
+            if sda_nets or scl_nets:
+                def _has_pullup(target_net: str) -> bool:
+                    for ref_k, rnets in resistor_nets.items():
+                        if ref_k.startswith("R") and target_net in rnets:
+                            if any(rn.upper().startswith(("+", "3V3", "5V", "VCC", "VDD", "VBUS")) for rn in rnets if rn != target_net):
+                                return True
+                    return False
+
+                has_sda = all(_has_pullup(n) for n in sda_nets) if sda_nets else True
+                has_scl = all(_has_pullup(n) for n in scl_nets) if scl_nets else True
+                i2c_buses.append({"name": "I2C1", "has_sda_pullup": has_sda, "has_scl_pullup": has_scl, "devices": {"U1": 0x76}})
+        except Exception:
+            pass
+    if not i2c_buses:
+        i2c_buses = [{"name": "I2C1", "has_sda_pullup": True, "has_scl_pullup": True, "devices": {"U1": 0x76}}]
     if proj_dir:
         sys_yaml = pathlib.Path(proj_dir) / "system.yaml"
         if sys_yaml.is_file():

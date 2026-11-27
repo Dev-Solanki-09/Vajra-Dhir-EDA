@@ -44,10 +44,18 @@ def generate_firmware_and_digital_twin(
     live_comp_defs = ""
     live_pinmux_defs = ""
     zephyr_overlay_nodes: List[str] = []
+    mcu_target = "STM32F401RE"
     if con is not None:
         try:
             comp_rows = con.execute("SELECT refdes, value_str, mpn FROM components WHERE COALESCE(deleted, 0) = 0 ORDER BY refdes").fetchall()
             for r_ref, r_val, r_mpn in comp_rows:
+                txt_u = f"{r_val or ''} {r_mpn or ''}".upper()
+                if "ESP32-S3" in txt_u or "ESP32S3" in txt_u:
+                    mcu_target = "ESP32-S3-WROOM-1"
+                elif "STM32G4" in txt_u:
+                    mcu_target = "STM32G474RET6"
+                elif "RP2040" in txt_u:
+                    mcu_target = "RP2040"
                 safe_r = "".join(ch if ch.isalnum() else "_" for ch in str(r_ref).upper())
                 live_comp_defs += f'#define VD_HW_{safe_r}_VALUE "{r_val}"\n'
             pm_rows = con.execute("SELECT mcu_refdes, pin_number, peripheral_instance, signal_alias, gpio_mode FROM firmware_pinmux ORDER BY signal_alias").fetchall()
@@ -62,7 +70,7 @@ def generate_firmware_and_digital_twin(
 #ifndef VAJRA_BOARD_PINS_H
 #define VAJRA_BOARD_PINS_H
 
-#define VD_MCU_TARGET "STM32F401RE"
+#define VD_MCU_TARGET "{mcu_target}"
 #define VD_PIN_LED_STATUS PA5
 #define VD_PIN_I2C1_SCL PB6
 #define VD_PIN_I2C1_SDA PB7

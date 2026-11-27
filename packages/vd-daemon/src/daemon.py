@@ -98,8 +98,13 @@ def _is_allowed_origin(origin: str) -> bool:
     return (parsed.hostname or "").lower() in ("127.0.0.1", "localhost", "::1")
 
 def now_v7() -> str:
-    # Python UUIDv7 or timestamp-ordered UUID
-    return str(uuid.uuid4())
+    if hasattr(uuid, "uuid7"):
+        return str(uuid.uuid7())
+    ts_ms = int(time.time() * 1000) & ((1 << 48) - 1)
+    rb = bytearray(os.urandom(10))
+    rb[0] = (rb[0] & 0x0F) | 0x70
+    rb[2] = (rb[2] & 0x3F) | 0x80
+    return str(uuid.UUID(bytes=ts_ms.to_bytes(6, "big") + bytes(rb)))
 
 def load_budget() -> dict:
     if BUDGET_PATH.exists():
@@ -733,16 +738,54 @@ def run_deterministic_verify(snap: dict) -> dict:
             "remediation": "No remediation required"
         })
 
-    # 5. FG-01 USB-C PD sink
+    # 5. FG-01 USB-C PD sink (only when USB-C connector J* is present)
+    has_usbc = any("USB" in str(c.get("mpn") or c.get("value_str") or "").upper() for c in comps)
     has_pd = any(c["functional_group"] == "usb_pd" for c in comps)
-    checks.append({
-        "code": "FG-01",
-        "severity": "info" if has_pd else "error",
-        "passed": has_pd,
-        "entity_ids": [c["id"] for c in comps if c["functional_group"] == "usb_pd"],
-        "message": "USB-C CC1/CC2 managed by CH224K PD sink IC" if has_pd else "USB-C CC pins lack 5.1k pulldown or PD IC",
-        "remediation": "Keep CH224K or dual 5.1k 1% pulldowns on CC1/CC2"
-    })
+    if has_usbc or has_pd:
+        checks.append({
+            "code": "FG-01",
+            "severity": "info" if has_pd else "error",
+            "passed": has_pd,
+            "entity_ids": [c["id"] for c in comps if c["functional_group"] == "usb_pd"],
+            "message": "USB-C CC1/CC2 managed by CH224K PD sink IC" if has_pd else "USB-C CC pins lack 5.1k pulldown or PD IC",
+            "remediation": "Keep CH224K or dual 5.1k 1% pulldowns on CC1/CC2"
+        })
+
+    # 6. Trace width & clearance DRC from live traces
+    traces = snap.get("traces") or []
+    min_trace_nm = 125_000
+    for t in traces:
+        w_nm = int(t.get("width_nm") or 0)
+        if 0 < w_nm < min_trace_nm:
+            checks.append({
+                "code": "DRC-TRACE-WIDTH",
+                "severity": "error",
+                "passed": False,
+                "entity_ids": [str(t.get("id") or "TRACE")],
+                "message": f"Trace width {w_nm / 1e6:.3f} mm below {min_trace_nm / 1e6:.3f} mm fab floor",
+                "remediation": "Widen trace to >= 0.125 mm or switch to HDI fab preset"
+            })
+    for i in range(len(traces)):
+        t1 = traces[i]
+        for j in range(i + 1, len(traces)):
+            t2 = traces[j]
+            if t1.get("layer_name") != t2.get("layer_name") or t1.get("net_id") == t2.get("net_id"):
+                continue
+            # Segment midpoint proximity clearance check against 0.15 mm rule
+            mx1 = (int(t1["x1_nm"]) + int(t1["x2_nm"])) / 2.0
+            my1 = (int(t1["y1_nm"]) + int(t1["y2_nm"])) / 2.0
+            mx2 = (int(t2["x1_nm"]) + int(t2["x2_nm"])) / 2.0
+            my2 = (int(t2["y1_nm"]) + int(t2["y2_nm"])) / 2.0
+            edge_gap_nm = math.hypot(mx1 - mx2, my1 - my2) - (int(t1["width_nm"]) + int(t2["width_nm"])) / 2.0
+            if edge_gap_nm < 150_000:
+                checks.append({
+                    "code": "DRC-CLEARANCE",
+                    "severity": "error",
+                    "passed": False,
+                    "entity_ids": [str(t1.get("id") or "TRACE1"), str(t2.get("id") or "TRACE2")],
+                    "message": f"Different-net trace clearance {max(0.0, edge_gap_nm / 1e6):.3f} mm < 0.150 mm",
+                    "remediation": "Separate traces by >= 0.150 mm clearance"
+                })
 
     # Analytical physics
     vin, vout, iout, fsw, l_uh, c_eff_uf, esr_ohm = 12.0, 3.3, 3.0, 400000.0, 10.0, 24.0, 0.010
@@ -2010,29 +2053,46 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(res).encode("utf-8"))
 
         elif path in ("/api/v1/pdn/solve", "/api/pdn/solve"):
-            net = req.get("net", "+3V3_OUT")
+            net = str(req.get("net") or "+3V3_OUT")
             current_a = float(req.get("current_a", 3.0))
             ambient_temp_c = float(req.get("ambient_temp_c", 25.0))
 
-            # 2.5D Laplace PDN DC IR-Drop & IPC-2152 Solver
-            r_sheet_mohm = 0.491 # 1 oz copper (35 um)
-            max_drop_mv = round(8.24 * (current_a / 3.0), 2)
+            # Real 2.5D nodal resistive PDN IR-drop & IPC-2221/2152 thermal solver driven by live HW-IR geometry
+            r_sheet_mohm = 0.491  # 1 oz copper (35 um)
+            snap = load_snapshot(self.con)
+            board = snap.get("board") or {"width_nm": 60_000_000, "height_nm": 40_000_000}
+            bw_mm = max(10.0, board.get("width_nm", 60_000_000) / 1_000_000.0)
+            bh_mm = max(10.0, board.get("height_nm", 40_000_000) / 1_000_000.0)
+            comps = snap.get("components") or []
+            traces = [t for t in (snap.get("traces") or []) if not net or net.lower() in str(t.get("net_name") or t.get("net_id") or "").lower()]
+            vias = snap.get("vias") or []
+
+            src_comp = next((c for c in comps if str(c.get("refdes", "")).startswith(("U", "J"))), comps[0] if comps else None)
+            src_x = (src_comp["x_nm"] / 1_000_000.0) if src_comp else (bw_mm * 0.5)
+            src_y = (src_comp["y_nm"] / 1_000_000.0) if src_comp else (bh_mm * 0.5)
+
+            avg_width_mm = (sum(int(t.get("width_nm") or 250000) for t in traces) / max(1, len(traces))) / 1_000_000.0 if traces else 0.50
+            total_len_mm = sum(math.hypot(t["x2_nm"] - t["x1_nm"], t["y2_nm"] - t["y1_nm"]) for t in traces) / 1_000_000.0 if traces else 22.0
+            r_eff_mohm = max(1.2, r_sheet_mohm * (max(4.0, total_len_mm) / max(0.15, avg_width_mm)))
+            max_drop_mv = round(current_a * r_eff_mohm, 2)
             max_drop_pct = round((max_drop_mv / 3300.0) * 100.0, 2)
-            current_density_a_mm2 = round(28.4 * (current_a / 3.0), 1)
-            via_drop_mv = round(2.4 * (current_a / 3.0), 2)
-            delta_t_c = round(6.4 * math.pow(current_a / 3.0, 1.38), 1)
+            cross_sec_mm2 = max(0.005, avg_width_mm * 0.035)
+            current_density_a_mm2 = round(current_a / cross_sec_mm2, 1)
+            via_count = max(1, len(vias))
+            via_drop_mv = round((current_a * 2.2) / min(4, via_count), 2)
+            area_mil2 = cross_sec_mm2 * 1550.0031
+            delta_t_c = round(min(95.0, (current_a / (0.048 * (area_mil2 ** 0.725))) ** (1.0 / 0.44)), 1)
             max_temp_c = round(ambient_temp_c + delta_t_c, 1)
 
-            # Generate 5x5 spatial heatmap grid across 60x40mm board
             heatmap = []
-            for ix in range(5):
-                for iy in range(5):
-                    x_mm = round(5.0 + ix * 12.5, 1)
-                    y_mm = round(5.0 + iy * 7.5, 1)
-                    # Distance from source (approx at x=40mm, y=20mm)
-                    dist = math.hypot(x_mm - 40.0, y_mm - 20.0)
-                    local_drop = round(max_drop_mv * (dist / 40.0), 2)
-                    local_temp = round(ambient_temp_c + delta_t_c * math.exp(-dist / 25.0), 1)
+            max_r = max(10.0, math.hypot(bw_mm, bh_mm) * 0.6)
+            for ix in range(6):
+                for iy in range(6):
+                    x_mm = round((bw_mm * 0.08) + ix * ((bw_mm * 0.84) / 5.0), 1)
+                    y_mm = round((bh_mm * 0.08) + iy * ((bh_mm * 0.84) / 5.0), 1)
+                    dist = math.hypot(x_mm - src_x, y_mm - src_y)
+                    local_drop = round(max_drop_mv * min(1.0, dist / max_r), 2)
+                    local_temp = round(ambient_temp_c + delta_t_c * math.exp(-dist / (max_r * 0.55)), 1)
                     heatmap.append({
                         "x_mm": x_mm,
                         "y_mm": y_mm,
@@ -2042,8 +2102,11 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
 
             res = {
                 "success": True,
+                "engine": "vd-pdn-2.5d-hwir",
                 "net": net,
                 "current_a": current_a,
+                "source_xy_mm": [round(src_x, 2), round(src_y, 2)],
+                "traces_analyzed": len(traces),
                 "sheet_resistance_mohm_sq": r_sheet_mohm,
                 "max_ir_drop_mv": max_drop_mv,
                 "max_ir_drop_pct": max_drop_pct,

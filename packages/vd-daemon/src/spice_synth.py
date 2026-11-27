@@ -125,11 +125,17 @@ def synthesize_spice_from_hwir(
             ).fetchall()
             try:
                 for ref, pin_n, net_n in con.execute(
-                    "SELECT component_refdes, pin_number, net_name FROM pin_net_bindings LIMIT 256"
+                    "SELECT c.refdes, cp.pin_number, n.name FROM pin_net_bindings pnb JOIN component_pins cp ON cp.id = pnb.pin_id JOIN components c ON c.id = cp.component_id JOIN nets n ON n.id = pnb.net_id WHERE COALESCE(c.deleted, 0) = 0 LIMIT 512"
                 ).fetchall():
                     pin_bindings.setdefault(str(ref), []).append((str(pin_n), str(net_n)))
             except Exception:
-                pass
+                try:
+                    for ref, pin_n, net_n in con.execute(
+                        "SELECT component_refdes, pin_number, net_name FROM pin_net_bindings LIMIT 256"
+                    ).fetchall():
+                        pin_bindings.setdefault(str(ref), []).append((str(pin_n), str(net_n)))
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -242,6 +248,82 @@ def synthesize_spice_from_hwir(
     else:
         v_hi = max(0.0, v_in_eff)
         sw_expr = f"PULSE(0 {v_hi:.3f} 0 10n 10n {ton_us}u {period_us}u)"
+
+    has_buck_stage = any(
+        "TPS54302" in str(val or "").upper() or "BUCK" in str(val or "").upper() or str(ref).upper() == "U2"
+        for ref, val, _p, _m in hw_components
+    )
+
+    if not has_buck_stage and hw_components and pin_bindings:
+        # Arbitrary-topology HW-IR -> SPICE compiler (resistor dividers, LDOs, RC filters, etc.)
+        topo_cards: List[str] = []
+        supply_nets_emitted: set[str] = set()
+        for _nid, nname in (con.execute("SELECT id, name FROM nets LIMIT 64").fetchall() if con is not None else []):
+            raw_n = str(nname or "")
+            clean_n = re.sub(r"[^a-zA-Z0-9_]", "_", raw_n).lower().strip("_")
+            if not clean_n or clean_n in ("gnd", "vss", "0") or clean_n in supply_nets_emitted:
+                continue
+            nu = raw_n.upper()
+            v_rail = None
+            if "24" in nu:
+                v_rail = 24.0
+            elif "12" in nu or "VBUS" in nu or "VIN" in nu:
+                v_rail = float(v_in_eff)
+            elif "5V" in nu:
+                v_rail = 5.0
+            elif "3V3" in nu or "3.3" in nu or "VCC" in nu or "VDD" in nu:
+                v_rail = 3.3
+            if v_rail is not None:
+                supply_nets_emitted.add(clean_n)
+                topo_cards.append(f"V_{clean_n} {clean_n} 0 DC {v_rail:.3f} AC 1")
+        if not supply_nets_emitted:
+            topo_cards.append(f"V_supply vin 0 DC {v_in_eff:.3f} AC 1")
+
+        def _sp_node(raw_net: str) -> str:
+            c = re.sub(r"[^a-zA-Z0-9_]", "_", (raw_net or "0")).lower().strip("_")
+            return "0" if c in ("", "gnd", "vss", "0") else c
+
+        for ref_raw, val_raw, pkg_raw, _mpn_raw in hw_components:
+            ref = re.sub(r"[^a-zA-Z0-9_]", "_", str(ref_raw or "").strip())
+            if not ref:
+                continue
+            binds = pin_bindings.get(str(ref_raw), [])
+            n1 = _sp_node(binds[0][1]) if len(binds) >= 1 else "vin"
+            n2 = _sp_node(binds[1][1]) if len(binds) >= 2 else "0"
+            if ref.upper().startswith("R"):
+                r_tok = _parse_passive_spice_value(str(val_raw or ""), "R")
+                topo_cards.append(f"R_{ref} {n1} {n2} {r_tok}")
+            elif ref.upper().startswith("C"):
+                c_tok = _parse_passive_spice_value(str(val_raw or ""), "C")
+                topo_cards.append(f"C_{ref} {n1} {n2} {c_tok}")
+            elif ref.upper().startswith("L"):
+                l_tok = _parse_passive_spice_value(str(val_raw or ""), "L")
+                topo_cards.append(f"L_{ref} {n1} {n2} {l_tok}")
+            else:
+                topo_cards.append(f"* {ref} ({val_raw}) on nets {[b[1] for b in binds]}")
+
+        deck_raw = f"""* Vajra-Dhir EDA Arbitrary HW-IR -> SPICE Netlist (Mode: {mode})
+.option reltol=0.001
+{chr(10).join(topo_cards)}
+{analysis_cmd}
+.end
+"""
+        deck, rewrites = _transpile_ltspice_dialect(deck_raw)
+        return {
+            "netlist": deck,
+            "transpile_rewrites": rewrites,
+            "mode": mode,
+            "fault_type": fault_type,
+            "net_uuid_map": net_uuid_map,
+            "fidelity_badges": fidelity_badges,
+            "arbitrary_topology": True,
+            "params": {
+                "l_uh": l_val,
+                "c_out_uf": c_val,
+                "r_load_ohm": r_load_eff,
+                "v_in_v": v_in_eff,
+            },
+        }
 
     # Load step current pulse on VOUT_3V3 during transient to observe droop/overshoot
     load_step_src = "Iload_step vout_3v3 0 PULSE(0 0.4 30u 200n 200n 15u 60u)" if mode in ("tran", "fault") else "Iload_step vout_3v3 0 0"
@@ -394,72 +476,110 @@ def run_spice_simulation_pipeline(
     for k, val in vectors.items():
         if isinstance(val, list) and val and not k.endswith("#branch") and k != "time":
             dc_nodes[k] = round(float(val[-1]), 3)
-    power_mw = {
-        "L1": round(abs(dc_nodes.get("sw_mid", 3.3) - dc_nodes.get("vout_3v3", 3.3)) * 1500.0, 1),
-        "Rload": round((dc_nodes.get("vout_3v3", 3.3) ** 2) / max(0.05, float(synth["params"]["r_load_ohm"])) * 1000.0, 1),
-    }
-
-    # Feed peak simulated electrical stress back into P9 Senior EE Brain
+    power_mw: Dict[str, float] = {}
     p9_findings: List[Dict[str, Any]] = []
-    ripple_limit_mv = 100.0
-    if metrics["ripple_mv_pp"] > ripple_limit_mv:
-        p9_findings.append({
-            "rule_id": "SPICE_EXCESSIVE_RAIL_RIPPLE",
-            "severity": "error",
-            "domain": "Power",
-            "refdes": "C1",
-            "physics_formula": "ΔV_pp = (V_out * (1 - D)) / (8 * L * f_sw^2 * C_eff) + ΔI_L * ESR",
-            "calculated_value": f"{metrics['ripple_mv_pp']:.1f} mVpp (Vout range {metrics['min_v']:.3f}V..{metrics['max_v']:.3f}V)",
-            "limit_value": f"<= {ripple_limit_mv:.1f} mVpp",
-            "why_it_fails_plain_english": (
-                f"Real ngspice transient shows {metrics['ripple_mv_pp']:.1f} mVpp switching ripple on VOUT_3V3 "
-                f"(exceeding {ripple_limit_mv:.1f} mVpp target) because effective output capacitance ({synth['params']['c_out_uf']} uF) is undersized."
-            ),
-            "recommended_fix": "Increase C1 output bulk MLCC to >= 22 uF X7R (effective) to attenuate switching ripple < 40 mVpp.",
-        })
 
-    if run_full_ee_audit is not None:
-        audit_spec = {
-            "capacitors": [
-                {
-                    "refdes": "C1",
-                    "c_nom_uf": float(synth["params"]["c_out_uf"]),
-                    "v_bias_v": max(3.3, abs(metrics["max_v"])),
-                    "v_rating_v": 25.0,
-                    "dielectric": "X7R",
-                    "min_required_uf": 9.5,
-                }
-            ],
-            "inductors": [
-                {
-                    "refdes": "L1",
-                    "i_peak_a": round(abs(dc_nodes.get("vout_3v3", 3.3)) / max(0.05, float(synth["params"]["r_load_ohm"])) * 1.25, 2),
-                    "i_sat_a": 3.5,
-                }
-            ],
-            "smps": {
-                "l_uh": float(synth["params"]["l_uh"]),
-                "c_eff_uf": max(1.0, float(synth["params"]["c_out_uf"]) * 0.7),
-                "esr_mohm": 12.0,
-                "r_load_ohm": float(synth["params"]["r_load_ohm"]),
-                "v_in_v": max(5.0, float(synth["params"]["v_in_v"])),
-                "comp_fz_khz": 3.5,
-                "comp_fp_khz": 95.0,
-                "comp_gain_db": 8.0,
-            },
-        }
+    if synth.get("arbitrary_topology") and con is not None:
+        # Compute real resistor & branch dissipation directly from simulated dc_nodes
         try:
-            with _KG_LOCK:
-                kg_p = _kg_db_path()
-                con_kg = open_kg_connection(kg_p) if kg_p.is_file() else None
-                try:
-                    p9_res = run_full_ee_audit(audit_spec, con_kg=con_kg)
-                finally:
-                    if con_kg is not None:
-                        con_kg.close()
-            p9_findings.extend(p9_res.get("findings", []))
+            r_rows = con.execute(
+                "SELECT refdes, value_str, package_name FROM components WHERE COALESCE(deleted,0)=0 AND refdes LIKE 'R%'"
+            ).fetchall()
+            binds_map: Dict[str, List[str]] = {}
+            for r_ref, net_n in con.execute(
+                "SELECT c.refdes, n.name FROM pin_net_bindings pnb JOIN component_pins cp ON cp.id = pnb.pin_id JOIN components c ON c.id = cp.component_id JOIN nets n ON n.id = pnb.net_id WHERE COALESCE(c.deleted,0)=0"
+            ).fetchall():
+                binds_map.setdefault(str(r_ref), []).append(re.sub(r"[^a-zA-Z0-9_]", "_", str(net_n or "0")).lower().strip("_"))
+            for r_ref, r_val, r_pkg in r_rows:
+                r_ohm = max(0.05, float(_parse_passive_spice_value(str(r_val or "1k"), "R").replace("meg", "e6").replace("k", "e3").replace("m", "e-3")))
+                bn = binds_map.get(str(r_ref), [])
+                n1 = "0" if (not bn or bn[0] in ("gnd", "vss", "0")) else bn[0]
+                n2 = "0" if (len(bn) < 2 or bn[1] in ("gnd", "vss", "0")) else bn[1]
+                v1 = 0.0 if n1 == "0" else float(dc_nodes.get(n1, 0.0))
+                v2 = 0.0 if n2 == "0" else float(dc_nodes.get(n2, 0.0))
+                p_w = ((v1 - v2) ** 2) / r_ohm
+                power_mw[str(r_ref)] = round(p_w * 1000.0, 2)
+                rated_w = 0.25 if "1206" in str(r_pkg) else (0.063 if "0402" in str(r_pkg) else 0.1)
+                if p_w > rated_w * 0.7:
+                    p9_findings.append({
+                        "rule_id": "FG-08",
+                        "severity": "error" if p_w > rated_w else "warning",
+                        "domain": "Thermal",
+                        "refdes": str(r_ref),
+                        "physics_formula": "P = (V_1 - V_2)^2 / R",
+                        "calculated_value": f"{p_w * 1000.0:.1f} mW",
+                        "limit_value": f"<= {rated_w * 1000.0:.1f} mW ({r_pkg})",
+                        "why_it_fails_plain_english": f"Resistor {r_ref} ({r_val}) dissipates {p_w:.3f} W across {abs(v1 - v2):.2f} V, exceeding {r_pkg} rating ({rated_w} W).",
+                        "recommended_fix": f"Increase {r_ref} resistance or upgrade package to >= 1206 / 2512.",
+                    })
         except Exception:
             pass
+    else:
+        power_mw = {
+            "L1": round(abs(dc_nodes.get("sw_mid", 3.3) - dc_nodes.get("vout_3v3", 3.3)) * 1500.0, 1),
+            "Rload": round((dc_nodes.get("vout_3v3", 3.3) ** 2) / max(0.05, float(synth["params"]["r_load_ohm"])) * 1000.0, 1),
+        }
+
+        # Feed peak simulated electrical stress back into P9 Senior EE Brain
+        ripple_limit_mv = 100.0
+        if metrics["ripple_mv_pp"] > ripple_limit_mv:
+            p9_findings.append({
+                "rule_id": "SPICE_EXCESSIVE_RAIL_RIPPLE",
+                "severity": "error",
+                "domain": "Power",
+                "refdes": "C1",
+                "physics_formula": "ΔV_pp = (V_out * (1 - D)) / (8 * L * f_sw^2 * C_eff) + ΔI_L * ESR",
+                "calculated_value": f"{metrics['ripple_mv_pp']:.1f} mVpp (Vout range {metrics['min_v']:.3f}V..{metrics['max_v']:.3f}V)",
+                "limit_value": f"<= {ripple_limit_mv:.1f} mVpp",
+                "why_it_fails_plain_english": (
+                    f"Real ngspice transient shows {metrics['ripple_mv_pp']:.1f} mVpp switching ripple on VOUT_3V3 "
+                    f"(exceeding {ripple_limit_mv:.1f} mVpp target) because effective output capacitance ({synth['params']['c_out_uf']} uF) is undersized."
+                ),
+                "recommended_fix": "Increase C1 output bulk MLCC to >= 22 uF X7R (effective) to attenuate switching ripple < 40 mVpp.",
+            })
+
+        if run_full_ee_audit is not None:
+            audit_spec = {
+                "capacitors": [
+                    {
+                        "refdes": "C1",
+                        "c_nom_uf": float(synth["params"]["c_out_uf"]),
+                        "v_bias_v": max(3.3, abs(metrics["max_v"])),
+                        "v_rating_v": 25.0,
+                        "dielectric": "X7R",
+                        "min_required_uf": 9.5,
+                    }
+                ],
+                "inductors": [
+                    {
+                        "refdes": "L1",
+                        "i_peak_a": round(abs(dc_nodes.get("vout_3v3", 3.3)) / max(0.05, float(synth["params"]["r_load_ohm"])) * 1.25, 2),
+                        "i_sat_a": 3.5,
+                    }
+                ],
+                "smps": {
+                    "l_uh": float(synth["params"]["l_uh"]),
+                    "c_eff_uf": max(1.0, float(synth["params"]["c_out_uf"]) * 0.7),
+                    "esr_mohm": 12.0,
+                    "r_load_ohm": float(synth["params"]["r_load_ohm"]),
+                    "v_in_v": max(5.0, float(synth["params"]["v_in_v"])),
+                    "comp_fz_khz": 3.5,
+                    "comp_fp_khz": 95.0,
+                    "comp_gain_db": 8.0,
+                },
+            }
+            try:
+                with _KG_LOCK:
+                    kg_p = _kg_db_path()
+                    con_kg = open_kg_connection(kg_p) if kg_p.is_file() else None
+                    try:
+                        p9_res = run_full_ee_audit(audit_spec, con_kg=con_kg)
+                    finally:
+                        if con_kg is not None:
+                            con_kg.close()
+                p9_findings.extend(p9_res.get("findings", []))
+            except Exception:
+                pass
 
     out = {
         "ok": bool(raw_sim.get("ok")),
