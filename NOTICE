@@ -11,3 +11,12 @@ with explicit runtime-isolated exceptions documented in docs/LICENSE_EXCEPTIONS.
 External multi-physics and silicon compilers (KiCad, KiKit, openEMS, ElmerFEM, CalculiX,
 LibreLane, Renode) execute strictly as isolated external OS processes or OCI/gVisor containers
 (Ring 2) and are never statically or dynamically linked into Ring 1.
+
+Permissive Upstream Attributions (Ring 1 & Companion Ecosystem):
+- NousResearch/hermes-agent (MIT): Agent core runtime & progressive agentskills.io loader
+- theacodes/kicanvas (MIT): Interactive browser KiCad schematic & PCB rendering core
+- tscircuit/footprinter & tscircuit/jlcsearch (MIT): Parametric footprint synthesis & part search
+- hildogjr/KiCost (MIT): Multi-distributor BOM costing & pricing optimizer
+- espressif/esptool-js (Apache-2.0): Browser WebSerial bring-up firmware flasher
+- kovacsv/Online3DViewer (MIT): 3D CAD mesh & PBR viewer architecture
+- wokwi/ngspice-wasm (BSD-3-Clause) & tracespace/tracespace (MIT): Browser SPICE & Gerber engines

@@ -29,6 +29,7 @@ env/
 .vd-cache/
 .vd-runtime/
 .vd-portable/
+.vd-companion-staging/
 portable.flag
 .vd-airgap
 *.log
