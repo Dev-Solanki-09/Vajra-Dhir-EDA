@@ -127,8 +127,27 @@ function resolveIsolatedPython() {
 
 function ensureWorkstationDist() {
   const distIndex = path.join(ROOT, 'apps', 'workstation', 'dist', 'index.html');
-  if (fs.existsSync(distIndex)) return;
-  console.log('[launch] apps/workstation/dist missing; building production workstation bundle once...');
+  const srcDir = path.join(ROOT, 'apps', 'workstation', 'src');
+  const pubDir = path.join(ROOT, 'apps', 'workstation', 'public');
+  let needsBuild = !fs.existsSync(distIndex);
+  if (!needsBuild) {
+    const distMtime = fs.statSync(distIndex).mtimeMs;
+    const newestMtime = (dir) => {
+      let maxT = 0;
+      if (!fs.existsSync(dir)) return maxT;
+      for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, ent.name);
+        if (ent.isDirectory()) maxT = Math.max(maxT, newestMtime(full));
+        else maxT = Math.max(maxT, fs.statSync(full).mtimeMs);
+      }
+      return maxT;
+    };
+    if (Math.max(newestMtime(srcDir), newestMtime(pubDir)) > distMtime + 500) {
+      needsBuild = true;
+    }
+  }
+  if (!needsBuild) return;
+  console.log('[launch] apps/workstation/dist missing or stale; building production workstation bundle...');
   const pnpmBin = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   execFileSync(pnpmBin, ['--filter', '@vajradhir/workstation', 'build'], {
     cwd: ROOT,

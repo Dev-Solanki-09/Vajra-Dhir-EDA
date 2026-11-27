@@ -108,6 +108,107 @@ def load_manifest() -> Dict[str, Any]:
     return json.loads(_MANIFEST_PATH.read_text(encoding="utf-8"))
 
 
+_FIVE_REPO_LABELS = {
+    "dependencies": "Dependencies",
+    "tools": "Tools",
+    "libraries": "Libraries",
+    "packs": "Packs",
+    "resources": "Resources",
+}
+
+
+def load_5repo_registry(allow_network: bool = False) -> Dict[str, Any]:
+    data_dir = resolve_data_dir()
+    cached_reg = data_dir / "packs" / "registry" / "registry.v1.json"
+    if cached_reg.is_file():
+        try:
+            return json.loads(cached_reg.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    staging_reg = _REPO_ROOT / ".vd-companion-staging" / "Vajra-Dhir-Packs" / "registry" / "registry.v1.json"
+    if staging_reg.is_file():
+        try:
+            return json.loads(staging_reg.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    if allow_network and not is_offline_mode():
+        manifest = load_manifest()
+        creg = manifest.get("companion_registry") if isinstance(manifest.get("companion_registry"), dict) else {}
+        expected_sha = str(creg.get("sha256") or "")
+        for url in [creg.get("url"), creg.get("raw_fallback_url")]:
+            if not url or not str(url).startswith("https://"):
+                continue
+            try:
+                req = urllib.request.Request(str(url), headers={"User-Agent": "Vajra-Dhir-Bootstrapper/1.0"})
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    raw_bytes = resp.read()
+                digest = hashlib.sha256(raw_bytes).hexdigest()
+                if expected_sha and digest.lower() != expected_sha.lower():
+                    continue
+                parsed = json.loads(raw_bytes.decode("utf-8"))
+                cached_reg.parent.mkdir(parents=True, exist_ok=True)
+                tmp = cached_reg.with_suffix(".json.tmp")
+                tmp.write_bytes(raw_bytes)
+                os.replace(str(tmp), str(cached_reg))
+                return parsed
+            except Exception:
+                continue
+    return {"schema_version": "1.0.0", "release_tag": "v1.0.0", "packages": []}
+
+
+def _check_5repo_package_status(pkg: Dict[str, Any], data_dir: pathlib.Path) -> Dict[str, Any]:
+    pid = str(pkg.get("id") or "")
+    target_dir = str(pkg.get("target_dir") or f"packs/{pid}")
+    dest = (data_dir / target_dir).resolve()
+    marker = dest / ".verified.json"
+    expected_sha = str(pkg.get("sha256") or "")
+    expected_ver = str(pkg.get("version") or "v1.0.0")
+    status = "MISSING"
+    if marker.is_file():
+        try:
+            meta = json.loads(marker.read_text(encoding="utf-8"))
+            if expected_sha and meta.get("archive_sha256") != expected_sha:
+                status = "UPDATE_AVAILABLE" if meta.get("version") != expected_ver else "CORRUPT"
+            else:
+                status = "READY"
+        except Exception:
+            status = "CORRUPT"
+    return {
+        **pkg,
+        "status": status,
+        "verified": status == "READY",
+        "local_dir": str(dest),
+    }
+
+
+def _summarize_5repos(packages_status: List[Dict[str, Any]], offline: bool) -> List[Dict[str, Any]]:
+    repos_out: List[Dict[str, Any]] = []
+    for bucket, label in _FIVE_REPO_LABELS.items():
+        bucket_pkgs = [p for p in packages_status if p.get("repo_bucket") == bucket]
+        t1_pkgs = [p for p in bucket_pkgs if p.get("tier") == "tier1_essential"]
+        check_list = t1_pkgs or bucket_pkgs
+        if not check_list:
+            st = "AIRGAP_OFFLINE" if offline else "MISSING"
+        elif any(p.get("status") == "CORRUPT" for p in check_list):
+            st = "CORRUPT"
+        elif all(p.get("status") == "READY" for p in check_list):
+            st = "READY"
+        elif any(p.get("status") == "UPDATE_AVAILABLE" for p in check_list):
+            st = "UPDATE_AVAILABLE"
+        else:
+            st = "AIRGAP_OFFLINE" if offline else "MISSING"
+        repos_out.append({
+            "bucket": bucket,
+            "label": label,
+            "status": st,
+            "tier1_ready": sum(1 for p in t1_pkgs if p.get("verified")),
+            "tier1_total": len(t1_pkgs),
+            "total_packages": len(bucket_pkgs),
+            "packages": bucket_pkgs,
+        })
+    return repos_out
+
+
 def _check_pack_status(entry: Dict[str, Any], packs_root: pathlib.Path) -> Dict[str, Any]:
     pack_id = str(entry.get("pack_id") or entry.get("name") or "").lower()
     audience = str(entry.get("audience") or "developer_reference")
@@ -226,7 +327,14 @@ def get_bootstrap_status() -> Dict[str, Any]:
     packs = [_check_pack_status(e, packs_root) for e in manifest.get("entries", []) if isinstance(e, dict)]
     runtime_t1 = [p for p in packs if p["audience"] == "runtime" and p["tier"] == 1]
     tier1_verified = all(p["verified"] for p in runtime_t1) if runtime_t1 else True
+
+    registry = load_5repo_registry(allow_network=False)
+    reg_pkgs = [_check_5repo_package_status(p, data_dir) for p in registry.get("packages", []) if isinstance(p, dict)]
     offline = is_offline_mode()
+    repos_5 = _summarize_5repos(reg_pkgs, offline=offline)
+    five_repo_t1 = [p for p in reg_pkgs if p.get("tier") == "tier1_essential"]
+    five_repo_ready = all(p.get("verified") for p in five_repo_t1) if five_repo_t1 else tier1_verified
+
     disk_free_bytes = 0
     try:
         disk_free_bytes = int(shutil.disk_usage(data_dir).free)
@@ -238,11 +346,14 @@ def get_bootstrap_status() -> Dict[str, Any]:
         "schema_version": manifest.get("schema_version", "2.0.0"),
         "portable_mode": is_portable_mode(),
         "offline_mode": offline,
-        "tier1_verified": tier1_verified,
-        "auto_skip": bool(tier1_verified or offline),
+        "tier1_verified": bool(tier1_verified and five_repo_ready),
+        "five_repo_ready": five_repo_ready,
+        "auto_skip": bool((tier1_verified and five_repo_ready) or offline),
         "data_dir": str(data_dir),
         "disk_free_bytes": disk_free_bytes,
         "target": _target_triple(),
+        "repos": repos_5,
+        "registry_packages": reg_pkgs,
         "packs": packs,
         "sync_state": sync_copy,
     }
@@ -267,24 +378,45 @@ def _safe_extract_archive(archive_path: pathlib.Path, dest_dir: pathlib.Path) ->
                     raise ValueError(f"Unsafe tar path traversal: {member.name}")
             tf.extractall(dest_dir, filter="data")
     elif name_l.endswith(".tar.zst"):
+        extracted = False
+        # 1. Python 3.14+ stdlib compression.zstd
         try:
-            import zstandard as zstd  # type: ignore
+            from compression import zstd as std_zstd  # type: ignore
+            import io
 
-            with open(archive_path, "rb") as raw_f:
-                dctx = zstd.ZstdDecompressor()
-                with dctx.stream_reader(raw_f) as reader:
-                    with tarfile.open(fileobj=reader, mode="r|*") as tf:
-                        for member in tf:
-                            target = (dest_dir / member.name).resolve()
-                            if not str(target).startswith(str(dest_resolved)):
-                                raise ValueError(f"Unsafe tar.zst path traversal: {member.name}")
-                            tf.extract(member, dest_dir, filter="data")
+            raw_bytes = archive_path.read_bytes()
+            tar_bytes = std_zstd.decompress(raw_bytes)
+            with tarfile.open(fileobj=io.BytesIO(tar_bytes), mode="r:*") as tf:
+                for member in tf.getmembers():
+                    target = (dest_dir / member.name).resolve()
+                    if not str(target).startswith(str(dest_resolved)):
+                        raise ValueError(f"Unsafe tar.zst path traversal: {member.name}")
+                tf.extractall(dest_dir, filter="data")
+            extracted = True
         except ImportError:
-            import subprocess
+            pass
+        # 2. Optional zstandard wheel
+        if not extracted:
+            try:
+                import zstandard as zstd  # type: ignore
 
+                with open(archive_path, "rb") as raw_f:
+                    dctx = zstd.ZstdDecompressor()
+                    with dctx.stream_reader(raw_f) as reader:
+                        with tarfile.open(fileobj=reader, mode="r|*") as tf:
+                            for member in tf:
+                                target = (dest_dir / member.name).resolve()
+                                if not str(target).startswith(str(dest_resolved)):
+                                    raise ValueError(f"Unsafe tar.zst path traversal: {member.name}")
+                                tf.extract(member, dest_dir, filter="data")
+                extracted = True
+            except ImportError:
+                pass
+        # 3. System tar --zstd fallback
+        if not extracted:
             tar_bin = shutil.which("tar")
             if not tar_bin:
-                raise RuntimeError("No .tar.zst extractor available (install zstandard or tar with zstd)")
+                raise RuntimeError("No .tar.zst extractor available (Python 3.14 compression.zstd, zstandard, or tar)")
             proc = subprocess.run([tar_bin, "--zstd", "-xf", str(archive_path), "-C", str(dest_dir)], capture_output=True, text=True)
             if proc.returncode != 0:
                 raise RuntimeError(f"tar --zstd extract failed: {proc.stderr[:240]}")
@@ -370,8 +502,121 @@ def _download_with_failover(
     raise RuntimeError(f"All pack sources failed: {last_err or 'no pinned URLs available'}")
 
 
+def _sync_5repo_packages(target_tiers: List[int], pack_ids: Optional[List[str]]) -> None:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    data_dir = resolve_data_dir()
+    registry = load_5repo_registry(allow_network=True)
+    reg_pkgs = [p for p in registry.get("packages", []) if isinstance(p, dict)]
+    if not reg_pkgs:
+        return
+    wanted_tiers = {"tier1_essential" if t == 1 else "tier2_dlc" for t in target_tiers}
+    wanted_ids = {p.lower() for p in pack_ids} if pack_ids else None
+    selected = []
+    for p in reg_pkgs:
+        pid = str(p.get("id") or "").lower()
+        if wanted_ids is not None:
+            if pid in wanted_ids:
+                selected.append(p)
+        elif str(p.get("tier") or "") in wanted_tiers:
+            selected.append(p)
+    if not selected:
+        return
+
+    staging_root = _REPO_ROOT / ".vd-companion-staging" / "release-assets"
+    total = len(selected)
+    done_count = 0
+    done_lock = threading.Lock()
+
+    def _sync_one(pkg: Dict[str, Any]) -> None:
+        nonlocal done_count
+        if _SYNC_CANCEL.is_set():
+            return
+        pid = str(pkg.get("id") or "")
+        bucket = str(pkg.get("repo_bucket") or "packs")
+        target_dir = str(pkg.get("target_dir") or f"packs/{pid}")
+        dest_dir = (data_dir / target_dir).resolve()
+        marker = dest_dir / ".verified.json"
+        expected_sha = str(pkg.get("sha256") or "")
+        if marker.is_file():
+            try:
+                if json.loads(marker.read_text(encoding="utf-8")).get("archive_sha256") == expected_sha:
+                    with done_lock:
+                        done_count += 1
+                    _broadcast_event({"type": "pack_verified", "repo_bucket": bucket, "pack_id": pid, "cached": True, "phase": "ready", "progress_pct": int((done_count / total) * 100)})
+                    return
+            except Exception:
+                pass
+
+        _broadcast_event({"type": "pack_start", "repo_bucket": bucket, "pack_id": pid, "phase": "fetching"})
+        arch_name = str(pkg.get("archive_name") or f"{pid}.tar.zst")
+        local_stage = staging_root / bucket / arch_name
+        tmp_archive = data_dir / "packs" / f".tmp-5r-{pid}.tar.zst"
+        part_archive = data_dir / "packs" / f".part-5r-{pid}.tar.zst"
+        tmp_extract = data_dir / "packs" / f".extract-5r-{pid}"
+        (data_dir / "packs").mkdir(parents=True, exist_ok=True)
+        try:
+            if os.environ.get("VD_LOCAL_COMPANION_STAGING") == "1" and local_stage.is_file():
+                shutil.copy2(local_stage, tmp_archive)
+                digest = _sha256_file(tmp_archive)
+            else:
+                urls = [str(pkg.get("download_url") or ""), str(pkg.get("fallback_url") or "")]
+                try:
+                    digest = _download_with_failover(urls, part_archive, tmp_archive, expected_sha, pack_id=pid)
+                except Exception:
+                    if local_stage.is_file():
+                        shutil.copy2(local_stage, tmp_archive)
+                        digest = _sha256_file(tmp_archive)
+                    else:
+                        raise
+            if expected_sha and digest.lower() != expected_sha.lower():
+                raise ValueError(f"SHA256 mismatch for {pid}")
+            _broadcast_event({"type": "pack_progress", "repo_bucket": bucket, "pack_id": pid, "phase": "verifying_sha256"})
+            _broadcast_event({"type": "pack_progress", "repo_bucket": bucket, "pack_id": pid, "phase": "extracting"})
+            if tmp_extract.exists():
+                shutil.rmtree(tmp_extract, ignore_errors=True)
+            _safe_extract_archive(tmp_archive, tmp_extract)
+            if dest_dir.exists():
+                shutil.rmtree(dest_dir, ignore_errors=True)
+            dest_dir.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(tmp_extract), str(dest_dir))
+            marker.write_text(
+                json.dumps({
+                    "pack_id": pid,
+                    "repo_bucket": bucket,
+                    "version": pkg.get("version", "v1.0.0"),
+                    "archive_sha256": digest,
+                    "license_spdx": pkg.get("license_spdx", "Apache-2.0"),
+                    "verified_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                }, indent=2),
+                encoding="utf-8",
+            )
+            with done_lock:
+                done_count += 1
+                pct = int((done_count / total) * 100)
+            with _SYNC_LOCK:
+                _SYNC_STATE["completed_packs"].append(pid)
+                _SYNC_STATE["progress_pct"] = pct
+            _broadcast_event({"type": "pack_done", "repo_bucket": bucket, "pack_id": pid, "sha256": digest, "phase": "ready", "progress_pct": pct})
+        except Exception as exc:
+            with _SYNC_LOCK:
+                _SYNC_STATE["failed_packs"].append({"pack_id": pid, "repo_bucket": bucket, "error": str(exc)})
+                _SYNC_STATE["error"] = str(exc)
+            _broadcast_event({"type": "pack_error", "repo_bucket": bucket, "pack_id": pid, "error": str(exc)})
+        finally:
+            tmp_archive.unlink(missing_ok=True)
+            if tmp_extract.exists():
+                shutil.rmtree(tmp_extract, ignore_errors=True)
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futs = [pool.submit(_sync_one, pkg) for pkg in selected]
+        for f in as_completed(futs):
+            f.result()
+
+
 def _run_sync_worker(target_tiers: List[int], pack_ids: Optional[List[str]]) -> None:
     global _SYNC_THREAD
+    _sync_5repo_packages(target_tiers, pack_ids)
     packs_root = resolve_data_dir() / "packs"
     manifest = load_manifest()
     entries = manifest.get("entries", [])
@@ -565,13 +810,55 @@ def handle_bootstrap_post(handler: Any, path: str, req: Dict[str, Any]) -> bool:
     if path in ("/api/bootstrap/import-offline", "/api/v1/bootstrap/import-offline"):
         pack_id = str(req.get("pack_id") or "").strip().lower()
         archive_str = str(req.get("archive_path") or "").strip()
-        if not pack_id or not archive_str:
-            _send_json(handler, 400, {"ok": False, "error": "MISSING_PARAMS", "detail": "pack_id and archive_path required"})
+        if not archive_str:
+            _send_json(handler, 400, {"ok": False, "error": "MISSING_PARAMS", "detail": "archive_path required"})
             return True
         archive_path = pathlib.Path(archive_str).resolve()
         if not archive_path.is_file():
             _send_json(handler, 404, {"ok": False, "error": "ARCHIVE_NOT_FOUND", "detail": str(archive_path)})
             return True
+        if not pack_id:
+            stem = archive_path.name
+            for ext in (".tar.zst", ".tar.gz", ".tgz", ".zip"):
+                if stem.endswith(ext):
+                    stem = stem[:-len(ext)]
+            pack_id = stem.lower()
+
+        registry = load_5repo_registry(allow_network=False)
+        reg_entry = next((p for p in registry.get("packages", []) if isinstance(p, dict) and str(p.get("id") or "").lower() == pack_id), None)
+        if reg_entry:
+            expected_sha = str(reg_entry.get("sha256") or "")
+            actual_sha = _sha256_file(archive_path)
+            if expected_sha and actual_sha.lower() != expected_sha.lower():
+                _send_json(handler, 422, {"ok": False, "error": "SHA256_MISMATCH", "expected": expected_sha, "actual": actual_sha})
+                return True
+            data_dir = resolve_data_dir()
+            dest_dir = (data_dir / str(reg_entry.get("target_dir") or f"packs/{pack_id}")).resolve()
+            tmp_extract = data_dir / "packs" / f".offline-extract-5r-{pack_id}-{int(time.time())}"
+            try:
+                _safe_extract_archive(archive_path, tmp_extract)
+                if dest_dir.exists():
+                    shutil.rmtree(dest_dir, ignore_errors=True)
+                dest_dir.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(tmp_extract), str(dest_dir))
+                (dest_dir / ".verified.json").write_text(
+                    json.dumps({
+                        "pack_id": pack_id,
+                        "repo_bucket": reg_entry.get("repo_bucket", "packs"),
+                        "version": reg_entry.get("version", "v1.0.0"),
+                        "archive_sha256": actual_sha,
+                        "license_spdx": reg_entry.get("license_spdx", "Apache-2.0"),
+                        "verified_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                        "source": "offline_usb_import",
+                    }, indent=2),
+                    encoding="utf-8",
+                )
+                _send_json(handler, 200, {"ok": True, "pack_id": pack_id, "sha256": actual_sha, "dest_dir": str(dest_dir)})
+            finally:
+                if tmp_extract.exists():
+                    shutil.rmtree(tmp_extract, ignore_errors=True)
+            return True
+
         manifest = load_manifest()
         entry = next((e for e in manifest.get("entries", []) if isinstance(e, dict) and str(e.get("pack_id") or e.get("name") or "").lower() == pack_id), None)
         if not entry:
