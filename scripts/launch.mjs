@@ -70,7 +70,7 @@ function resolveUvBinary() {
 
 function hasCoreDeps(pyExe) {
   try {
-    execFileSync(pyExe, ['-c', 'import duckdb, z3, sympy, pint'], { cwd: ROOT, stdio: 'ignore', timeout: 5000 });
+    execFileSync(pyExe, ['-c', 'import duckdb, z3'], { cwd: ROOT, stdio: 'ignore', timeout: 15000 });
     return true;
   } catch {
     return false;
@@ -94,6 +94,29 @@ function resolveIsolatedPython() {
 
   const repoVenvPy = path.join(ROOT, '.venv', process.platform === 'win32' ? 'Scripts' : 'bin', process.platform === 'win32' ? 'python.exe' : 'python');
   const hostPyList = findAllOnPath(process.platform === 'win32' ? ['python.exe', 'python3.exe'] : ['python3', 'python']);
+  if (process.platform === 'win32') {
+    for (const exeCmd of ['python', 'py']) {
+      try {
+        const realPy = execFileSync(exeCmd, ['-c', 'import sys; print(sys.executable)'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'], timeout: 4000 }).toString().trim();
+        if (realPy && !hostPyList.includes(realPy)) hostPyList.push(realPy);
+      } catch {
+        /* ignore */
+      }
+    }
+    const localApp = process.env.LOCALAPPDATA || '';
+    for (const baseDir of [path.join(localApp, 'Python'), path.join(localApp, 'Programs', 'Python')]) {
+      try {
+        if (fs.existsSync(baseDir)) {
+          for (const entry of fs.readdirSync(baseDir)) {
+            const p = path.join(baseDir, entry, 'python.exe');
+            if (!hostPyList.includes(p) && fs.existsSync(p)) hostPyList.push(p);
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
   const candidates = [py312Bin, ...hostPyList, repoVenvPy].filter((p) => p && fs.existsSync(p));
 
   const withDeps = candidates.find((p) => hasCoreDeps(p));
@@ -331,7 +354,7 @@ async function main() {
     }
 
     const appUrl = `http://127.0.0.1:${port}/?token=${token}`;
-    console.log(`[launch] Ready in ${bootMs} ms -> http://127.0.0.1:${port} (portable=${portableMode}, offline=${offlineMode})`);
+    console.log(`[launch] Ready in ${bootMs} ms -> ${appUrl} (portable=${portableMode}, offline=${offlineMode})`);
     if (!noBrowser) {
       launchBrowser(appUrl);
     }

@@ -65,10 +65,12 @@ def run():
     # 2. Boot live daemon on free port
     port = find_free_port()
     base = f"http://127.0.0.1:{port}"
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         env = dict(os.environ)
         env["VD_LLM_PROVIDER"] = "deterministic_offline"
         env["PYTHONUTF8"] = "1"
+        env["VD_DB_DIR"] = tmp
+        env["VD_DATA_DIR"] = tmp
         proc = subprocess.Popen(
             [sys.executable, str(ROOT / "packages" / "vd-daemon" / "src" / "daemon.py"), str(port)],
             cwd=str(ROOT),

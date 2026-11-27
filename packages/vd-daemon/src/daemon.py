@@ -856,7 +856,15 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
         expected = _get_session_token()
         if not expected:
             return True, ""
-        if allow_public_health and path in ("/api/v1/health", "/api/health", "/manifest.webmanifest", "/favicon.ico"):
+        if allow_public_health and path in (
+            "/api/v1/health",
+            "/api/health",
+            "/manifest.webmanifest",
+            "/favicon.ico",
+            "/favicon.svg",
+            "/icon-192.png",
+            "/icon-512.png",
+        ):
             return True, ""
 
         auth_hdr = (self.headers.get("Authorization") or "").strip()

@@ -5,6 +5,10 @@ The format is based on Keep a Changelog.
 
 ## [Unreleased]
 
+### Fixed
+- **Windows Launcher Python Auto-Detection (`scripts/launch.mjs`):** Resolved Windows App Execution Alias / host Python paths (`python` / `py`, `%LOCALAPPDATA%\Python`, `%LOCALAPPDATA%\Programs\Python`) and raised `hasCoreDeps` timeout to `15000 ms` so `vd-daemon` boots with `duckdb`, `z3`, `sympy`, `pint`, and `control` loaded (`boot_ms=346`).
+- **Tokenized Browser URL & Public App Icons (`scripts/launch.mjs`, `packages/vd-daemon/src/daemon.py`):** Printed the full authenticated `http://127.0.0.1:<port>/?token=<hex>` URL on startup and permitted `/favicon.svg`, `/icon-192.png`, and `/icon-512.png` publicly while keeping API/workbench routes fail-closed (`401`).
+
 ## [0.0.4] - 2026-11-27
 
 ### Added

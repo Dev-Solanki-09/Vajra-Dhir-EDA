@@ -84,7 +84,14 @@ def wait_for_health(proc, timeout_s: float = 15.0) -> dict:
 def main():
     print("[*] Launching vd-daemon on test port 41901 (cp1252 console regression)...")
     # Regression: a cp1252 Windows console must not kill the daemon on non-ASCII log output.
-    env = {**os.environ, "PYTHONIOENCODING": "cp1252"}
+    import tempfile
+    tmp_db_ctx = tempfile.TemporaryDirectory(prefix="vd_daemon_api_", ignore_cleanup_errors=True)
+    env = {
+        **os.environ,
+        "PYTHONIOENCODING": "cp1252",
+        "VD_DB_DIR": tmp_db_ctx.name,
+        "VD_DATA_DIR": tmp_db_ctx.name,
+    }
     proc = subprocess.Popen(
         [sys.executable, "packages/vd-daemon/src/daemon.py", str(PORT)],
         stdout=subprocess.PIPE,
