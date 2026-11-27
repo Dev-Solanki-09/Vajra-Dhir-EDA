@@ -19,6 +19,24 @@ export interface ToolShelfItem {
 }
 
 function getToolsForWorkspace(ws: WorkspaceId): ToolShelfItem[] {
+  if (ws === 'firmware_pinmux') {
+    return [
+      { id: 'select', label: 'Select Block / Code', shortcut: 'Esc', icon: 'selectCursor' },
+      { id: 'place_block', label: 'Add System Block', shortcut: 'A', icon: 'planBlocks' },
+      { id: 'connect_bus', label: 'Connect Power / Bus', shortcut: 'W', icon: 'wireNet' },
+      { id: 'pinmux', label: 'Assign Pinmux', shortcut: 'P', icon: 'cpuChip' },
+      { id: 'lock', label: 'Human Lock', shortcut: 'L', icon: 'lockClosed' },
+    ];
+  }
+  if (ws === 'mfg_diff') {
+    return [
+      { id: 'select', label: 'Select View', shortcut: 'Esc', icon: 'selectCursor' },
+      { id: 'panelize', label: '2×2 Panelize Array', icon: 'fabPackage' },
+      { id: 'gerber', label: 'Gerber Inspector', icon: 'gerberLayers' },
+      { id: 'diff', label: 'Visual ECO Diff', icon: 'splitView' },
+      { id: 'bringup', label: 'Dossier & Bring-Up', icon: 'dossierDoc' },
+    ];
+  }
   if (ws === 'schematic') {
     return [
       { id: 'select', label: 'Select', shortcut: 'Esc', icon: 'selectCursor', variants: [

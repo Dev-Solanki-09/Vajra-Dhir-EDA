@@ -47,6 +47,15 @@ import {
   UnsavedGuardDialog,
 } from './Dialogs';
 import { FileBrowserModal } from './FileBrowserModal';
+import { StudioDrawerRail, StudioRailTab } from './StudioDrawerRail';
+import {
+  BespokeWindowId,
+  BomCostOptimizerWindow,
+  DesignRulesWindow,
+  ManufacturingStudioWindow,
+  PinmuxMatrixWindow,
+  SimStudioWindow,
+} from './BespokeStudioWindows';
 
 export type ToolMode = 'select' | 'route' | 'place' | 'inspect';
 
@@ -389,6 +398,7 @@ const InspectorPanel: React.FC<IDockviewPanelProps> = () => {
     <PanelErrorBoundary panelTitle="Inspector">
       <div
         data-testid="inspector-panel"
+        className="vd-scroll-slim"
         style={{ height: '100%', backgroundColor: 'var(--vd-bg-panel)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}
       >
         {/* Dynamic Entity Header */}
@@ -706,6 +716,8 @@ export const WorkstationShell: React.FC = () => {
   const [enclosureOpacity, setEnclosureOpacity] = useState(65);
 
   const [showToolShelf, setShowToolShelf] = useState(true);
+  const [studioRailTab, setStudioRailTab] = useState<StudioRailTab | null>(null);
+  const [activeWindow, setActiveWindow] = useState<BespokeWindowId | null>(null);
   const [showOutliner, setShowOutliner] = useState(true);
   const [showInspector, setShowInspector] = useState(true);
   const [bottomDrawerOpen, setBottomDrawerOpen] = useState(false);
@@ -792,12 +804,7 @@ export const WorkstationShell: React.FC = () => {
     registerUiControlCallbacks({
       getWorkspace: () => activeWsRef.current,
       setWorkspace: (w) => setActiveWorkspace(w),
-      focusPanel: (panelId) => {
-        const panel = dockApiRef.current?.getPanel(panelId);
-        if (!panel) return false;
-        panel.api.setActive();
-        return true;
-      },
+      focusPanel: (panelId) => openOrFocusPanel(panelId),
       listPanels: () => dockApiRef.current?.panels.map((p) => p.id) ?? [],
     });
     startUiControlBridge();
@@ -910,25 +917,55 @@ export const WorkstationShell: React.FC = () => {
     }
   };
 
+  const PANEL_CATALOG: Record<string, { component: keyof typeof DOCK_COMPONENTS; title: string }> = {
+    viewport_panel: { component: 'viewport', title: 'Workspace' },
+    pcb2d_panel: { component: 'pcb2d', title: 'PCB 2D' },
+    schematic2d_panel: { component: 'schematic2d', title: 'Schematic 2D' },
+    viewport3d_panel: { component: 'viewport3d', title: '3D View' },
+    code_editor_panel: { component: 'codeEditor', title: 'Code Editor' },
+    terminal_panel: { component: 'terminal', title: 'Terminal' },
+    architecture_panel: { component: 'architecture', title: 'System Plan' },
+    ee_audit_panel: { component: 'eeAudit', title: 'Design Audit' },
+    sim_lab_panel: { component: 'simLab', title: 'SPICE Lab' },
+    cosim_panel: { component: 'cosimLab', title: 'Firmware Co-Sim' },
+    gerber_panel: { component: 'gerberInspector', title: 'Gerber Inspector' },
+    fab_release_panel: { component: 'fabRelease', title: 'Fab Release' },
+    report_preview_panel: { component: 'reportPreview', title: 'Dossier' },
+  };
+
+  const openOrFocusPanel = (panelId: string): boolean => {
+    const api = dockApiRef.current;
+    if (!api) return false;
+    const existing = api.getPanel(panelId);
+    if (existing) {
+      existing.api.setActive();
+      return true;
+    }
+    const spec = PANEL_CATALOG[panelId];
+    if (!spec) return false;
+    const center = api.getPanel('viewport_panel');
+    const created = api.addPanel({
+      id: panelId,
+      component: spec.component,
+      title: spec.title,
+      position: center ? { referencePanel: center, direction: 'within' } : undefined,
+    });
+    created.api.setActive();
+    return true;
+  };
+
   const applyPresetSelection = (pId: FocusedPresetId) => {
     setActivePreset(pId);
     const meta = FOCUSED_PRESETS.find((x) => x.id === pId);
     if (meta) setActiveWorkspace(meta.targetWorkspace);
-    const api = dockApiRef.current;
-    if (!api) return;
-    if (pId === 'plan') api.getPanel('architecture_panel')?.api.setActive();
-    else if (pId === 'sch_code') api.getPanel('schematic2d_panel')?.api.setActive();
-    else if (pId === 'pcb_3d') api.getPanel('viewport_panel')?.api.setActive();
-    else if (pId === 'virtual_lab') api.getPanel('sim_lab_panel')?.api.setActive();
-    else if (pId === 'fab_release') api.getPanel('fab_release_panel')?.api.setActive();
+    dockApiRef.current?.getPanel('viewport_panel')?.api.setActive();
   };
 
   const toggleOutlinerDock = (next?: boolean) => {
-    setShowOutliner((prev) => {
-      const target = next ?? !prev;
-      const panel = dockApiRef.current?.getPanel('explorer_panel');
-      if (panel?.group) panel.group.api.setVisible(target);
-      return target;
+    setStudioRailTab((prev) => {
+      const wantOpen = next ?? prev !== 'outliner';
+      setShowOutliner(wantOpen);
+      return wantOpen ? 'outliner' : null;
     });
   };
 
@@ -968,6 +1005,7 @@ export const WorkstationShell: React.FC = () => {
     if (dirty && settings.general.confirmUnsavedClose) {
       setShowUnsavedGuard(true);
     } else {
+      disposeProjectWebGLRenderer();
       setShowHomeScreen(true);
     }
   };
@@ -1006,7 +1044,7 @@ export const WorkstationShell: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 's') {
         e.preventDefault();
         setDirty(false);
-        setStatusMessage(`Saved HW-IR snapshot (rev #${useDesignStore.getState().revId})`);
+        setStatusMessage(`Saved project snapshot (rev #${useDesignStore.getState().revId})`);
         return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {
@@ -1044,10 +1082,10 @@ export const WorkstationShell: React.FC = () => {
         toggleInspectorDock();
       } else if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'm') {
         setRulerActive(!usePolishStore.getState().rulerActive);
-      } else if (e.key === 'F1' && e.shiftKey) {
+      } else if (e.key === 'F1') {
         e.preventDefault();
         setShowHelpCenter((prev) => !prev);
-      } else if (e.key === 'F1' || e.key === '?') {
+      } else if (e.key === '?') {
         e.preventDefault();
         setShowShortcuts((prev) => !prev);
       } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
@@ -1079,44 +1117,38 @@ export const WorkstationShell: React.FC = () => {
 
   const onDockReady = (event: DockviewReadyEvent) => {
     dockApiRef.current = event.api;
+    // Self-healing layout persistence (vd.layout.v7)
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('vd.layout.v') && k !== 'vd.layout.v7') {
+          localStorage.removeItem(k);
+        }
+      }
+      const saved = localStorage.getItem('vd.layout.v7');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && parsed.grid && parsed.panels?.viewport_panel) {
+          event.api.fromJSON(parsed);
+          return;
+        }
+      }
+    } catch {
+      try { localStorage.removeItem('vd.layout.v7'); } catch { /* ignore */ }
+    }
+
     const center = event.api.addPanel({
       id: 'viewport_panel',
       component: 'viewport',
-      title: 'Silicon Darkroom Viewport',
+      title: 'Canvas',
     });
-    event.api.addPanel({ id: 'pcb2d_panel', component: 'pcb2d', title: 'PCB 2D (.kicad_pcb)', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'schematic2d_panel', component: 'schematic2d', title: 'Schematic 2D (.kicad_sch)', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'viewport3d_panel', component: 'viewport3d', title: '3D STEP (.kicad_pcb)', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'code_editor_panel', component: 'codeEditor', title: 'Code IDE (Monaco)', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'terminal_panel', component: 'terminal', title: 'Terminal (PTY)', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'architecture_panel', component: 'architecture', title: 'Architecture (xyflow)', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'ee_audit_panel', component: 'eeAudit', title: 'EE Audit (Z3/SymPy)', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'sim_lab_panel', component: 'simLab', title: 'SPICE Lab', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'cosim_panel', component: 'cosimLab', title: 'MCU Co-Sim', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'gerber_panel', component: 'gerberInspector', title: 'Gerber Inspector', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'fab_release_panel', component: 'fabRelease', title: 'Fab Release', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'report_preview_panel', component: 'reportPreview', title: 'Engineering Dossier', position: { referencePanel: center, direction: 'within' } });
     center.api.setActive();
-    const left = event.api.addPanel({
-      id: 'explorer_panel',
-      component: 'explorer',
-      title: 'Outliner',
-      position: { referencePanel: center, direction: 'left' },
-      initialWidth: 240,
-    });
-    event.api.addPanel({
-      id: 'file_explorer_panel',
-      component: 'fileExplorer',
-      title: 'Files',
-      position: { referencePanel: left, direction: 'within' },
-    });
-    left.api.setActive();
     event.api.addPanel({
       id: 'inspector_panel',
       component: 'inspector',
       title: 'Inspector',
       position: { referencePanel: center, direction: 'right' },
-      initialWidth: 290,
+      initialWidth: 280,
     });
   };
 
@@ -1140,7 +1172,7 @@ export const WorkstationShell: React.FC = () => {
         { id: 'file.new_tpl', label: 'New from Template', onSelect: () => setShowTemplates(true) },
         { id: 'file.open', label: 'Open Project...', shortcut: 'Ctrl+O', onSelect: () => setFileBrowserState({ open: true, mode: 'folder', ext: '' }) },
         { id: 'file.sep1', label: '', separator: true },
-        { id: 'file.save', label: 'Save', shortcut: 'Ctrl+S', onSelect: () => { setDirty(false); setStatusMessage('Saved HW-IR snapshot'); } },
+        { id: 'file.save', label: 'Save', shortcut: 'Ctrl+S', onSelect: () => { setDirty(false); setStatusMessage('Saved project snapshot'); } },
         { id: 'file.close_home', label: 'Close Project & Return to Home', onSelect: requestReturnHome },
         { id: 'file.sep2', label: '', separator: true },
         {
@@ -1157,8 +1189,8 @@ export const WorkstationShell: React.FC = () => {
           label: 'Export',
           children: [
             { id: 'exp.gerber', label: 'Gerber RS-274X + Drill', onSelect: () => setActiveWorkspace('mfg_diff') },
-            { id: 'exp.fab', label: 'Full Manufacturing Release Pack...', onSelect: () => dockApiRef.current?.getPanel('fab_release_panel')?.api.setActive() },
-            { id: 'exp.dossier', label: 'Engineering Dossier PDF', onSelect: () => dockApiRef.current?.getPanel('report_preview_panel')?.api.setActive() },
+            { id: 'exp.fab', label: 'Full Manufacturing Release Pack...', onSelect: () => setActiveWindow('mfg_studio') },
+            { id: 'exp.dossier', label: 'Engineering Dossier PDF', onSelect: () => openOrFocusPanel('report_preview_panel') },
           ],
         },
         { id: 'file.sep3', label: '', separator: true },
@@ -1209,18 +1241,21 @@ export const WorkstationShell: React.FC = () => {
       id: 'design',
       label: 'Design',
       items: [
-        { id: 'des.plan', label: 'System Block & Power Planner', onSelect: () => dockApiRef.current?.getPanel('architecture_panel')?.api.setActive() },
+        { id: 'des.plan', label: 'System Block & Power Planner', onSelect: () => { setActivePreset('plan'); setActiveWorkspace('firmware_pinmux'); } },
         { id: 'des.route45', label: 'Route 45-Deg Trace', shortcut: 'X', onSelect: () => { setToolMode('route'); setActiveShelfTool('route_45'); } },
         { id: 'des.refill', label: 'Refill All Copper Pours', shortcut: 'B', onSelect: () => void executeCommand(CLIENT_EDA_COMMANDS.find((c) => c.id === 'route.copper_refill')!) },
         { id: 'des.stackup', label: 'Layer Stackup & Impedance Calculator...', onSelect: () => setShowStackupFloat(true) },
+        { id: 'des.rules', label: 'Design Rules & Constraints Matrix...', onSelect: () => setActiveWindow('design_rules') },
+        { id: 'des.bom', label: 'BOM & Cost Optimizer (India/Global)...', onSelect: () => setActiveWindow('bom_optimizer') },
+        { id: 'des.pinmux', label: 'Pinmux & Firmware Matrix...', onSelect: () => setActiveWindow('pinmux_matrix') },
       ],
     },
     {
       id: 'verify',
       label: 'Verify',
       items: [
-        { id: 'ver.suite', label: 'Run Full Senior-EE Verification Suite', shortcut: 'F5', onSelect: () => runTransportStep('verify') },
-        { id: 'ver.z3', label: 'Z3 Pinmux & Voltage-Level Proof', onSelect: () => dockApiRef.current?.getPanel('ee_audit_panel')?.api.setActive() },
+        { id: 'ver.suite', label: 'Run Full Verification Suite', shortcut: 'F5', onSelect: () => runTransportStep('verify') },
+        { id: 'ver.z3', label: 'Z3 Pinmux & Voltage-Level Proof', onSelect: () => openOrFocusPanel('ee_audit_panel') },
         { id: 'ver.pi', label: '2.5D Power Integrity (IR-Drop)', onSelect: () => setPiHeatmapVisible((v) => !v) },
         { id: 'ver.thermal', label: '3D Thermal FEM Analysis', onSelect: () => setThermalHeatmapVisible((v) => !v) },
       ],
@@ -1229,9 +1264,11 @@ export const WorkstationShell: React.FC = () => {
       id: 'simulate',
       label: 'Simulate',
       items: [
+        { id: 'sim.studio', label: 'Simulation & Testbench Studio...', onSelect: () => setActiveWindow('sim_studio') },
         { id: 'sim.quick', label: 'Run Quick SPICE Simulation', shortcut: 'F6', onSelect: () => runTransportStep('sim') },
         { id: 'sim.cosim', label: 'Compile & Run Firmware Co-Sim', shortcut: 'F7', onSelect: () => runTransportStep('cosim') },
         { id: 'sim.vcd', label: 'Open Digital VCD Waveform Viewer', onSelect: () => { setBottomDrawerTab('simulation'); setBottomDrawerOpen(true); } },
+        { id: 'sim.mfg', label: 'Manufacturing, Bring-Up & Gate-8...', onSelect: () => setActiveWindow('mfg_studio') },
       ],
     },
     {
@@ -1396,12 +1433,16 @@ export const WorkstationShell: React.FC = () => {
                 onClick={() => {
                   const next = !splitViewEnabled;
                   setSplitViewEnabled(next);
-                  const pcbPanel = dockApiRef.current?.getPanel('pcb2d_panel');
-                  const schPanel = dockApiRef.current?.getPanel('schematic2d_panel');
-                  if (next && pcbPanel && schPanel?.group) {
-                    schPanel.api.setActive();
-                    pcbPanel.api.moveTo({ group: schPanel.group, position: 'right' });
-                  } else if (!next) {
+                  if (next) {
+                    openOrFocusPanel('schematic2d_panel');
+                    openOrFocusPanel('pcb2d_panel');
+                    const pcbPanel = dockApiRef.current?.getPanel('pcb2d_panel');
+                    const schPanel = dockApiRef.current?.getPanel('schematic2d_panel');
+                    if (pcbPanel && schPanel?.group) {
+                      schPanel.api.setActive();
+                      pcbPanel.api.moveTo({ group: schPanel.group, position: 'right' });
+                    }
+                  } else {
                     dockApiRef.current?.getPanel('viewport_panel')?.api.setActive();
                   }
                 }}
@@ -1488,8 +1529,24 @@ export const WorkstationShell: React.FC = () => {
           </div>
         </div>
 
-        {/* ZONE 3 + ZONE 4: Tool Shelf + Dockview Workbench Interior + Bottom Drawer */}
+        {/* ZONE 3 + ZONE 4: Studio Rail + Tool Shelf + Dockview Workbench + Bottom Drawer */}
         <div className="vd-workbench-body">
+          <StudioDrawerRail
+            activeTab={studioRailTab}
+            onSelectTab={(tab) => {
+              setStudioRailTab(tab);
+              setShowOutliner(tab === 'outliner');
+            }}
+            selectedRefdes={probeSnapshot.selection.entityIds[0] ?? 'U2'}
+            boardComponents={boardComponents}
+            onToggleLock={shellContextValue.onToggleLock}
+            onToggleHidden={shellContextValue.onToggleHidden}
+            onOpenContextMenu={shellContextValue.onOpenContextMenu}
+            onStatusMessage={setStatusMessage}
+            onOpenCodeFile={() => openOrFocusPanel('code_editor_panel')}
+            onOpenPluginUi={() => setEnterpriseDrawer('plugins')}
+          />
+
           <ToolShelf
             visible={showToolShelf}
             workspace={activeWorkspace}
@@ -1535,12 +1592,14 @@ export const WorkstationShell: React.FC = () => {
             )}
 
             <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-              <DockviewReact
-                proportionalLayout={false}
-                components={DOCK_COMPONENTS}
-                onReady={onDockReady}
-                className="dockview-theme-dark"
-              />
+              {!showHomeScreen && (
+                <DockviewReact
+                  proportionalLayout={false}
+                  components={DOCK_COMPONENTS}
+                  onReady={onDockReady}
+                  className="dockview-theme-dark"
+                />
+              )}
             </div>
 
             <BottomDrawer
@@ -1577,7 +1636,7 @@ export const WorkstationShell: React.FC = () => {
                 Diagnostics &amp; Checks
               </button>
               <span style={{ color: 'var(--vd-dlp-airgap)' }}>
-                {settings.agent.dlpMode === 'NDA_AIRGAPPED' ? 'Offline Airgapped' : settings.agent.dlpMode}
+                {settings.agent.dlpMode === 'NDA_AIRGAPPED' ? 'Airgapped Local' : settings.agent.dlpMode === 'PRIVATE_CLOUD_OK' ? 'Private Key' : 'Open Hardware'}
               </span>
               <span>Rev #{revId}</span>
               <span>CrossProbe: {probeSnapshot.lastLatencyMs.toFixed(2)} ms</span>
@@ -1750,6 +1809,11 @@ export const WorkstationShell: React.FC = () => {
         <ActivityLogModal open={showActivityLog} onClose={() => setShowActivityLog(false)} />
         <AboutModal open={showAbout} onClose={() => setShowAbout(false)} />
         <StackupCalculatorWindow open={showStackupFloat} onClose={() => setShowStackupFloat(false)} />
+        <DesignRulesWindow open={activeWindow === 'design_rules'} onClose={() => setActiveWindow(null)} />
+        <BomCostOptimizerWindow open={activeWindow === 'bom_optimizer'} onClose={() => setActiveWindow(null)} />
+        <PinmuxMatrixWindow open={activeWindow === 'pinmux_matrix'} onClose={() => setActiveWindow(null)} />
+        <SimStudioWindow open={activeWindow === 'sim_studio'} onClose={() => setActiveWindow(null)} />
+        <ManufacturingStudioWindow open={activeWindow === 'mfg_studio'} onClose={() => setActiveWindow(null)} />
         <UnsavedGuardDialog
           open={showUnsavedGuard}
           projectName={projectName}

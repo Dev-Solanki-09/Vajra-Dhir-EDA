@@ -65,41 +65,6 @@ export interface ActiveWorkspaceProps {
   lockRingsVisible: boolean;
 }
 
-const StateToolbar: React.FC<{
-  signature: string;
-  viewState: WorkspaceViewState;
-  setViewState: (s: WorkspaceViewState) => void;
-}> = ({ signature, viewState, setViewState }) => (
-  <div
-    className="vd-metric"
-    style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '4px 8px',
-      borderRadius: 4,
-      backgroundColor: 'var(--vd-bg-panel)',
-      border: '1px solid var(--vd-border-subtle)',
-      fontSize: 11,
-    }}
-  >
-    <span>Object: {signature}</span>
-    <div style={{ display: 'flex', gap: 4 }}>
-      {(['full', 'loading', 'empty', 'error'] as WorkspaceViewState[]).map((s) => (
-        <button
-          key={s}
-          type="button"
-          className={`vd-btn ${viewState === s ? 'vd-btn-primary' : ''}`}
-          style={{ minHeight: 24, padding: '2px 7px', fontSize: 11 }}
-          onClick={() => setViewState(s)}
-        >
-          {s}
-        </button>
-      ))}
-    </div>
-  </div>
-);
-
 const WorkspaceFrame: React.FC<{
   signature: string;
   viewState: WorkspaceViewState;
@@ -108,6 +73,7 @@ const WorkspaceFrame: React.FC<{
   onEmptyAction: () => void;
   errorTitle: string;
   errorHint: string;
+  scrollable?: boolean;
   children: React.ReactNode;
 }> = ({
   signature,
@@ -117,10 +83,10 @@ const WorkspaceFrame: React.FC<{
   onEmptyAction,
   errorTitle,
   errorHint,
+  scrollable = false,
   children,
 }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 }}>
-    <StateToolbar signature={signature} viewState={viewState} setViewState={setViewState} />
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minHeight: 0 }}>
     {viewState === 'loading' && (
       <div
         data-testid="workspace-state-loading"
@@ -189,7 +155,18 @@ const WorkspaceFrame: React.FC<{
     )}
 
     {viewState === 'full' && (
-      <div data-testid="workspace-state-full" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
+      <div
+        data-testid="workspace-state-full"
+        className={scrollable ? 'vd-scroll-slim' : undefined}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          overflowY: scrollable ? 'auto' : 'hidden',
+        }}
+      >
         {children}
       </div>
     )}
@@ -201,7 +178,7 @@ const SIGNATURE_META: Record<
   { signature: string; emptyAction: string; errTitle: string; errHint: string }
 > = {
   pcb_layout: {
-    signature: 'HW-IR Copper & Pad Geometry',
+    signature: 'Copper & Pad Geometry',
     emptyAction: 'Load Buck PD Layout',
     errTitle: 'WebGL2/Canvas Context Unavailable',
     errHint: 'Check local GPU driver or reload Canvas2D software fallback.',
@@ -518,6 +495,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
       onEmptyAction={() => setCurrentState('full')}
       errorTitle={currentMeta.errTitle}
       errorHint={currentMeta.errHint}
+      scrollable={workspace === 'sim_lab' || workspace === 'library_bom' || workspace === 'mfg_diff' || workspace === 'firmware_pinmux'}
     >
       {workspace === 'pcb_layout' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%' }}>
@@ -750,7 +728,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
           </div>
 
           {mfgSubTab === 'panel' && (
-            <pre className="vd-metric" style={{ margin: 0, padding: 10, borderRadius: 6, backgroundColor: 'var(--vd-bg-panel)', border: '1px solid var(--vd-border-subtle)', fontSize: 12, overflowX: 'auto' }}>
+            <pre className="vd-metric" style={{ margin: 0, padding: 10, borderRadius: 6, backgroundColor: 'var(--vd-bg-panel)', border: '1px solid var(--vd-border-subtle)', fontSize: 12, whiteSpace: 'pre-wrap' }}>
               {panelPreview}
             </pre>
           )}
@@ -880,7 +858,7 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
             <TerminalPanel />
             <CosimPanel />
           </Suspense>
-          <pre className="vd-metric" style={{ margin: 0, padding: 8, borderRadius: 6, backgroundColor: 'var(--vd-bg-panel)', border: '1px solid var(--vd-border-subtle)', fontSize: 11, maxHeight: 90, overflow: 'auto' }}>
+          <pre className="vd-metric" style={{ margin: 0, padding: 8, borderRadius: 6, backgroundColor: 'var(--vd-bg-panel)', border: '1px solid var(--vd-border-subtle)', fontSize: 11, whiteSpace: 'pre-wrap' }}>
             {pinmuxC}
           </pre>
         </div>

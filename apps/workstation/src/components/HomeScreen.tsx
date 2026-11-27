@@ -196,10 +196,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <VajraIcon name="airgapShield" size={16} color="var(--vd-border-active)" />
             <strong style={{ fontSize: 12.5 }}>Vajra-Dhīr EDA</strong>
-            <span className="vd-metric" style={{ fontSize: 10.5, color: 'var(--vd-text-muted)' }}>v0.0.2</span>
+            <span className="vd-metric" style={{ fontSize: 10.5, color: 'var(--vd-text-muted)' }}>v0.0.4</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} className="vd-metric">
-            <span className="vd-pill">{settings.agent.dlpMode === 'NDA_AIRGAPPED' ? 'AIRGAP' : 'LOCAL OFFLINE'}</span>
+            <span className="vd-pill">{settings.agent.dlpMode === 'NDA_AIRGAPPED' ? 'Airgapped Local' : 'Local Offline'}</span>
             <span className="vd-pill">Daemon: {daemonHealth.status}</span>
             <span className="vd-pill">MCP: /mcp</span>
             <span className="vd-pill">RAM: {daemonHealth.ramMb !== undefined ? `${daemonHealth.ramMb} MB` : '--'}</span>
@@ -361,35 +361,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     </tbody>
                   </table>
                 )}
-
-                <div style={{ marginTop: 4 }}>
-                  <div className="vd-section-title" style={{ marginBottom: 8 }}>Reference Starter Templates (Explicit Load Only)</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    {STARTER_BOARDS.map((b) => (
-                      <button
-                        key={b.id}
-                        type="button"
-                        data-testid={`home-template-${b.id}`}
-                        className="vd-btn"
-                        style={{
-                          flexDirection: 'column',
-                          alignItems: 'flex-start',
-                          padding: 10,
-                          backgroundColor: 'var(--vd-bg-canvas)',
-                          border: '1px solid var(--vd-border-subtle)',
-                          textAlign: 'left',
-                        }}
-                        onClick={() => {
-                          onSelectProject(b.id, b.name);
-                          onClose();
-                        }}
-                      >
-                        <strong style={{ fontSize: 12 }}>{b.name}</strong>
-                        <span className="vd-metric" style={{ fontSize: 10.5, color: 'var(--vd-text-secondary)' }}>{b.spec}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
             )}
 
@@ -448,9 +419,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                       <label style={{ display: 'grid', gap: 4 }}>
                         <span>Security / DLP Profile</span>
                         <select className="vd-select" value={dlpMode} onChange={(e) => setDlpMode(e.target.value as 'NDA_AIRGAPPED')}>
-                          <option value="NDA_AIRGAPPED">NDA_AIRGAPPED (Local Only)</option>
-                          <option value="PRIVATE_CLOUD_OK">PRIVATE_CLOUD_OK</option>
-                          <option value="PUBLIC_OPEN">PUBLIC_OPEN</option>
+                          <option value="NDA_AIRGAPPED">Airgapped (Local Only)</option>
+                          <option value="PRIVATE_CLOUD_OK">Private Cloud Key (Redacted)</option>
+                          <option value="PUBLIC_OPEN">Open Hardware</option>
                         </select>
                       </label>
                     </div>

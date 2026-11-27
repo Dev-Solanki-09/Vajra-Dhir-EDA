@@ -552,3 +552,94 @@ body,
 .dockview-theme-dark .dv-sash:hover {
   background-color: var(--vd-border-active) !important;
 }
+
+/* Hairline Scrollbars & Canva 48px Studio Rail */
+.vd-scroll-slim::-webkit-scrollbar,
+.vd-popover::-webkit-scrollbar,
+.vd-modal-panel::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.vd-scroll-slim::-webkit-scrollbar-thumb,
+.vd-popover::-webkit-scrollbar-thumb,
+.vd-modal-panel::-webkit-scrollbar-thumb {
+  background-color: var(--vd-border-strong);
+  border-radius: 2px;
+}
+
+.vd-studio-rail {
+  width: 48px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 2px;
+  gap: 4px;
+  background-color: var(--vd-bg-workbench);
+  border-right: 1px solid var(--vd-border-subtle);
+  user-select: none;
+}
+
+.vd-studio-rail-btn {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-left: 2px solid transparent;
+  border-radius: 3px;
+  color: var(--vd-text-secondary);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.vd-studio-rail-btn:hover {
+  background-color: var(--vd-bg-popover);
+  color: var(--vd-text-primary);
+}
+
+.vd-studio-rail-btn[data-active="true"] {
+  background-color: var(--vd-bg-panel);
+  border-color: var(--vd-border-subtle);
+  border-left-color: var(--vd-border-active);
+  color: var(--vd-text-primary);
+}
+
+.vd-studio-drawer {
+  width: 272px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--vd-bg-panel);
+  border-right: 1px solid var(--vd-border-subtle);
+  min-height: 0;
+}
+
+.vd-studio-drawer-header {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  background-color: var(--vd-bg-elevated);
+  border-bottom: 1px solid var(--vd-border-subtle);
+}
+
+.vd-studio-drawer-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.vd-studio-card {
+  padding: 6px 7px;
+  background-color: var(--vd-bg-canvas);
+  border: 1px solid var(--vd-border-subtle);
+  border-radius: 3px;
+}

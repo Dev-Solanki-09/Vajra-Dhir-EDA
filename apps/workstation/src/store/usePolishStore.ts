@@ -9,7 +9,7 @@ export const FOCUSED_PRESETS: Array<{ id: FocusedPresetId; label: string; target
   { id: 'sch_code', label: 'Schematic', targetWorkspace: 'schematic' },
   { id: 'pcb_3d', label: 'PCB', targetWorkspace: 'pcb_layout' },
   { id: 'mcad_3d', label: '3D', targetWorkspace: 'mcad_3d' },
-  { id: 'virtual_lab', label: 'Test & Lab', targetWorkspace: 'sim_lab' },
+  { id: 'virtual_lab', label: 'Lab & Sim', targetWorkspace: 'sim_lab' },
   { id: 'fab_release', label: 'Make', targetWorkspace: 'mfg_diff' },
 ];
 

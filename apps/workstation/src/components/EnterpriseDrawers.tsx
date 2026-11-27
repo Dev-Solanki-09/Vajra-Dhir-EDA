@@ -185,7 +185,7 @@ export const EnterpriseDrawers: React.FC<{
               placeholder="Search components (U1, U2), nets, .ato, .kicad_pcb, firmware..."
               className="vd-input"
             />
-            <div style={{ maxHeight: 280, overflowY: 'auto', display: 'grid', gap: 4 }}>
+            <div style={{ display: 'grid', gap: 4 }}>
               {mode === 'search' && entityMatches.slice(0, 10).map((ent) => (
                 <button
                   key={`ent-${ent.refdes}`}

@@ -123,13 +123,7 @@ export const MenuBar: React.FC<{
     };
   }, [Boolean(openMenuId)]);
 
-  const tabMeta: Array<{ id: FocusedPresetId; label: string }> = [
-    { id: 'plan', label: 'Plan' },
-    { id: 'sch_code', label: 'Schematic' },
-    { id: 'pcb_3d', label: 'PCB & 3D' },
-    { id: 'virtual_lab', label: 'Virtual Lab' },
-    { id: 'fab_release', label: 'Release' },
-  ];
+  const tabMeta = FOCUSED_PRESETS;
 
   return (
     <header className="vd-menubar" data-testid="zone1-menubar">
@@ -228,7 +222,7 @@ export const MenuBar: React.FC<{
       <div className="vd-menubar-right">
         <span className="vd-pill vd-metric" data-testid="pill-dlp-mode">
           <VajraIcon name="airgapShield" size={11} color="var(--vd-dlp-airgap)" />
-          {settings.agent.dlpMode === 'NDA_AIRGAPPED' ? 'AIRGAP' : 'LOCAL'}
+          {settings.agent.dlpMode === 'NDA_AIRGAPPED' ? 'Airgapped' : 'Local'}
         </span>
         <select
           aria-label="Agent Mode Quick Switch"
