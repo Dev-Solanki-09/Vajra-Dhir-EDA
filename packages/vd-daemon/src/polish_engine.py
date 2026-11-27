@@ -132,21 +132,85 @@ def get_fab_presets_state(active_id: Optional[str] = None) -> Dict[str, Any]:
     }
 
 
+def _probe_python_module(mod_name: str) -> bool:
+    import importlib.util
+    return importlib.util.find_spec(mod_name) is not None
+
+
+def _resolve_packs_root() -> pathlib.Path:
+    env_dir = os.environ.get("VD_DATA_DIR") or os.environ.get("VD_PACKS_DIR")
+    if env_dir:
+        return pathlib.Path(env_dir) / "packs"
+    portable_flag = _REPO_ROOT / "portable.flag"
+    if portable_flag.is_file() or os.environ.get("VD_PORTABLE") == "1":
+        return _REPO_ROOT / ".vd-portable" / "packs"
+    return _REPO_ROOT / ".vd-runtime" / "packs"
+
+
+def _has_binary_or_pack(bin_names: List[str], pack_ids: List[str], fallback_dirs: List[pathlib.Path]) -> tuple[bool, str]:
+    for b in bin_names:
+        found = shutil.which(b)
+        if found:
+            return True, f"binary:{pathlib.Path(found).name}"
+    packs_root = _resolve_packs_root()
+    for pid in pack_ids:
+        pdir = packs_root / pid
+        if pdir.is_dir() and any(pdir.iterdir()):
+            return True, f"pack:{pid}"
+    for d in fallback_dirs:
+        if d.is_dir():
+            return True, f"vendor:{d.name}"
+    return False, ""
+
+
 def probe_tool_manager_status() -> Dict[str, Any]:
     kicad_cli = shutil.which("kicad-cli")
     if not kicad_cli:
         k_win = pathlib.Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "KiCad" / "10.0" / "bin" / "kicad-cli.exe"
         if k_win.is_file():
             kicad_cli = str(k_win)
+
+    ngspice_ready = (_REPO_ROOT / "apps" / "workstation" / "src" / "workers" / "spiceWorker.worker.ts").is_file()
+    tracespace_ready = (
+        (_REPO_ROOT / "packages" / "tracespace-vendor").is_dir()
+        or (_REPO_ROOT / "vendor" / "ring1-refs" / "tracespace").is_dir()
+        or (_resolve_packs_root() / "tracespace").is_dir()
+    )
+    ibom_ok, ibom_src = _has_binary_or_pack(
+        ["generate_interactive_bom"],
+        ["interactivehtmlbom"],
+        [_REPO_ROOT / "vendor" / "ring1-refs" / "InteractiveHtmlBom"],
+    )
+    typst_ok, typst_src = _has_binary_or_pack(["typst"], ["typst"], [])
+    padne_ok, padne_src = _has_binary_or_pack(
+        ["padne"],
+        ["padne"],
+        [_REPO_ROOT / "workers" / "sources" / "pack-2a-pcb-physics" / "padne"],
+    )
+    gmsh_ok, gmsh_src = _has_binary_or_pack(["gmsh"], ["gmsh"], [])
+    elmer_ok, elmer_src = _has_binary_or_pack(["ElmerSolver", "ElmerSolver_mpi"], ["elmerfem"], [])
+    renode_ok, renode_src = _has_binary_or_pack(["renode"], ["renode"], [])
+    z3_ok = _probe_python_module("z3")
+
+    ollama_running = False
+    try:
+        import socket as _sock
+        with _sock.create_connection(("127.0.0.1", 11434), timeout=0.25):
+            ollama_running = True
+    except Exception:
+        ollama_running = False
+
     tools = [
-        {"id": "kicad10", "name": "KiCad 10 CLI", "status": "Ready" if kicad_cli else "Missing", "version": "10.0.8" if kicad_cli else "N/A", "install_hint": "winget install KiCad.KiCad"},
-        {"id": "ngspice", "name": "ngspice Simulation", "status": "Ready" if (_REPO_ROOT / "apps" / "workstation" / "src" / "workers" / "spiceWorker.worker.ts").is_file() else "Missing", "version": "ngspice-wasm / KiCad DLL", "install_hint": "Bundled in Ring-1"},
-        {"id": "tracespace", "name": "tracespace Gerber", "status": "Ready" if (_REPO_ROOT / "vendor" / "ring1-refs" / "tracespace").is_dir() else "Missing", "version": "MIT Web Worker", "install_hint": "vendor/ring1-refs/tracespace"},
-        {"id": "ibom", "name": "InteractiveHtmlBom", "status": "Ready" if (_REPO_ROOT / "vendor" / "ring1-refs" / "InteractiveHtmlBom").is_dir() else "Missing", "version": "MIT KiCad Python", "install_hint": "vendor/ring1-refs/InteractiveHtmlBom"},
-        {"id": "typst", "name": "Typst Dossier Composer", "status": "Ready", "version": "Apache-2.0 + pypdfium2", "install_hint": "Built-in offline composer"},
-        {"id": "padne", "name": "padne 2.5D PI FEM", "status": "Ready" if (_REPO_ROOT / "workers" / "sources" / "pack-2a-pcb-physics" / "padne").is_dir() else "Missing", "version": "GPLv3 Ring-2 Worker", "install_hint": "workers/pack-2a-pcb-physics/padne_pi_worker.py"},
-        {"id": "mcad", "name": "CadQuery + Gmsh + ElmerFEM", "status": "Ready" if (_REPO_ROOT / "vendor" / "ring1-refs" / "cadquery").is_dir() else "Missing", "version": "Ring-2 Isolated Worker", "install_hint": "workers/pack-2a-pcb-physics/mcad_thermal_worker.py"},
-        {"id": "ollama", "name": "Ollama Loopback LLM", "status": "Optional", "version": "127.0.0.1:11434", "install_hint": "ollama serve (loopback airgap)"},
+        {"id": "kicad10", "name": "KiCad 10 CLI", "status": "Ready" if kicad_cli else "Missing", "version": "10.0.x" if kicad_cli else "Not Installed", "install_hint": "Install KiCad 10 CLI or configure KiCad path"},
+        {"id": "ngspice", "name": "ngspice Simulation", "status": "Ready" if ngspice_ready else "Missing", "version": "ngspice-wasm worker" if ngspice_ready else "Not Installed", "install_hint": "Bundled Ring-1 WASM worker"},
+        {"id": "tracespace", "name": "tracespace Gerber", "status": "Ready" if tracespace_ready else "Missing", "version": "MIT Gerber Engine" if tracespace_ready else "Not Installed", "install_hint": "packages/tracespace-vendor"},
+        {"id": "ibom", "name": "InteractiveHtmlBom", "status": "Ready" if ibom_ok else "Missing", "version": ibom_src or "Not Installed", "install_hint": "Tier-1 pack: interactivehtmlbom"},
+        {"id": "typst", "name": "Typst Dossier Composer", "status": "Ready" if typst_ok else "Missing", "version": typst_src or "Not Installed", "install_hint": "Tier-1 pack: typst (optional PDF compiler)"},
+        {"id": "z3", "name": "Z3 Symbolic Verifier", "status": "Ready" if z3_ok else "Missing", "version": "z3-solver" if z3_ok else "Not Installed", "install_hint": "Tier-1 pack / py312 venv: z3-solver"},
+        {"id": "padne", "name": "padne 2.5D PI FEM", "status": "Ready" if padne_ok else "Missing", "version": padne_src or "Not Installed", "install_hint": "Tier-2 opt-in pack (GPLv3 worker)"},
+        {"id": "gmsh", "name": "Gmsh + ElmerFEM 3D Thermal", "status": "Ready" if (gmsh_ok and elmer_ok) else "Missing", "version": f"{gmsh_src}/{elmer_src}" if (gmsh_ok and elmer_ok) else "Not Installed", "install_hint": "Tier-2 opt-in pack (GPLv2 worker)"},
+        {"id": "renode", "name": "Renode MCU Co-Simulator", "status": "Ready" if renode_ok else "Missing", "version": renode_src or "Not Installed", "install_hint": "Tier-2 opt-in developer pack"},
+        {"id": "ollama", "name": "Ollama Loopback LLM", "status": "Ready" if ollama_running else "Not Running", "version": "127.0.0.1:11434" if ollama_running else "Offline", "install_hint": "ollama serve (loopback airgap)"},
     ]
     return {"tools": tools, "python_version": sys.version.split()[0], "host_platform": sys.platform}
 

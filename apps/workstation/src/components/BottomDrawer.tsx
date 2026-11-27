@@ -1,6 +1,7 @@
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { globalCrossProbeBus } from '@vajradhir/crossprobe-bus';
 import { useDesignStore } from '../store/useDesignStore';
+import { useSpiceOverlay } from '../spiceSimStore';
 import { VajraIcon } from './VajraIcons';
 
 const LazyTerminalPanel = React.lazy(() => import('./TerminalPanel').then((m) => ({ default: m.TerminalPanel })));
@@ -12,17 +13,15 @@ export type BottomDrawerTab = 'diagnostics' | 'library' | 'simulation' | 'termin
 
 export interface DiagnosticRow {
   id: string;
+  rule_id?: string;
   severity: 'error' | 'warn' | 'info';
-  domain: 'ERC' | 'DRC' | 'Physics' | 'Co-Sim';
+  domain: string;
   entity: string;
   cause: string;
   fix: string;
+  finding?: Record<string, unknown>;
+  auto_fixable?: boolean;
 }
-
-const DEFAULT_DIAGNOSTICS: DiagnosticRow[] = [
-  { id: 'd1', severity: 'warn', domain: 'Physics', entity: 'L1', cause: 'MLCC DC-bias derating margin 18% at 12V VBUS', fix: 'Verify 25V X7R rating' },
-  { id: 'd2', severity: 'info', domain: 'DRC', entity: 'U2', cause: 'Human lock active on buck regulator U2', fix: 'Protected by KERNEL_LOCK_VIOLATION' },
-];
 
 export const BottomDrawer: React.FC<{
   open: boolean;
@@ -31,21 +30,66 @@ export const BottomDrawer: React.FC<{
   onClose: () => void;
   onFocusEntity: (refdes: string) => void;
 }> = ({ open, activeTab, onSelectTab, onClose, onFocusEntity }) => {
-  const [diagFilter, setDiagFilter] = useState<'all' | 'error' | 'warn' | 'Physics' | 'Co-Sim'>('all');
+  const [diagFilter, setDiagFilter] = useState<'all' | 'error' | 'warn' | 'Physics' | 'DRC'>('all');
+  const [diags, setDiags] = useState<DiagnosticRow[]>([]);
+  const [diagBusy, setDiagBusy] = useState(false);
   const revId = useDesignStore((s) => s.revId);
   const undoTx = useDesignStore((s) => s.undoTx);
   const redoTx = useDesignStore((s) => s.redoTx);
+  const spiceOverlay = useSpiceOverlay();
+
+  const fetchDiagnostics = useCallback(async () => {
+    setDiagBusy(true);
+    try {
+      const resp = await fetch('/api/v1/diagnostics');
+      if (resp.ok) {
+        const data = (await resp.json()) as { diagnostics?: DiagnosticRow[] };
+        if (Array.isArray(data.diagnostics)) {
+          setDiags(data.diagnostics);
+        }
+      }
+    } catch {
+      /* retain current diagnostics on transient error */
+    } finally {
+      setDiagBusy(false);
+    }
+  }, []);
+
+  const runUnifiedVerifyJob = useCallback(async () => {
+    setDiagBusy(true);
+    try {
+      const resp = await fetch('/api/v1/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'verify', label: 'Verify & Test Board (ERC + Footguns + DRC)' }),
+      });
+      if (resp.ok) {
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      await fetchDiagnostics();
+    } finally {
+      setDiagBusy(false);
+    }
+  }, [fetchDiagnostics]);
+
+  useEffect(() => {
+    if (open && activeTab === 'diagnostics') {
+      void fetchDiagnostics();
+    }
+  }, [open, activeTab, revId, fetchDiagnostics]);
 
   if (!open) return null;
 
-  const filteredDiags = DEFAULT_DIAGNOSTICS.filter((d) => {
+  const filteredDiags = diags.filter((d) => {
     if (diagFilter === 'all') return true;
     if (diagFilter === 'error' || diagFilter === 'warn') return d.severity === diagFilter;
-    return d.domain === diagFilter;
+    return d.domain.toLowerCase().includes(diagFilter.toLowerCase());
   });
+  const errCnt = diags.filter((d) => d.severity === 'error').length;
+  const warnCnt = diags.filter((d) => d.severity === 'warn').length;
 
   const tabs: Array<{ id: BottomDrawerTab; label: string; icon: 'diagnosticsShield' | 'libraryGrid' | 'oscilloscope' | 'terminalPrompt' | 'historyClock' }> = [
-    { id: 'diagnostics', label: 'Diagnostics', icon: 'diagnosticsShield' },
+    { id: 'diagnostics', label: `Diagnostics (${errCnt}E/${warnCnt}W)`, icon: 'diagnosticsShield' },
     { id: 'library', label: 'Library', icon: 'libraryGrid' },
     { id: 'simulation', label: 'Simulation', icon: 'oscilloscope' },
     { id: 'terminal', label: 'Terminal', icon: 'terminalPrompt' },
@@ -78,25 +122,37 @@ export const BottomDrawer: React.FC<{
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 8 }}>
         {activeTab === 'diagnostics' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ display: 'flex', gap: 4 }}>
-              {[
-                { id: 'all', label: `All (${DEFAULT_DIAGNOSTICS.length})` },
-                { id: 'error', label: 'Errors (0)' },
-                { id: 'warn', label: 'Warnings (1)' },
-                { id: 'Physics', label: 'Physics' },
-                { id: 'Co-Sim', label: 'Co-Sim' },
-              ].map((pill) => (
-                <button
-                  key={pill.id}
-                  type="button"
-                  className={`vd-btn ${diagFilter === pill.id ? 'vd-btn-primary' : ''}`}
-                  onClick={() => setDiagFilter(pill.id as typeof diagFilter)}
-                >
-                  {pill.label}
-                </button>
-              ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {[
+                  { id: 'all', label: `All (${diags.length})` },
+                  { id: 'error', label: `Errors (${errCnt})` },
+                  { id: 'warn', label: `Warnings (${warnCnt})` },
+                  { id: 'Physics', label: 'Physics' },
+                  { id: 'DRC', label: 'DRC' },
+                ].map((pill) => (
+                  <button
+                    key={pill.id}
+                    type="button"
+                    className={`vd-btn ${diagFilter === pill.id ? 'vd-btn-primary' : ''}`}
+                    onClick={() => setDiagFilter(pill.id as typeof diagFilter)}
+                  >
+                    {pill.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                data-testid="diag-run-verify-btn"
+                className="vd-btn vd-btn-primary"
+                style={{ minHeight: 22, fontSize: 10.5 }}
+                disabled={diagBusy}
+                onClick={() => void runUnifiedVerifyJob()}
+              >
+                {diagBusy ? 'Verifying...' : 'Run Board Verification'}
+              </button>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }} className="vd-metric">
+            <table data-testid="diagnostics-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }} className="vd-metric">
               <thead>
                 <tr style={{ textAlign: 'left', color: 'var(--vd-text-secondary)', borderBottom: '1px solid var(--vd-border-subtle)' }}>
                   <th style={{ padding: '3px 6px' }}>Severity</th>
@@ -104,10 +160,17 @@ export const BottomDrawer: React.FC<{
                   <th style={{ padding: '3px 6px' }}>Entity</th>
                   <th style={{ padding: '3px 6px' }}>Root Cause</th>
                   <th style={{ padding: '3px 6px' }}>Suggested Fix</th>
+                  <th style={{ padding: '3px 6px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredDiags.map((row) => (
+                {filteredDiags.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '10px 6px', color: 'var(--vd-text-secondary)' }}>
+                      {diagBusy ? 'Running ERC + EE Physics + Spatial DRC...' : 'Zero active diagnostics matching filter.'}
+                    </td>
+                  </tr>
+                ) : filteredDiags.map((row) => (
                   <tr
                     key={row.id}
                     className="vd-tree-row"
@@ -122,6 +185,51 @@ export const BottomDrawer: React.FC<{
                     <td style={{ padding: '4px 6px', color: 'var(--vd-border-active)' }}>{row.entity}</td>
                     <td style={{ padding: '4px 6px' }}>{row.cause}</td>
                     <td style={{ padding: '4px 6px', color: 'var(--vd-text-secondary)' }}>{row.fix}</td>
+                    <td style={{ padding: '4px 6px', display: 'flex', gap: 4 }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="vd-btn"
+                        style={{ minHeight: 18, padding: '1px 6px', fontSize: 10 }}
+                        onClick={() => {
+                          globalCrossProbeBus.select([row.entity], 'tree');
+                          onFocusEntity(row.entity);
+                        }}
+                      >
+                        Inspect
+                      </button>
+                      {row.auto_fixable && row.finding && (
+                        <button
+                          type="button"
+                          className="vd-btn vd-btn-primary"
+                          style={{ minHeight: 18, padding: '1px 6px', fontSize: 10 }}
+                          onClick={async () => {
+                            await fetch('/api/v1/ee/audit/apply-fix', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ finding: row.finding }),
+                            });
+                            await fetchDiagnostics();
+                          }}
+                        >
+                          Auto-Fix
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="vd-btn"
+                        style={{ minHeight: 18, padding: '1px 6px', fontSize: 10 }}
+                        onClick={async () => {
+                          await fetch('/api/v1/diagnostics/waive', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ rule_id: row.rule_id || row.domain, entity_id: row.entity }),
+                          });
+                          await fetchDiagnostics();
+                        }}
+                      >
+                        Waive
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -138,7 +246,14 @@ export const BottomDrawer: React.FC<{
         {activeTab === 'simulation' && (
           <Suspense fallback={<div className="vd-metric">Loading Waveform Viewers...</div>}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <LazyUplotScope title="SW_NODE Transient" xLabel="Time (us)" seriesLabel="V_SW (V)" xValues={[0, 0.5, 1.0, 1.5, 2.0]} yValues={[0.1, 12.0, 0.2, 11.9, 0.1]} strokeColor="#E05D44" />
+              <LazyUplotScope
+                title={`SPICE Probe: ${spiceOverlay.latestWaveSeriesLabel || 'v(vout_3v3)'}`}
+                xLabel={spiceOverlay.latestWaveXLabel || 'Time (us)'}
+                seriesLabel={spiceOverlay.latestWaveSeriesLabel || 'v(vout_3v3)'}
+                xValues={spiceOverlay.latestWaveX.length > 2 ? spiceOverlay.latestWaveX : [0, 1]}
+                yValues={spiceOverlay.latestWaveY.length > 2 ? spiceOverlay.latestWaveY : [0, 0]}
+                strokeColor="#E05D44"
+              />
               <LazyVcdWaveformViewer />
             </div>
           </Suspense>

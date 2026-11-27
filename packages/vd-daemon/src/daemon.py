@@ -3,9 +3,11 @@ Vajra-Dhīr EDA v0.0.1 — Local Loopback Daemon Service (Pure Python / SQLite W
 Implements all 11 REST API endpoints on 127.0.0.1:41900 with exact i64 nm & UUIDv7 semantics.
 """
 
+import atexit
 import base64
 import gzip
 import hashlib
+import http.cookies
 import http.server
 import importlib
 import json
@@ -14,7 +16,10 @@ import mimetypes
 import os
 import pathlib
 import re
+import secrets
 import shutil
+import signal
+import socket
 import socketserver
 import sqlite3
 import struct
@@ -25,53 +30,11 @@ import threading
 import time
 import urllib.parse
 import uuid
+from typing import Any, Dict, List
 
 _DAEMON_SRC_DIR = str(pathlib.Path(__file__).resolve().parent)
 if _DAEMON_SRC_DIR not in sys.path:
     sys.path.insert(0, _DAEMON_SRC_DIR)
-
-try:
-    from .sync_propagator import handle_tx_get, handle_tx_post
-    from .polish_routes import handle_polish_get, handle_polish_post
-    from .settings_store import handle_settings_get, handle_settings_post, handle_settings_put
-    from .job_runner import handle_jobs_delete, handle_jobs_get, handle_jobs_post
-    from .mcp_live_server import handle_mcp_http_post, handle_ws_ui_control
-    from .acp_broker import handle_acp_http_post
-    from .plugin_host import handle_plugin_get, handle_plugin_post
-    from .fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
-    from .kicad_bridge import ensure_external_id_map, sync_kicad_pcb_to_hwir, write_text_atomic
-    from .kicad_routes import (
-        handle_kicad_get,
-        handle_kicad_post,
-        poll_external_changes,
-        register_ws_client,
-        sync_after_patch,
-        unregister_ws_client,
-    )
-    from .x1_routes import handle_x1_post
-    from .x3_routes import handle_x3_post
-    from .x4_routes import handle_x4_post
-except ImportError:
-    from sync_propagator import handle_tx_get, handle_tx_post
-    from polish_routes import handle_polish_get, handle_polish_post
-    from settings_store import handle_settings_get, handle_settings_post, handle_settings_put
-    from job_runner import handle_jobs_delete, handle_jobs_get, handle_jobs_post
-    from mcp_live_server import handle_mcp_http_post, handle_ws_ui_control
-    from acp_broker import handle_acp_http_post
-    from plugin_host import handle_plugin_get, handle_plugin_post
-    from fs_pty_routes import handle_fs_pty_get, handle_fs_pty_post, handle_ws_pty
-    from kicad_bridge import ensure_external_id_map, sync_kicad_pcb_to_hwir, write_text_atomic
-    from kicad_routes import (
-        handle_kicad_get,
-        handle_kicad_post,
-        poll_external_changes,
-        register_ws_client,
-        sync_after_patch,
-        unregister_ws_client,
-    )
-    from x1_routes import handle_x1_post
-    from x3_routes import handle_x3_post
-    from x4_routes import handle_x4_post
 
 _MOD_CACHE: dict[str, object] = {}
 
@@ -89,13 +52,50 @@ def _lazy_fn(mod_name: str, fn_name: str):
 
 DB_LOCK = threading.RLock()
 
-PORT = 41900
+PORT = int(os.environ.get("VD_PORT") or 41900)
 HOST = "127.0.0.1"
 
-DB_DIR = pathlib.Path(os.environ.get("VD_DB_DIR") or ".vd-dev")
+DB_DIR = pathlib.Path(os.environ.get("VD_DB_DIR") or ".vd-dev").resolve()
+CACHE_DIR = pathlib.Path(os.environ.get("VD_CACHE_DIR") or ".vd-cache").resolve()
+PID_PATH = CACHE_DIR / "vd-daemon.pid"
 DB_PATH = DB_DIR / "prototype-v0.0.1.vd.db"
 SCHEMA_V001 = pathlib.Path("packages/hw-ir/schema/001_v001_init.sql")
 BUDGET_PATH = pathlib.Path("budget.json")
+
+_SSE_LOCK = threading.Lock()
+_SSE_TAB_EVENTS: dict[str, threading.Event] = {}
+_SHUTDOWN_REQUESTED = threading.Event()
+
+
+def _get_session_token() -> str:
+    return os.environ.get("VD_SESSION_TOKEN", "").strip()
+
+
+def _is_loopback_hostname(raw: str) -> bool:
+    h = (raw or "").strip().lower()
+    if not h:
+        return True
+    if h.startswith("["):
+        end = h.find("]")
+        host_only = h[: end + 1] if end != -1 else h
+        return host_only == "[::1]"
+    if h.count(":") == 1:
+        host_only = h.rsplit(":", 1)[0]
+    else:
+        host_only = h
+    return host_only in ("127.0.0.1", "localhost", "::1")
+
+
+def _is_allowed_origin(origin: str) -> bool:
+    if not origin:
+        return True
+    try:
+        parsed = urllib.parse.urlparse(origin.strip())
+    except Exception:
+        return False
+    if parsed.scheme not in ("http", "https"):
+        return False
+    return (parsed.hostname or "").lower() in ("127.0.0.1", "localhost", "::1")
 
 def now_v7() -> str:
     # Python UUIDv7 or timestamp-ordered UUID
@@ -270,7 +270,14 @@ def write_autosave_shadow(shadow_path: str, ops: list[dict]) -> None:
                 f.write(json.dumps(op) + "\n")
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp_name, target)
+        for attempt in range(5):
+            try:
+                os.replace(tmp_name, target)
+                break
+            except PermissionError:
+                if attempt == 4:
+                    raise
+                time.sleep(0.03 * (attempt + 1))
     except Exception:
         if os.path.exists(tmp_name):
             os.remove(tmp_name)
@@ -413,7 +420,7 @@ def init_db(db_path: pathlib.Path) -> sqlite3.Connection:
 
     # Ensure _tx_actor_ctx has human actor and external_id_map exists
     con.execute("INSERT OR IGNORE INTO _tx_actor_ctx(singleton, actor_kind, allow_lock_override) VALUES (1, 'human', 0)")
-    ensure_external_id_map(con)
+    _lazy_fn("kicad_bridge", "ensure_external_id_map")(con)
     con.commit()
     return con
 
@@ -816,18 +823,87 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
     budget = None
 
     def _send_cors(self):
-        self.send_header("Access-Control-Allow-Origin", "http://127.0.0.1:5173")
+        origin = (self.headers.get("Origin") or "").strip()
+        if origin and _is_allowed_origin(origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+            self.send_header("Access-Control-Allow-Credentials", "true")
+        else:
+            port = self.server.server_address[1] if getattr(self, "server", None) else PORT
+            self.send_header("Access-Control-Allow-Origin", f"http://127.0.0.1:{port}")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+        self.send_header("Cross-Origin-Embedder-Policy", "credentialless")
+
+    def _check_request_security(self, path: str, parsed_url: urllib.parse.ParseResult, *, allow_public_health: bool = True) -> tuple[bool, str]:
+        host_hdr = (self.headers.get("Host") or "").strip()
+        if host_hdr and not _is_loopback_hostname(host_hdr):
+            self.send_response(403)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "FORBIDDEN_HOST", "detail": "Non-loopback Host rejected"}).encode("utf-8"))
+            return False, ""
+
+        origin_hdr = (self.headers.get("Origin") or "").strip()
+        if origin_hdr and not _is_allowed_origin(origin_hdr):
+            self.send_response(403)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "FORBIDDEN_ORIGIN", "detail": "Cross-origin request rejected"}).encode("utf-8"))
+            return False, ""
+
+        expected = _get_session_token()
+        if not expected:
+            return True, ""
+        if allow_public_health and path in ("/api/v1/health", "/api/health", "/manifest.webmanifest", "/favicon.ico"):
+            return True, ""
+
+        auth_hdr = (self.headers.get("Authorization") or "").strip()
+        bearer = auth_hdr[7:].strip() if auth_hdr.lower().startswith("bearer ") else ""
+        qs = urllib.parse.parse_qs(parsed_url.query)
+        q_tok = (qs.get("token") or [""])[0].strip()
+        cookie_tok = ""
+        raw_cookie = self.headers.get("Cookie") or ""
+        if raw_cookie:
+            try:
+                ck = http.cookies.SimpleCookie()
+                ck.load(raw_cookie)
+                if "vd_session" in ck:
+                    cookie_tok = ck["vd_session"].value.strip()
+            except Exception:
+                pass
+
+        for candidate in (bearer, q_tok, cookie_tok):
+            if candidate and secrets.compare_digest(candidate, expected):
+                set_cookie = f"vd_session={expected}; HttpOnly; SameSite=Strict; Path=/" if (q_tok and not cookie_tok) else ""
+                return True, set_cookie
+
+        self.send_response(401)
+        self.send_header("Content-Type", "application/json")
+        self._send_cors()
+        self.end_headers()
+        self.wfile.write(json.dumps({"error": "UNAUTHORIZED", "detail": "Missing or invalid session token"}).encode("utf-8"))
+        return False, ""
 
     def do_OPTIONS(self):
+        parsed = urllib.parse.urlparse(self.path)
+        host_hdr = (self.headers.get("Host") or "").strip()
+        origin_hdr = (self.headers.get("Origin") or "").strip()
+        if (host_hdr and not _is_loopback_hostname(host_hdr)) or (origin_hdr and not _is_allowed_origin(origin_hdr)):
+            self.send_response(403)
+            self.end_headers()
+            return
         self.send_response(204)
         self._send_cors()
         self.end_headers()
 
     def do_DELETE(self):
         parsed = urllib.parse.urlparse(self.path)
-        if handle_jobs_delete(self, parsed.path):
+        ok, _ = self._check_request_security(parsed.path, parsed)
+        if not ok:
+            return
+        if _lazy_fn("job_runner", "handle_jobs_delete")(self, parsed.path):
             return
         self.send_response(404)
         self._send_cors()
@@ -836,6 +912,9 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
     def do_PUT(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+        ok, _ = self._check_request_security(path, parsed)
+        if not ok:
+            return
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length) if length > 0 else b"{}"
         try:
@@ -843,7 +922,7 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
         except Exception:
             req = {}
         with DB_LOCK:
-            if handle_settings_put(self, path, req, self.con):
+            if _lazy_fn("settings_store", "handle_settings_put")(self, path, req, self.con):
                 return
         self.send_response(404)
         self._send_cors()
@@ -852,12 +931,19 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+        ok, set_cookie_hdr = self._check_request_security(path, parsed)
+        if not ok:
+            return
+        self._pending_session_cookie = set_cookie_hdr
 
         if path in ("/api/v1/health", "/api/health"):
             snap = load_snapshot(self.con)
+            bound_port = self.server.server_address[1] if getattr(self, "server", None) else PORT
             res = {
-                "version": "0.0.3",
-                "bind_addr": "127.0.0.1:41900",
+                "status": "ok",
+                "version": "0.0.4",
+                "bind_addr": f"{HOST}:{bound_port}",
+                "port": bound_port,
                 "rev_lamport": snap["project"]["rev_lamport"],
                 "dlp_class": snap["project"]["dlp_class"],
                 "budget": self.budget
@@ -974,25 +1060,44 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
 
         elif path in ("/api/v1/components/search", "/api/components/search"):
             query_params = urllib.parse.parse_qs(parsed.query)
-            q = query_params.get("q", [""])[0].lower()
+            q = query_params.get("q", [""])[0]
             feeder = query_params.get("feeder_type", ["all"])[0].lower()
-
-            catalog = [
-                {"mpn": "TPS54302DDCR", "manufacturer": "Texas Instruments", "category": "PMIC - DC/DC Switching Converters", "package": "SOT-23-6", "feeder_fee_type": "basic", "feeder_fee_usd": 0.0, "unit_price_usd": 0.48, "stock": 84200, "symbol": "TPS54302", "footprint": "SOT-23-6_L2.9-W1.6-P0.95-LS2.8-BL", "description": "4.5V to 28V Input, 3A Step-Down Converter with Eco-mode"},
-                {"mpn": "AP2112K-3.3TRG1", "manufacturer": "Diodes Inc", "category": "PMIC - Linear Voltage Regulators (LDO)", "package": "SOT-23-5", "feeder_fee_type": "basic", "feeder_fee_usd": 0.0, "unit_price_usd": 0.14, "stock": 125000, "symbol": "AP2112K-3.3", "footprint": "SOT-23-5", "description": "600mA Low Dropout Linear Regulator with Enable"},
-                {"mpn": "CH224K", "manufacturer": "WCH", "category": "PMIC - USB Power Delivery Sink Controllers", "package": "ESSOP-10", "feeder_fee_type": "extended", "feeder_fee_usd": 3.0, "unit_price_usd": 0.38, "stock": 42000, "symbol": "CH224K", "footprint": "ESSOP-10", "description": "USB PD, QC2.0/3.0 Fast Charge Sink Controller (5V/9V/12V/15V/20V)"},
-                {"mpn": "USBLC6-2SC6", "manufacturer": "STMicroelectronics", "category": "Circuit Protection - ESD Protection Diodes", "package": "SOT-23-6", "feeder_fee_type": "basic", "feeder_fee_usd": 0.0, "unit_price_usd": 0.09, "stock": 210000, "symbol": "USBLC6-2SC6", "footprint": "SOT-23-6", "description": "Very Low Capacitance ESD Protection for High Speed Lines"},
-                {"mpn": "STM32G474RET6", "manufacturer": "STMicroelectronics", "category": "Microcontrollers - ARM Cortex-M4F 170MHz", "package": "LQFP-64", "feeder_fee_type": "extended", "feeder_fee_usd": 3.0, "unit_price_usd": 4.20, "stock": 15400, "symbol": "STM32G474RET6", "footprint": "LQFP-64_10x10mm_P0.5mm", "description": "High-Resolution Timer, CORDIC, FMAC, CAN-FD, Dual 12-bit ADC"},
-                {"mpn": "ESP32-S3-WROOM-1", "manufacturer": "Espressif Systems", "category": "RF/Wireless Modules - Wi-Fi 4 + BLE 5.0", "package": "Module", "feeder_fee_type": "extended", "feeder_fee_usd": 3.0, "unit_price_usd": 2.75, "stock": 31000, "symbol": "ESP32-S3-WROOM-1", "footprint": "ESP32-S3-WROOM-1", "description": "Dual-core Xtensa LX7 MCU, 8MB Flash, 2.4GHz Wi-Fi and Bluetooth 5 (LE)"},
-                {"mpn": "CC0603KRX5R6BB106", "manufacturer": "YAGEO", "category": "Capacitors - Multilayer Ceramic (MLCC)", "package": "0603", "feeder_fee_type": "basic", "feeder_fee_usd": 0.0, "unit_price_usd": 0.008, "stock": 850000, "symbol": "C_10uF_0603", "footprint": "C_0603_1608Metric", "description": "10uF ±10% 16V X5R 0603 MLCC, DC-bias derating model verified"},
-                {"mpn": "SWPA4020S4R7MT", "manufacturer": "Sunlord", "category": "Inductors - SMD Power Inductors", "package": "0805", "feeder_fee_type": "basic", "feeder_fee_usd": 0.0, "unit_price_usd": 0.045, "stock": 110000, "symbol": "L_4.7uH", "footprint": "IND_4x4mm", "description": "4.7uH 3.0A Shielded Power Inductor, DCR 45mOhm, Isat 4.2A"}
-            ]
-
-            filtered = [
-                item for item in catalog
-                if (not q or q in item["mpn"].lower() or q in item["category"].lower() or q in item["description"].lower())
-                and (feeder == "all" or item["feeder_fee_type"] == feeder)
-            ]
+            basic_only = feeder == "basic"
+            inr_rate = float(self.budget.get("usd_to_inr_rate", 84.5))
+            filtered: List[Dict[str, Any]] = []
+            try:
+                _kg_src = str(pathlib.Path(__file__).resolve().parents[2] / "kg-brain" / "src")
+                if _kg_src not in sys.path:
+                    sys.path.insert(0, _kg_src)
+                kg_mod = importlib.import_module("catalog_store")
+                kg_routes_mod = _MOD_CACHE.get("kg_routes") or importlib.import_module("kg_routes")
+                con_kg = kg_mod.open_kg_connection(kg_routes_mod._kg_db_path())
+                try:
+                    raw_items = kg_mod.search_parts(con_kg, query=q, basic_only=basic_only, limit=50)
+                finally:
+                    con_kg.close()
+                for it in raw_items:
+                    ftype = str(it.get("feeder_type") or it.get("basic_or_extended") or "Extended").lower()
+                    if feeder in ("basic", "extended") and ftype != feeder:
+                        continue
+                    usd = float(it.get("price_usd") if it.get("price_usd") is not None else (it.get("unit_price_usd") or 0.01))
+                    filtered.append({
+                        "lcsc_id": it.get("lcsc_id", ""),
+                        "mpn": it.get("mpn", ""),
+                        "manufacturer": it.get("manufacturer", "Generic"),
+                        "category": it.get("category", "Passive"),
+                        "package": it.get("package", "0603"),
+                        "feeder_fee_type": ftype,
+                        "feeder_fee_usd": 0.0 if ftype == "basic" else 3.0,
+                        "unit_price_usd": usd,
+                        "unit_price_inr": round(usd * inr_rate, 2),
+                        "stock": int(it.get("stock_qty") if it.get("stock_qty") is not None else (it.get("stock") or 0)),
+                        "symbol": it.get("symbol_ref", "Device:R"),
+                        "footprint": it.get("footprint_ref", "Resistor_SMD:R_0603_1608Metric"),
+                        "description": it.get("description", ""),
+                    })
+            except Exception:
+                filtered = []
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self._send_cors()
@@ -1034,7 +1139,41 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(preview).encode("utf-8"))
 
+        elif path in ("/api/v1/events/stream", "/api/events/stream"):
+            qs = urllib.parse.parse_qs(parsed.query)
+            tab_id = (qs.get("tab_id") or [""])[0].strip() or f"anon-{time.time_ns()}"
+            stop_ev = threading.Event()
+            with _SSE_LOCK:
+                prev_ev = _SSE_TAB_EVENTS.get(tab_id)
+                if prev_ev is not None:
+                    prev_ev.set()
+                _SSE_TAB_EVENTS[tab_id] = stop_ev
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self._send_cors()
+            self.end_headers()
+            try:
+                hello = json.dumps({"type": "hello", "tab_id": tab_id, "ts": time.time()})
+                self.wfile.write(f"event: hello\ndata: {hello}\n\n".encode("utf-8"))
+                self.wfile.flush()
+                while not stop_ev.is_set() and not _SHUTDOWN_REQUESTED.is_set():
+                    if stop_ev.wait(15.0):
+                        break
+                    self.wfile.write(b": keepalive\n\n")
+                    self.wfile.flush()
+            except Exception:
+                pass
+            finally:
+                with _SSE_LOCK:
+                    if _SSE_TAB_EVENTS.get(tab_id) is stop_ev:
+                        _SSE_TAB_EVENTS.pop(tab_id, None)
+            return
+
         elif path in ("/api/v1/ws", "/api/ws", "/ws/sync"):
+            qs = urllib.parse.parse_qs(parsed.query)
+            tab_id = (qs.get("tab_id") or [""])[0].strip() or None
             ws_key = self.headers.get("Sec-WebSocket-Key")
             if not ws_key:
                 self.send_response(400)
@@ -1050,13 +1189,14 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Sec-WebSocket-Accept", accept_b64)
             self.end_headers()
             sock = self.connection
-            register_ws_client(sock)
+            _lazy_fn("kicad_routes", "register_ws_client")(sock, tab_id=tab_id)
             try:
-                hello = json.dumps({"type": "hello", "bind_addr": f"{HOST}:{PORT}"}).encode("utf-8")
+                bound_port = self.server.server_address[1] if getattr(self, "server", None) else PORT
+                hello = json.dumps({"type": "hello", "bind_addr": f"{HOST}:{bound_port}", "tab_id": tab_id}).encode("utf-8")
                 hdr = bytearray([0x81, len(hello)]) if len(hello) < 126 else bytearray([0x81, 126]) + struct.pack("!H", len(hello))
                 sock.sendall(bytes(hdr) + hello)
-                sock.settimeout(30.0)
-                while True:
+                sock.settimeout(15.0)
+                while not _SHUTDOWN_REQUESTED.is_set():
                     try:
                         chunk = sock.recv(2)
                         if not chunk or len(chunk) < 2:
@@ -1083,36 +1223,68 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                             pong = bytes([0x8A, len(payload)]) + bytes(payload)
                             sock.sendall(pong)
                     except TimeoutError:
+                        try:
+                            sock.sendall(b"\x89\x00")
+                        except Exception:
+                            break
                         continue
             except Exception:
                 pass
             finally:
-                unregister_ws_client(sock)
+                _lazy_fn("kicad_routes", "unregister_ws_client")(sock, tab_id=tab_id)
             return
 
         elif path in ("/ws/pty", "/api/v1/ws/pty"):
-            handle_ws_pty(self, self.path)
+            _lazy_fn("fs_pty_routes", "handle_ws_pty")(self, self.path)
             return
 
         elif path in ("/ws/ui-control", "/api/v1/ws/ui-control"):
-            handle_ws_ui_control(self)
+            _lazy_fn("mcp_live_server", "handle_ws_ui_control")(self)
             return
 
         else:
+            if not path.startswith(("/api/", "/stitch/", "/ws/", "/mcp", "/acp")):
+                asset = resolve_studio_static_asset(path)
+                if asset["status"] == 200:
+                    payload = asset["body"]
+                    use_gzip = bool(asset.get("compressible")) and len(payload) > 1024 and "gzip" in (self.headers.get("Accept-Encoding") or "").lower()
+                    if use_gzip:
+                        payload = gzip.compress(payload, compresslevel=5)
+                    self.send_response(200)
+                    self.send_header("Content-Type", asset["content_type"])
+                    self.send_header("Content-Security-Policy", asset["csp"])
+                    self.send_header("Cache-Control", asset.get("cache_control", "no-cache"))
+                    self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+                    self.send_header("Cross-Origin-Embedder-Policy", "credentialless")
+                    if getattr(self, "_pending_session_cookie", ""):
+                        self.send_header("Set-Cookie", self._pending_session_cookie)
+                    if use_gzip:
+                        self.send_header("Content-Encoding", "gzip")
+                    self.send_header("Content-Length", str(len(payload)))
+                    self.end_headers()
+                    self.wfile.write(payload)
+                    return
+
+            if path in ("/api/v1/jobs", "/api/v1/system/memory") or path.startswith("/api/v1/jobs/"):
+                if _lazy_fn("job_runner", "handle_jobs_get")(self, path, full_path=self.path):
+                    return
             with DB_LOCK:
-                if handle_jobs_get(self, path, full_path=self.path):
-                    return
-                if handle_kicad_get(self, path, full_path=self.path, con=self.con):
-                    return
-                if handle_fs_pty_get(self, path, full_path=self.path, con=self.con):
-                    return
+                if path in ("/api/doctor", "/api/v1/doctor") or path.startswith(("/api/bootstrap/", "/api/v1/bootstrap/")):
+                    if _lazy_fn("bootstrap_routes", "handle_bootstrap_get")(self, path, full_path=self.path):
+                        return
+                if path.startswith(("/api/v1/kicad/", "/api/kicad/", "/api/v1/3d/", "/api/3d/")):
+                    if _lazy_fn("kicad_routes", "handle_kicad_get")(self, path, full_path=self.path, con=self.con):
+                        return
+                if path.startswith(("/api/v1/fs/", "/api/fs/", "/api/v1/pty/", "/api/pty/")):
+                    if _lazy_fn("fs_pty_routes", "handle_fs_pty_get")(self, path, full_path=self.path, con=self.con):
+                        return
                 if path.startswith(("/api/v1/ato/", "/api/ato/")):
                     if _lazy_fn("atopile_engine", "handle_ato_get")(self, path, full_path=self.path, con=self.con):
                         return
-                if path.startswith(("/api/v1/parts/", "/api/parts/")):
+                if path.startswith(("/api/v1/parts/", "/api/parts/", "/api/v1/blocks/", "/api/blocks/")):
                     if _lazy_fn("kg_routes", "handle_kg_get")(self, path, full_path=self.path):
                         return
-                if path.startswith(("/api/v1/ee/", "/api/ee/")):
+                if path.startswith(("/api/v1/ee/", "/api/ee/", "/api/v1/diagnostics")):
                     if _lazy_fn("ee_audit_routes", "handle_ee_get")(self, path, full_path=self.path, con=self.con):
                         return
                 if path.startswith(("/api/v1/sim/", "/api/sim/")):
@@ -1139,31 +1311,18 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                 if path.startswith(("/api/v1/agent/", "/api/agent/")):
                     if _lazy_fn("agent_routes", "handle_agent_get")(self, path, full_path=self.path, con=self.con):
                         return
-                if handle_tx_get(self, path, full_path=self.path, con=self.con):
-                    return
-                if handle_polish_get(self, path, full_path=self.path, con=self.con):
-                    return
-                if handle_settings_get(self, path, full_path=self.path, con=self.con):
-                    return
-                if handle_plugin_get(self, path):
-                    return
-            if not path.startswith("/api/") and not path.startswith("/stitch/") and not path.startswith("/ws/"):
-                asset = resolve_studio_static_asset(path)
-                if asset["status"] == 200:
-                    payload = asset["body"]
-                    use_gzip = bool(asset.get("compressible")) and len(payload) > 1024 and "gzip" in (self.headers.get("Accept-Encoding") or "").lower()
-                    if use_gzip:
-                        payload = gzip.compress(payload, compresslevel=5)
-                    self.send_response(200)
-                    self.send_header("Content-Type", asset["content_type"])
-                    self.send_header("Content-Security-Policy", asset["csp"])
-                    self.send_header("Cache-Control", asset.get("cache_control", "no-cache"))
-                    if use_gzip:
-                        self.send_header("Content-Encoding", "gzip")
-                    self.send_header("Content-Length", str(len(payload)))
-                    self.end_headers()
-                    self.wfile.write(payload)
-                    return
+                if path.startswith(("/api/v1/tx/", "/api/tx/")):
+                    if _lazy_fn("sync_propagator", "handle_tx_get")(self, path, full_path=self.path, con=self.con):
+                        return
+                if path.startswith(("/api/v1/polish/", "/api/polish/")):
+                    if _lazy_fn("polish_routes", "handle_polish_get")(self, path, full_path=self.path, con=self.con):
+                        return
+                if path.startswith(("/api/v1/settings", "/api/settings", "/api/v1/project/", "/api/v1/projects/", "/api/v1/system/diagnostics-bundle")):
+                    if _lazy_fn("settings_store", "handle_settings_get")(self, path, full_path=self.path, con=self.con):
+                        return
+                if path.startswith(("/api/v1/plugins", "/api/plugins")):
+                    if _lazy_fn("plugin_host", "handle_plugin_get")(self, path):
+                        return
             self.send_response(404)
             self._send_cors()
             self.end_headers()
@@ -1171,6 +1330,9 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+        ok, _ = self._check_request_security(path, parsed, allow_public_health=False)
+        if not ok:
+            return
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length) if length > 0 else b"{}"
         try:
@@ -1397,7 +1559,7 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                     sync_meta: Dict[str, Any] = {}
                     if sync_kicad:
                         try:
-                            sync_meta = sync_after_patch(self.con, explicit_pcb_path=explicit_pcb, ops=ops, patch_id=patch_id)
+                            sync_meta = _lazy_fn("kicad_routes", "sync_after_patch")(self.con, explicit_pcb_path=explicit_pcb, ops=ops, patch_id=patch_id)
                         except Exception:
                             sync_meta = {}
 
@@ -1501,15 +1663,15 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                     cur.execute("UPDATE vias SET deleted = 1 WHERE id = ?", (op["via_id"],))
                 elif t == "RESTORE_PCB_SNAPSHOT":
                     p_dst = pathlib.Path(op["pcb_path"])
-                    write_text_atomic(p_dst, op["pcb_text"])
-                    sync_kicad_pcb_to_hwir(self.con, p_dst, actor_kind="human")
+                    _lazy_fn("kicad_bridge", "write_text_atomic")(p_dst, op["pcb_text"])
+                    _lazy_fn("kicad_bridge", "sync_kicad_pcb_to_hwir")(self.con, p_dst, actor_kind="human")
             cur.execute("UPDATE hardware_patches SET undone = 1 WHERE seq_id = ?", (seq_id,))
             cur.execute("UPDATE projects SET rev_lamport = rev_lamport + 1")
             lamport = cur.execute("SELECT rev_lamport FROM projects LIMIT 1").fetchone()[0]
             self.con.commit()
             try:
                 if not any(op.get("op") == "RESTORE_PCB_SNAPSHOT" for op in inv_ops):
-                    sync_after_patch(self.con, ops=inv_ops, patch_id=f"undo:{seq_id}")
+                    _lazy_fn("kicad_routes", "sync_after_patch")(self.con, ops=inv_ops, patch_id=f"undo:{seq_id}")
             except Exception:
                 pass
 
@@ -1549,20 +1711,47 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"new_lamport": lamport}).encode("utf-8"))
 
         elif path == "/stitch/z3/pinmux":
-            # Real SMT Pinmux optimization
-            res = {
-                "success": True,
-                "solver": "z3-smt",
-                "solved": True,
-                "assignments": [
-                    {"pin": "PA1", "periph": "ADC1_IN1", "signal": "PIN_VBUS_SENSE", "mode": "ANALOG"},
-                    {"pin": "PA2", "periph": "GPIO_IN", "signal": "PIN_BUCK_PGOOD", "mode": "INPUT_PU"},
-                    {"pin": "PB6", "periph": "I2C1_SCL", "signal": "PIN_PMIC_SCL", "mode": "AF4_OD_PU"},
-                    {"pin": "PB7", "periph": "I2C1_SDA", "signal": "PIN_PMIC_SDA", "mode": "AF4_OD_PU"},
-                ],
-                "conflicts": 0,
-                "unsat_core": []
-            }
+            try:
+                _sv_dir = str(pathlib.Path(__file__).resolve().parents[2] / "symbolic-verifier" / "src")
+                if _sv_dir not in sys.path:
+                    sys.path.insert(0, _sv_dir)
+                from z3_pinmux import solve_pinmux_smt  # type: ignore
+                default_candidates = {
+                    "I2C_SDA": ["PB7", "PB9", "PA10"],
+                    "I2C_SCL": ["PB6", "PB8", "PA9"],
+                    "PWM_DIM": ["PA8", "PB1", "PA1"],
+                    "UART_TX": ["PA2", "PA9", "PB6"],
+                    "ADC_VBUS": ["PA0", "PA1", "PB0"],
+                    "FAULT_N": ["PB1", "PA4", "PC13"],
+                }
+                raw_requests = req.get("requests")
+                if isinstance(raw_requests, dict) and raw_requests:
+                    signals = list(raw_requests.keys())
+                    candidates = {str(k): [str(p) for p in v] for k, v in raw_requests.items() if isinstance(v, list)}
+                elif isinstance(req.get("candidates"), dict) and req.get("candidates"):
+                    candidates = {str(k): [str(p) for p in v] for k, v in req["candidates"].items() if isinstance(v, list)}
+                    signals = [str(s) for s in (req.get("signals") or list(candidates.keys()))]
+                else:
+                    candidates = default_candidates
+                    signals = list(default_candidates.keys())
+                mapping, unsat_core = solve_pinmux_smt(
+                    signals,
+                    candidates,
+                    five_volt_required=req.get("five_volt_required"),
+                    five_volt_pads=req.get("five_volt_pads"),
+                )
+                sat = mapping is not None
+                assignments = [{"signal": sig, "pin": pin} for sig, pin in (mapping or {}).items()]
+                res = {
+                    "success": sat,
+                    "solver": "z3-smt",
+                    "solved": sat,
+                    "assignments": assignments,
+                    "conflicts": 0 if sat else max(1, len(unsat_core)),
+                    "unsat_core": unsat_core,
+                }
+            except Exception as exc:
+                res = {"success": False, "solver": "z3-smt", "solved": False, "error": str(exc), "assignments": [], "conflicts": 1, "unsat_core": [str(exc)]}
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self._send_cors()
@@ -1570,22 +1759,50 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(res).encode("utf-8"))
 
         elif path == "/stitch/physics/smps-bode":
-            # SymPy + Pint + control SMPS loop stability
-            res = {
-                "success": True,
-                "crossover_freq_khz": 45.2,
-                "phase_margin_deg": 58.4,
-                "gain_margin_db": -14.2,
-                "stable": True,
-                "fsw_khz": 400.0,
-                "duty_cycle": 0.275,
-                "output_ripple_mvpp": 9.09,
-                "standards_compliance": {
-                    "phase_margin_target_deg": ">= 45.0",
-                    "gain_margin_target_db": "<= -10.0",
-                    "ripple_limit_mvpp": "<= 40.0"
+            try:
+                _sv_dir = str(pathlib.Path(__file__).resolve().parents[2] / "symbolic-verifier" / "src")
+                if _sv_dir not in sys.path:
+                    sys.path.insert(0, _sv_dir)
+                from control_auditor import analyze_smps_loop  # type: ignore
+                smps_cfg: Dict[str, Any] = {}
+                if "ee_audit_routes" in _MOD_CACHE:
+                    try:
+                        smps_cfg = _MOD_CACHE["ee_audit_routes"]._build_workspace_circuit_spec(self.con).get("smps") or {}
+                    except Exception:
+                        smps_cfg = {}
+                else:
+                    try:
+                        l_row = self.con.execute("SELECT value_str FROM components WHERE deleted=0 AND refdes='L1' LIMIT 1").fetchone()
+                        if l_row and l_row[0]:
+                            m = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*uH", str(l_row[0]), re.I)
+                            if m:
+                                smps_cfg["l_uh"] = float(m.group(1))
+                    except Exception:
+                        pass
+                bode = analyze_smps_loop(
+                    l_uh=float(req.get("l_uh", smps_cfg.get("l_uh", 10.0))),
+                    c_eff_uf=float(req.get("c_eff_uf", smps_cfg.get("c_eff_uf", 33.0))),
+                    esr_mohm=float(req.get("esr_mohm", smps_cfg.get("esr_mohm", 15.0))),
+                    r_load_ohm=float(req.get("r_load_ohm", smps_cfg.get("r_load_ohm", 1.1))),
+                    v_in_v=float(req.get("v_in_v", smps_cfg.get("v_in_v", 12.0))),
+                )
+                res = {
+                    "success": True,
+                    "engine": bode.get("engine", "python-control"),
+                    "crossover_freq_khz": round(float(bode.get("crossover_hz", 0.0)) / 1000.0, 2),
+                    "phase_margin_deg": bode.get("phase_margin_deg", 0.0),
+                    "gain_margin_db": bode.get("gain_margin_db", 0.0),
+                    "stable": bool(bode.get("stable")),
+                    "fsw_khz": 400.0,
+                    "duty_cycle": round(3.3 / max(3.5, float(smps_cfg.get("v_in_v", 12.0))), 3),
+                    "bode": bode,
+                    "standards_compliance": {
+                        "phase_margin_target_deg": ">= 45.0",
+                        "gain_margin_target_db": ">= 10.0",
+                    },
                 }
-            }
+            except Exception as exc:
+                res = {"success": False, "error": str(exc)}
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self._send_cors()
@@ -1971,31 +2188,49 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(res).encode("utf-8"))
 
-        elif handle_jobs_post(self, path, req, self.con):
+        elif path in ("/api/v1/system/shutdown", "/api/system/shutdown"):
+            _SHUTDOWN_REQUESTED.set()
+            httpd = getattr(self, "server", None)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self._send_cors()
+            self.end_headers()
+            self.wfile.write(json.dumps({"stopping": True}).encode("utf-8"))
+            if httpd is not None:
+                threading.Thread(target=httpd.shutdown, daemon=True).start()
             return
 
-        elif handle_kicad_post(self, path, req, self.con):
+        elif _lazy_fn("bootstrap_routes", "handle_bootstrap_post")(self, path, req):
             return
 
-        elif handle_fs_pty_post(self, path, req, self.con):
+        elif _lazy_fn("job_runner", "handle_jobs_post")(self, path, req, self.con):
+            return
+
+        elif _lazy_fn("kicad_routes", "handle_kicad_post")(self, path, req, self.con):
+            return
+
+        elif _lazy_fn("fs_pty_routes", "handle_fs_pty_post")(self, path, req, self.con):
             return
 
         elif path.startswith(("/api/v1/ato/", "/api/ato/")) and _lazy_fn("atopile_engine", "handle_ato_post")(self, path, req, self.con):
             return
 
-        elif path.startswith(("/api/v1/parts/", "/api/parts/")) and _lazy_fn("kg_routes", "handle_kg_post")(self, path, req, self.con):
+        elif path.startswith(("/api/v1/parts/", "/api/parts/", "/api/v1/blocks/", "/api/blocks/")) and _lazy_fn("kg_routes", "handle_kg_post")(self, path, req, self.con):
             return
 
         elif path.startswith(("/api/v1/ee/", "/api/ee/")) and _lazy_fn("ee_audit_routes", "handle_ee_post")(self, path, req, self.con):
             return
 
-        elif handle_x3_post(self, path, req):
+        elif _lazy_fn("x3_routes", "handle_x3_post")(self, path, req):
             return
 
         elif path.startswith(("/api/v1/sim/", "/api/sim/")) and _lazy_fn("spice_routes", "handle_spice_post")(self, path, req, self.con):
             return
 
         elif path.startswith(("/api/v1/cosim/", "/api/cosim/")) and _lazy_fn("cosim_routes", "handle_cosim_post")(self, path, req, self.con):
+            return
+
+        elif path.startswith(("/api/v1/ee/", "/api/ee/", "/api/v1/diagnostics")) and _lazy_fn("ee_audit_routes", "handle_ee_post")(self, path, req, self.con):
             return
 
         elif path.startswith(("/api/v1/route/", "/api/route/")) and _lazy_fn("router_routes", "handle_router_post")(self, path, req, self.con):
@@ -2013,28 +2248,28 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
         elif path.startswith(("/api/v1/report/", "/api/report/")) and _lazy_fn("report_routes", "handle_report_post")(self, path, req, self.con):
             return
 
-        elif handle_tx_post(self, path, req, self.con):
+        elif _lazy_fn("sync_propagator", "handle_tx_post")(self, path, req, self.con):
             return
 
-        elif handle_polish_post(self, path, req, self.con):
+        elif _lazy_fn("polish_routes", "handle_polish_post")(self, path, req, self.con):
             return
 
-        elif handle_settings_post(self, path, req, self.con):
+        elif _lazy_fn("settings_store", "handle_settings_post")(self, path, req, self.con):
             return
 
-        elif handle_mcp_http_post(self, path, req, self.con):
+        elif _lazy_fn("mcp_live_server", "handle_mcp_http_post")(self, path, req, self.con):
             return
 
-        elif handle_acp_http_post(self, path, req, self.con):
+        elif _lazy_fn("acp_broker", "handle_acp_http_post")(self, path, req, self.con):
             return
 
-        elif handle_plugin_post(self, path, req):
+        elif _lazy_fn("plugin_host", "handle_plugin_post")(self, path, req):
             return
 
-        elif handle_x1_post(self, path, req):
+        elif _lazy_fn("x1_routes", "handle_x1_post")(self, path, req):
             return
 
-        elif handle_x4_post(self, path, req):
+        elif _lazy_fn("x4_routes", "handle_x4_post")(self, path, req):
             return
 
         elif _lazy_fn("agent_routes", "handle_agent_post")(self, path, req, DB_DIR, write_autosave_shadow, maybe_checkpoint_wal):
@@ -2059,7 +2294,131 @@ def _ensure_utf8_console() -> None:
             except (ValueError, OSError):
                 pass
 
-def run_server(port: int = PORT):
+
+def _write_pid_lockfile(port: int) -> None:
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "pid": os.getpid(),
+            "port": port,
+            "host": HOST,
+            "started_at": time.time(),
+        }
+        PID_PATH.write_text(json.dumps(payload), encoding="utf-8")
+        port_file_env = os.environ.get("VD_PORT_FILE", "").strip()
+        if port_file_env:
+            pf = pathlib.Path(port_file_env)
+            pf.parent.mkdir(parents=True, exist_ok=True)
+            pf.write_text(str(port), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _cleanup_runtime_files() -> None:
+    try:
+        if PID_PATH.exists():
+            try:
+                data = json.loads(PID_PATH.read_text(encoding="utf-8"))
+                owner_pid = int(data.get("pid", -1))
+                if owner_pid in (-1, os.getpid()):
+                    PID_PATH.unlink(missing_ok=True)
+            except Exception as exc:
+                sys.stderr.write(f"[vd-daemon] pid cleanup parse error: {exc}\n")
+                PID_PATH.unlink(missing_ok=True)
+    except Exception as exc:
+        sys.stderr.write(f"[vd-daemon] pid cleanup error: {exc}\n")
+
+
+def _shutdown_loaded_supervisors() -> None:
+    for mod in list(_MOD_CACHE.values()):
+        for attr in ("_SUPERVISOR", "_MCAD_SUPERVISOR", "_PI_SUPERVISOR", "_ROUTER_SUPERVISOR"):
+            sup = getattr(mod, attr, None)
+            if sup is not None and hasattr(sup, "close"):
+                try:
+                    sup.close()
+                except Exception:
+                    pass
+    try:
+        if "bootstrap_routes" in _MOD_CACHE:
+            _MOD_CACHE["bootstrap_routes"].cancel_active_sync()  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+
+def _pick_free_port(preferred_port: int, strict_port: bool) -> int:
+    candidates = [preferred_port] if strict_port else [preferred_port] + [p for p in range(41900, 41951) if p != preferred_port]
+    last_err: Exception | None = None
+    for cand in candidates:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.bind((HOST, cand))
+            return cand
+        except OSError as exc:
+            last_err = exc
+        finally:
+            try:
+                s.close()
+            except Exception:
+                pass
+    if strict_port and last_err is not None:
+        raise last_err
+    return preferred_port
+
+
+def _start_parent_watchdog(stop_watch: threading.Event, httpd_ref: list[socketserver.ThreadingTCPServer]) -> None:
+    raw_ppid = os.environ.get("VD_PARENT_PID", "").strip()
+    if not raw_ppid.isdigit():
+        return
+    ppid = int(raw_ppid)
+
+    def _trigger_shutdown() -> None:
+        _SHUTDOWN_REQUESTED.set()
+        stop_watch.set()
+        _shutdown_loaded_supervisors()
+        _cleanup_runtime_files()
+        if httpd_ref:
+            try:
+                httpd_ref[0].shutdown()
+            except Exception:
+                pass
+
+    def _watch() -> None:
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                from ctypes import wintypes
+
+                k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+                k32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+                k32.OpenProcess.restype = wintypes.HANDLE
+                k32.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+                k32.WaitForSingleObject.restype = wintypes.DWORD
+                k32.CloseHandle.argtypes = [wintypes.HANDLE]
+                k32.CloseHandle.restype = wintypes.BOOL
+
+                SYNCHRONIZE = 0x00100000
+                INFINITE = 0xFFFFFFFF
+                h = k32.OpenProcess(SYNCHRONIZE, False, ppid)
+                if h:
+                    try:
+                        k32.WaitForSingleObject(h, INFINITE)
+                    finally:
+                        k32.CloseHandle(h)
+                _trigger_shutdown()
+                return
+            except Exception:
+                pass
+        while not stop_watch.wait(0.5) and not _SHUTDOWN_REQUESTED.is_set():
+            try:
+                os.kill(ppid, 0)
+            except OSError:
+                _trigger_shutdown()
+                return
+
+    threading.Thread(target=_watch, daemon=True).start()
+
+
+def run_server(port: int = PORT, strict_port: bool = False):
     con = init_db(DB_PATH)
     seed_reference_board(con)
     budget = load_budget()
@@ -2070,10 +2429,10 @@ def run_server(port: int = PORT):
     stop_watch = threading.Event()
 
     def _watch_external_files():
-        while not stop_watch.wait(1.5):
+        while not stop_watch.wait(1.5) and not _SHUTDOWN_REQUESTED.is_set():
             try:
                 with DB_LOCK:
-                    poll_external_changes(con)
+                    _lazy_fn("kicad_routes", "poll_external_changes")(con)
             except Exception:
                 pass
 
@@ -2085,22 +2444,62 @@ def run_server(port: int = PORT):
         daemon_threads = True
         request_queue_size = 64
 
-    with _ThreadingDaemonServer((HOST, port), DaemonHandler) as httpd:
-        print(f"Vajra-Dhīr EDA v0.0.1 daemon listening strictly on http://{HOST}:{port}")
+    bind_port = _pick_free_port(port, strict_port=strict_port)
+    httpd_ref: list[socketserver.ThreadingTCPServer] = []
+
+    def _on_signal(_signum, _frame):
+        _SHUTDOWN_REQUESTED.set()
+        stop_watch.set()
+        if httpd_ref:
+            threading.Thread(target=httpd_ref[0].shutdown, daemon=True).start()
+
+    for sig_name in ("SIGINT", "SIGTERM"):
+        sig = getattr(signal, sig_name, None)
+        if sig is not None:
+            try:
+                signal.signal(sig, _on_signal)
+            except Exception:
+                pass
+
+    atexit.register(_cleanup_runtime_files)
+    atexit.register(_shutdown_loaded_supervisors)
+
+    with _ThreadingDaemonServer((HOST, bind_port), DaemonHandler) as httpd:
+        httpd_ref.append(httpd)
+        _start_parent_watchdog(stop_watch, httpd_ref)
+        actual_port = httpd.server_address[1]
+        _write_pid_lockfile(actual_port)
+        print(f"Vajra-Dhīr EDA v0.0.1 daemon listening strictly on http://{HOST}:{actual_port}")
         print(f"SQLite WAL HW-IR database: {DB_PATH.resolve()}")
+        sys.stdout.flush()
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
             print("\nShutting down daemon cleanly...")
-            stop_watch.set()
-            httpd.shutdown()
         finally:
+            _SHUTDOWN_REQUESTED.set()
+            stop_watch.set()
+            _shutdown_loaded_supervisors()
+            _cleanup_runtime_files()
             try:
                 maybe_checkpoint_wal(con, 0, idle=True)
             except Exception:
                 pass
 
+
 if __name__ == "__main__":
     _ensure_utf8_console()
-    p = int(sys.argv[1]) if len(sys.argv) > 1 else PORT
-    run_server(p)
+    strict_env = os.environ.get("VD_STRICT_PORT", "").strip() in ("1", "true", "yes")
+    strict_flag = strict_env or ("--strict-port" in sys.argv[1:])
+    cli_port = PORT
+    args_iter = iter(sys.argv[1:])
+    for tok in args_iter:
+        if tok == "--port":
+            cli_port = int(next(args_iter, PORT))
+        elif tok.startswith("--port="):
+            cli_port = int(tok.split("=", 1)[1])
+        elif tok == "--strict-port":
+            strict_flag = True
+        elif tok.isdigit():
+            cli_port = int(tok)
+    run_server(cli_port, strict_port=strict_flag)

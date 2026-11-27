@@ -14,6 +14,7 @@ import {
   type SystemArchitecture,
 } from '@vajradhir/arch-core';
 import { globalIdeWorkspaceStore } from './ideFileStore';
+import { useDesignStore } from './store/useDesignStore';
 
 export interface ArchStoreSnapshot {
   architecture: SystemArchitecture;
@@ -157,6 +158,19 @@ class ArchitectureStore {
     };
     this.snapshot = { ...this.snapshot, selectedBlockId: blk.id };
     this.applyArchitectureMutation(next, `Added composite block: ${blk.name}`);
+    const refs = blk.memberRefdes.length ? blk.memberRefdes : [`U_${blk.id.slice(0, 6).toUpperCase()}`];
+    const ops = refs.map((ref, idx) => ({
+      op: 'ADD_COMPONENT',
+      refdes: ref,
+      value: blk.name,
+      mpn: blk.name,
+      package: blk.mountingFootprint || 'Module',
+      footprint: blk.mountingFootprint || 'Package_TO_SOT_SMD:SOT-23-6',
+      x_nm: Math.round((20 + idx * 10) * 1_000_000),
+      y_nm: Math.round((20 + (this.snapshot.architecture.blocks.length % 4) * 8) * 1_000_000),
+      sync_now: true,
+    }));
+    void useDesignStore.getState().commitTx('architecture', ops, `Materialize block ${blk.name}`, 'human');
     return blk;
   }
 
@@ -164,6 +178,7 @@ class ArchitectureStore {
     const src = this.snapshot.architecture.blocks.find((b) => b.id === source);
     const dst = this.snapshot.architecture.blocks.find((b) => b.id === target);
     if (!src || !dst) return;
+    const netName = protocol === 'PowerRail' ? `PWR_${src.voltageV}V` : `${protocol}_${dst.name.split(' ')[0].toUpperCase()}`;
     const bus: ArchBus = {
       id: `bus-${protocol.toLowerCase()}-${Date.now().toString(36)}`,
       source,
@@ -171,13 +186,31 @@ class ArchitectureStore {
       protocol,
       railVoltageV: railVoltageV ?? src.voltageV,
       expectedMa: expectedMa ?? (protocol === 'PowerRail' ? dst.drawMa : 10),
-      netNames: [protocol === 'PowerRail' ? `PWR_${src.voltageV}V` : `${protocol}_${dst.name.split(' ')[0].toUpperCase()}`],
+      netNames: [netName],
     };
     const next: SystemArchitecture = {
       ...this.snapshot.architecture,
       buses: [...this.snapshot.architecture.buses, bus],
     };
     this.applyArchitectureMutation(next, `Wired ${protocol} (${bus.railVoltageV}V): ${src.name} -> ${dst.name}`);
+    const srcRef = src.memberRefdes[0];
+    const dstRef = dst.memberRefdes[0];
+    if (srcRef && dstRef) {
+      void useDesignStore.getState().commitTx(
+        'architecture',
+        [{
+          op: 'ADD_WIRE',
+          net: netName,
+          voltage_v: bus.railVoltageV,
+          bindings: [
+            { refdes: srcRef, pin: '1' },
+            { refdes: dstRef, pin: '1' },
+          ],
+        }],
+        `Connect ${netName} (${srcRef} -> ${dstRef})`,
+        'human'
+      );
+    }
   }
 
   updateBlockPositions(updates: Record<string, { x: number; y: number }>, persist = true) {

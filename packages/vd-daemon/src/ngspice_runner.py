@@ -46,22 +46,40 @@ SPICE_RECOVERY_LADDER = [
 ]
 
 
+_NGSPICE_LIB_CACHE: Optional[Dict[str, Any]] = None
+
+
 def find_ngspice_library() -> Dict[str, Any]:
-    cli = find_kicad_cli()
+    global _NGSPICE_LIB_CACHE
+    if _NGSPICE_LIB_CACHE is not None and _NGSPICE_LIB_CACHE.get("installed"):
+        p = _NGSPICE_LIB_CACHE.get("path")
+        if p and os.path.isfile(p):
+            return dict(_NGSPICE_LIB_CACHE)
+
     candidates: List[pathlib.Path] = []
-    if cli.get("path"):
-        candidates.append(pathlib.Path(cli["path"]).parent / "ngspice.dll")
     local_app = os.environ.get("LOCALAPPDATA", "")
     if local_app:
         candidates.append(pathlib.Path(local_app) / "Programs" / "KiCad" / "10.0" / "bin" / "ngspice.dll")
+        candidates.append(pathlib.Path(local_app) / "Programs" / "KiCad" / "10" / "bin" / "ngspice.dll")
     candidates.extend([
         pathlib.Path("C:/Program Files/KiCad/10.0/bin/ngspice.dll"),
+        pathlib.Path("C:/Program Files/KiCad/10/bin/ngspice.dll"),
         pathlib.Path("/usr/lib/x86_64-linux-gnu/libngspice.so"),
         pathlib.Path("/usr/lib/libngspice.so"),
     ])
     for cand in candidates:
         if cand.is_file():
-            return {"installed": True, "path": str(cand), "source": "kicad-10-bundled-bsd"}
+            res = {"installed": True, "path": str(cand), "source": "kicad-10-bundled-bsd"}
+            _NGSPICE_LIB_CACHE = res
+            return dict(res)
+
+    cli = find_kicad_cli()
+    if cli.get("path"):
+        cand = pathlib.Path(cli["path"]).parent / "ngspice.dll"
+        if cand.is_file():
+            res = {"installed": True, "path": str(cand), "source": "kicad-10-bundled-bsd"}
+            _NGSPICE_LIB_CACHE = res
+            return dict(res)
     return {"installed": False, "path": None, "source": None}
 
 

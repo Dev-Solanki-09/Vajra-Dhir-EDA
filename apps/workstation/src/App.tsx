@@ -1,4 +1,5 @@
 import React from 'react';
+import { BootstrapSplash } from './components/BootstrapSplash';
 import { WorkstationShell } from './components/WorkstationShell';
 
 interface RootErrorState {
@@ -65,6 +66,7 @@ class RootErrorBoundary extends React.Component<{ children: React.ReactNode }, R
 export function App() {
   return (
     <RootErrorBoundary>
+      <BootstrapSplash />
       <WorkstationShell />
     </RootErrorBoundary>
   );

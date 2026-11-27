@@ -6,6 +6,14 @@ import { globalSpiceOverlayStore, useSpiceOverlay } from '../spiceSimStore';
 import { globalPiHeatmapStore, lookupPiSampleAtWorldMm, samplePiColormapHex, usePiHeatmap } from '../piHeatmapStore';
 import { useMcadThermal } from '../mcadThermalStore';
 import { useDesignStore } from '../store/useDesignStore';
+import {
+  computeAlignmentGuides,
+  computeAltRedlineDistance,
+  emitLiveCursorCoords,
+  useUnifiedViewport,
+  type AlignmentGuide,
+  type RedlineDistance,
+} from '../hooks/useUnifiedViewport';
 
 type PcbTool = 'select' | 'drag' | 'route' | 'via';
 
@@ -14,6 +22,8 @@ interface FootprintScreenItem {
   uuid: string;
   value: string;
   locked: boolean;
+  side: 'top' | 'bottom';
+  nets: string[];
   worldXMm: number;
   worldYMm: number;
   rotDeg: number;
@@ -51,6 +61,7 @@ export interface Pcb2DPanelProps {
 
 export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
   layersVisible = true,
+  ratsnestVisible = true,
   lockRingsVisible = true,
   useLegacyCanvasTestId = true,
 }) => {
@@ -66,19 +77,25 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
   const pcbDocRef = useRef<KicadPCB | null>(null);
   const kcModuleRef = useRef<typeof import('@vajradhir/kicanvas-core') | null>(null);
   const initialFitDoneRef = useRef(false);
+  const cursorWorldMmRef = useRef<{ xMm: number; yMm: number } | null>(null);
+  const cursorReadoutRef = useRef<HTMLSpanElement | null>(null);
 
   const spiceOverlay = useSpiceOverlay();
   const piHeatmap = usePiHeatmap();
   const mcadThermal = useMcadThermal();
   const transientPreviews = useDesignStore((s) => s.transientPreviews);
   const [tool, setTool] = useState<PcbTool>('select');
+  const [activeLayer, setActiveLayer] = useState<'F.Cu' | 'B.Cu'>('F.Cu');
+  const [pourFilled, setPourFilled] = useState(false);
   const [backendLabel, setBackendLabel] = useState<'WebGL2' | 'Canvas2D' | 'Initializing'>('Initializing');
-  const [statusNote, setStatusNote] = useState('KiCanvas WebGL2/Canvas2D synced to P1');
+  const [statusNote, setStatusNote] = useState('KiCanvas WebGL2/Canvas2D synced');
   const [fpItems, setFpItems] = useState<FootprintScreenItem[]>([]);
   const [dragRefdes, setDragRefdes] = useState<string | null>(null);
   const [dragPreviewMm, setDragPreviewMm] = useState<{ refdes: string; xMm: number; yMm: number } | null>(null);
+  const [alignGuides, setAlignGuides] = useState<AlignmentGuide[]>([]);
+  const [altRedline, setAltRedline] = useState<RedlineDistance | null>(null);
   const [routeStartMm, setRouteStartMm] = useState<{ xMm: number; yMm: number } | null>(null);
-  const [cursorWorldMm, setCursorWorldMm] = useState<{ xMm: number; yMm: number } | null>(null);
+  const [routeCursorMm, setRouteCursorMm] = useState<{ xMm: number; yMm: number } | null>(null);
   const [aiGhost, setAiGhost] = useState<AiGhostSuggestion | null>(null);
   const [viewportTick, setViewportTick] = useState(0);
   const [routeBusy, setRouteBusy] = useState(false);
@@ -111,6 +128,14 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
       const xMm = fp.at?.position?.x ?? 0;
       const yMm = fp.at?.position?.y ?? 0;
       const rotDeg = fp.at?.rotation ?? 0;
+      const layerName = String((fp as { layer?: string }).layer ?? 'F.Cu');
+      const padNets = Array.from(
+        new Set(
+          ((fp as { pads?: Array<{ net?: { name?: string } }> }).pads ?? [])
+            .map((p) => p.net?.name?.trim() || '')
+            .filter((n) => n && n !== 'NC')
+        )
+      );
       const centerScreen = cam.world_to_screen(new kc.Vec2(xMm, yMm));
       const bbox = fp.bbox;
       let screenW = 28;
@@ -126,6 +151,8 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
         uuid: fp.uuid || ref,
         value: fp.value || '',
         locked: Boolean(fp.locked),
+        side: layerName.includes('B.') ? 'bottom' : 'top',
+        nets: padNets,
         worldXMm: xMm,
         worldYMm: yMm,
         rotDeg,
@@ -361,9 +388,85 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
     );
   };
 
+  const handleFlipSide = async (targetRef: string) => {
+    const item = fpItems.find((f) => f.refdes === targetRef);
+    const nextSide = item?.side === 'bottom' ? 'top' : 'bottom';
+    await globalKiCadSyncStore.dispatchOps(
+      `Flip ${targetRef} to ${nextSide}`,
+      [{ op: 'FLIP_SIDE', component_id: targetRef, side: nextSide }],
+      'human',
+      targetRef
+    );
+    setStatusNote(`Flipped ${targetRef} to ${nextSide}`);
+  };
+
+  const handleDeleteSelected = async (targetRef: string) => {
+    const item = fpItems.find((f) => f.refdes === targetRef);
+    if (!item || item.locked) return;
+    await globalKiCadSyncStore.dispatchOps(
+      `Delete ${targetRef}`,
+      [{ op: 'DELETE_COMPONENT', component_id: targetRef }],
+      'human',
+      targetRef
+    );
+    setStatusNote(`Deleted ${targetRef}`);
+  };
+
+  const viewport = useUnifiedViewport({
+    onZoom: (factor, clientX, clientY) => {
+      const viewer = viewerRef.current;
+      const canvas = canvasRef.current;
+      const kc = kcModuleRef.current;
+      if (!viewer?.viewport?.camera || !canvas || !kc) return;
+      const cam = viewer.viewport.camera;
+      const rect = canvas.getBoundingClientRect();
+      const before = cam.screen_to_world(new kc.Vec2(clientX - rect.left, clientY - rect.top));
+      cam.zoom = Math.max(0.5, Math.min(200, cam.zoom * factor));
+      const after = cam.screen_to_world(new kc.Vec2(clientX - rect.left, clientY - rect.top));
+      cam.center = new kc.Vec2(cam.center.x + (before.x - after.x), cam.center.y + (before.y - after.y));
+      viewer.draw();
+      projectOverlay();
+    },
+    onPanDelta: (dxPx, dyPx) => {
+      const viewer = viewerRef.current;
+      const kc = kcModuleRef.current;
+      if (!viewer?.viewport?.camera || !kc) return;
+      const cam = viewer.viewport.camera;
+      cam.center = new kc.Vec2(cam.center.x - dxPx / cam.zoom, cam.center.y - dyPx / cam.zoom);
+      viewer.draw();
+      projectOverlay();
+    },
+    onFit: () => {
+      viewerRef.current?.zoom_to_board();
+      projectOverlay();
+    },
+  });
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      viewport.setSpaceHeld(true);
+      return;
+    }
     const k = e.key.toLowerCase();
-    if (k === 'g') {
+    if (e.shiftKey && k === 'f') {
+      e.preventDefault();
+      void handleFlipSide(selectedRefdes);
+    } else if (k === '0' || k === 'f' || e.key === 'Home') {
+      e.preventDefault();
+      viewerRef.current?.zoom_to_board();
+      projectOverlay();
+    } else if (k === 'x') {
+      e.preventDefault();
+      setTool((t) => (t === 'route' ? 'select' : 'route'));
+      setRouteStartMm(null);
+      setRouteCursorMm(null);
+    } else if (k === 'b') {
+      e.preventDefault();
+      setPourFilled((prev) => !prev);
+      viewerRef.current?.draw();
+      setStatusNote((prev) => (prev.includes('refilled') ? 'Copper zones hidden' : 'Copper zones refilled (GND/B.Cu)'));
+    } else if (k === 'g') {
       e.preventDefault();
       setTool((t) => (t === 'drag' ? 'select' : 'drag'));
     } else if (k === 'r') {
@@ -374,12 +477,55 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
       void handleToggleLock(selectedRefdes);
     } else if (k === 'v') {
       e.preventDefault();
-      setTool('via');
+      if (tool === 'route' && routeStartMm && cursorWorldMmRef.current) {
+        const pt = cursorWorldMmRef.current;
+        const xNm = Math.round(pt.xMm * MM_TO_NM);
+        const yNm = Math.round(pt.yMm * MM_TO_NM);
+        const nextLayer = activeLayer === 'F.Cu' ? 'B.Cu' : 'F.Cu';
+        void globalKiCadSyncStore.dispatchOps(
+          'Mid-route Via & Layer Switch',
+          [
+            {
+              op: 'ADD_TRACE_SEGMENT',
+              net_name: 'SW_NODE',
+              layer_name: activeLayer,
+              x1_nm: Math.round(routeStartMm.xMm * MM_TO_NM),
+              y1_nm: Math.round(routeStartMm.yMm * MM_TO_NM),
+              x2_nm: xNm,
+              y2_nm: yNm,
+              width_nm: 250000,
+            },
+            { op: 'ADD_VIA', net_name: 'SW_NODE', x_nm: xNm, y_nm: yNm, diameter_nm: 600000, drill_nm: 300000 },
+          ],
+          'human',
+          'via'
+        );
+        setActiveLayer(nextLayer);
+        setRouteStartMm(pt);
+        setStatusNote(`Dropped via -> switched layer to ${nextLayer}`);
+      } else {
+        setTool('via');
+      }
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      void handleDeleteSelected(selectedRefdes);
     } else if (k === 'escape') {
       setDragRefdes(null);
       setDragPreviewMm(null);
+      setAlignGuides([]);
+      setAltRedline(null);
       setRouteStartMm(null);
+      setRouteCursorMm(null);
       setTool('select');
+    }
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.code === 'Space') {
+      viewport.setSpaceHeld(false);
+    }
+    if (!e.altKey && altRedline) {
+      setAltRedline(null);
     }
   };
 
@@ -387,17 +533,45 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
   const routePreviewSvgPoints = useMemo(() => {
     const viewer = viewerRef.current;
     const kc = kcModuleRef.current;
-    if (!routeStartMm || !cursorWorldMm || !viewer?.viewport?.camera || !kc) return null;
-    const dx = cursorWorldMm.xMm - routeStartMm.xMm;
-    const dy = cursorWorldMm.yMm - routeStartMm.yMm;
+    if (!routeStartMm || !routeCursorMm || !viewer?.viewport?.camera || !kc) return null;
+    const dx = routeCursorMm.xMm - routeStartMm.xMm;
+    const dy = routeCursorMm.yMm - routeStartMm.yMm;
     const diag = Math.min(Math.abs(dx), Math.abs(dy));
     const midX = routeStartMm.xMm + Math.sign(dx) * diag;
     const midY = routeStartMm.yMm + Math.sign(dy) * diag;
     const p1 = viewer.viewport.camera.world_to_screen(new kc.Vec2(routeStartMm.xMm, routeStartMm.yMm));
     const pMid = viewer.viewport.camera.world_to_screen(new kc.Vec2(midX, midY));
-    const p2 = viewer.viewport.camera.world_to_screen(new kc.Vec2(cursorWorldMm.xMm, cursorWorldMm.yMm));
+    const p2 = viewer.viewport.camera.world_to_screen(new kc.Vec2(routeCursorMm.xMm, routeCursorMm.yMm));
     return { p1, pMid, p2, midX, midY };
-  }, [routeStartMm, cursorWorldMm, viewportTick]);
+  }, [routeStartMm, routeCursorMm, viewportTick]);
+
+  // Live ratsnest lines connecting footprints sharing common nets
+  const ratsnestLines = useMemo(() => {
+    if (!ratsnestVisible || fpItems.length < 2) return [];
+    const byNet = new Map<string, FootprintScreenItem[]>();
+    for (const fp of fpItems) {
+      for (const net of fp.nets) {
+        const list = byNet.get(net) ?? [];
+        list.push(fp);
+        byNet.set(net, list);
+      }
+    }
+    const lines: Array<{ net: string; x1: number; y1: number; x2: number; y2: number }> = [];
+    for (const [net, items] of byNet.entries()) {
+      for (let i = 0; i < items.length - 1; i++) {
+        lines.push({
+          net,
+          x1: items[i].screenX,
+          y1: items[i].screenY,
+          x2: items[i + 1].screenX,
+          y2: items[i + 1].screenY,
+        });
+      }
+    }
+    return lines.slice(0, 80);
+  }, [fpItems, ratsnestVisible]);
+
+  const activeHighlightNet = probe.activeHighlight.netId ?? spiceOverlay.activeProbeNet ?? null;
 
   // Project DRC markers to screen space
   const drcScreenMarkers = useMemo(() => {
@@ -418,6 +592,7 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
       data-testid="pcb-2d-panel"
       tabIndex={0}
       onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -448,7 +623,7 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
           {([
             { id: 'select', label: 'Select' },
             { id: 'drag', label: 'Drag (G)' },
-            { id: 'route', label: 'Route 45°' },
+            { id: 'route', label: 'Route 45° (X)' },
             { id: 'via', label: 'Via (V)' },
           ] as Array<{ id: PcbTool; label: string }>).map((btn) => (
             <button
@@ -461,6 +636,14 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
               {btn.label}
             </button>
           ))}
+          <button
+            type="button"
+            className="vd-btn"
+            style={{ minHeight: 24, padding: '2px 8px', fontSize: 11, color: activeLayer === 'F.Cu' ? '#F87171' : '#60A5FA' }}
+            onClick={() => setActiveLayer((l) => (l === 'F.Cu' ? 'B.Cu' : 'F.Cu'))}
+          >
+            Layer: {activeLayer}
+          </button>
           <button
             type="button"
             className="vd-btn"
@@ -743,6 +926,16 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
 
       {/* Main KiCanvas + Direct-Manipulation Overlay Viewport */}
       <div
+        onWheelCapture={(e) => {
+          e.stopPropagation();
+          viewport.handleWheel(e);
+        }}
+        onPointerDownCapture={(e) => {
+          if (e.button === 1 || e.button === 2 || (e.button === 0 && viewport.isSpaceHeld())) {
+            viewport.handlePointerDown(e);
+          }
+        }}
+        onContextMenu={viewport.handleContextMenu}
         style={{
           position: 'relative',
           flex: 1,
@@ -753,19 +946,37 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
           overflow: 'hidden',
         }}
         onPointerMove={(e) => {
+          viewport.handlePointerMove(e);
           const w = toWorldMm(e.clientX, e.clientY);
           if (w) {
-            setCursorWorldMm(w);
+            cursorWorldMmRef.current = w;
+            emitLiveCursorCoords(w.xMm, w.yMm, activeLayer);
+            if (cursorReadoutRef.current) {
+              cursorReadoutRef.current.textContent = `${w.xMm.toFixed(3)} mm, ${w.yMm.toFixed(3)} mm`;
+            }
             if (piHeatmap.enabled && piHeatmap.result) {
               globalPiHeatmapStore.setHoverSample(lookupPiSampleAtWorldMm(piHeatmap.result, w.xMm, w.yMm));
             }
+            if (routeStartMm) {
+              setRouteCursorMm(w);
+            }
+            if (e.altKey) {
+              const sel = fpItems.find((f) => f.refdes === selectedRefdes);
+              if (sel) {
+                setAltRedline(computeAltRedlineDistance({ xMm: sel.worldXMm, yMm: sel.worldYMm }, w));
+              }
+            } else if (altRedline) {
+              setAltRedline(null);
+            }
           }
           if (dragRefdes && w) {
-            setDragPreviewMm({ refdes: dragRefdes, xMm: w.xMm, yMm: w.yMm });
+            const aligned = computeAlignmentGuides(dragRefdes, w.xMm, w.yMm, fpItems);
+            setAlignGuides(aligned.guides);
+            setDragPreviewMm({ refdes: dragRefdes, xMm: aligned.snappedX, yMm: aligned.snappedY });
             useDesignStore.getState().setTransientPreview({
               refdes: dragRefdes,
-              x_nm: Math.round(w.xMm * MM_TO_NM),
-              y_nm: Math.round(w.yMm * MM_TO_NM),
+              x_nm: Math.round(aligned.snappedX * MM_TO_NM),
+              y_nm: Math.round(aligned.snappedY * MM_TO_NM),
               rot_mdeg: 0,
               side: 'top',
               sourcePaneId: 'pcb2d',
@@ -774,6 +985,7 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
           }
         }}
         onPointerUp={async (e) => {
+          viewport.handlePointerUp(e);
           if (dragRefdes && dragPreviewMm) {
             const target = fpItems.find((f) => f.refdes === dragRefdes);
             const r = dragPreviewMm.refdes;
@@ -781,6 +993,7 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
             const y = dragPreviewMm.yMm;
             setDragRefdes(null);
             setDragPreviewMm(null);
+            setAlignGuides([]);
             useDesignStore.getState().clearTransientPreview(r);
             await commitMove(r, x, y, target?.rotDeg ?? 0);
             return;
@@ -804,7 +1017,8 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
             if (!w) return;
             if (!routeStartMm) {
               setRouteStartMm(w);
-              setStatusNote(`Route anchor (${w.xMm.toFixed(2)}, ${w.yMm.toFixed(2)} mm) — click target`);
+              setRouteCursorMm(w);
+              setStatusNote(`Route anchor (${w.xMm.toFixed(2)}, ${w.yMm.toFixed(2)} mm) on ${activeLayer} — press V for via, click target`);
             } else {
               const dx = w.xMm - routeStartMm.xMm;
               const dy = w.yMm - routeStartMm.yMm;
@@ -815,7 +1029,7 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
                 {
                   op: 'ADD_TRACE_SEGMENT',
                   net_name: 'SW_NODE',
-                  layer_name: 'F.Cu',
+                  layer_name: activeLayer,
                   x1_nm: Math.round(routeStartMm.xMm * MM_TO_NM),
                   y1_nm: Math.round(routeStartMm.yMm * MM_TO_NM),
                   x2_nm: Math.round(midX * MM_TO_NM),
@@ -827,7 +1041,7 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
                 ops.push({
                   op: 'ADD_TRACE_SEGMENT',
                   net_name: 'SW_NODE',
-                  layer_name: 'F.Cu',
+                  layer_name: activeLayer,
                   x1_nm: Math.round(midX * MM_TO_NM),
                   y1_nm: Math.round(midY * MM_TO_NM),
                   x2_nm: Math.round(w.xMm * MM_TO_NM),
@@ -836,8 +1050,9 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
                 });
               }
               setRouteStartMm(null);
+              setRouteCursorMm(null);
               await globalKiCadSyncStore.dispatchOps('Add 45-deg route segment', ops, 'human', 'SW_NODE');
-              setStatusNote('Committed 45° route segment to HW-IR + .kicad_pcb');
+              setStatusNote(`Committed 45° route segment on ${activeLayer}`);
             }
           }
         }}
@@ -860,13 +1075,53 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
             pointerEvents: 'none',
           }}
         >
+          {/* Refilled Copper Pour Zone Indicator (B hotkey) */}
+          {pourFilled && (
+            <rect
+              data-testid="pcb-pour-overlay"
+              x={8}
+              y={8}
+              width="calc(100% - 16px)"
+              height="calc(100% - 16px)"
+              fill="rgba(59, 130, 246, 0.06)"
+              stroke="#3B82F6"
+              strokeWidth={1}
+              strokeDasharray="6 4"
+            />
+          )}
+
+          {/* Live Ratsnest across connected pads + Live Net Spotlight */}
+          {ratsnestLines.map((rl, idx) => {
+            const matchesNet = activeHighlightNet && rl.net.toLowerCase() === activeHighlightNet.toLowerCase();
+            const dimmed = Boolean(activeHighlightNet) && !matchesNet;
+            return (
+              <line
+                key={`rn-${idx}`}
+                x1={rl.x1}
+                y1={rl.y1}
+                x2={rl.x2}
+                y2={rl.y2}
+                stroke={matchesNet ? '#38BDF8' : '#64748B'}
+                strokeWidth={matchesNet ? 1.8 : 0.9}
+                strokeDasharray="3 3"
+                opacity={dimmed ? 0.25 : 0.85}
+              />
+            );
+          })}
+
           {/* Footprint hit targets + Amber Human Lock Halos */}
           {fpItems.map((fp) => {
             const isSelected = fp.refdes === selectedRefdes;
+            const matchesHighlight =
+              !activeHighlightNet || fp.nets.some((n) => n.toLowerCase() === activeHighlightNet.toLowerCase());
             const x = fp.screenX - fp.screenW / 2;
             const y = fp.screenY - fp.screenH / 2;
             return (
-              <g key={fp.uuid} style={{ pointerEvents: tool === 'select' || tool === 'drag' ? 'auto' : 'none', cursor: tool === 'drag' ? 'grab' : 'pointer' }}>
+              <g
+                key={fp.uuid}
+                opacity={matchesHighlight ? 1 : 0.25}
+                style={{ pointerEvents: tool === 'select' || tool === 'drag' ? 'auto' : 'none', cursor: tool === 'drag' ? 'grab' : 'pointer' }}
+              >
                 {lockRingsVisible && fp.locked && (
                   <rect
                     data-testid={`pcb-lock-halo-${fp.refdes}`}
@@ -926,12 +1181,48 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
                   fontSize={10}
                   fontFamily="var(--vd-font-mono)"
                 >
-                  {fp.refdes}{fp.locked ? ' 🔒' : ''}
+                  {fp.refdes}{fp.locked ? ' [LOCKED]' : ''}
                   {spiceOverlay.powerMw[fp.refdes] !== undefined ? ` (${spiceOverlay.powerMw[fp.refdes]}mW)` : ''}
                 </text>
               </g>
             );
           })}
+
+          {/* Smart Alignment Guides during drag */}
+          {alignGuides.length > 0 && viewerRef.current?.viewport?.camera && kcModuleRef.current && alignGuides.map((g, idx) => {
+            const cam = viewerRef.current!.viewport.camera;
+            const kc = kcModuleRef.current!;
+            const p1 = g.axis === 'x'
+              ? cam.world_to_screen(new kc.Vec2(g.posWorld, g.refStartWorld))
+              : cam.world_to_screen(new kc.Vec2(g.refStartWorld, g.posWorld));
+            const p2 = g.axis === 'x'
+              ? cam.world_to_screen(new kc.Vec2(g.posWorld, g.refEndWorld))
+              : cam.world_to_screen(new kc.Vec2(g.refEndWorld, g.posWorld));
+            return (
+              <g key={`align-${idx}`}>
+                <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="#38BDF8" strokeWidth={1.25} strokeDasharray="4 2" />
+                <text x={(p1.x + p2.x) / 2} y={(p1.y + p2.y) / 2 - 4} fill="#38BDF8" fontSize={9} textAnchor="middle">
+                  {g.label}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Alt+Hover Redline Clearance / Measurement */}
+          {altRedline && viewerRef.current?.viewport?.camera && kcModuleRef.current && (() => {
+            const cam = viewerRef.current!.viewport.camera;
+            const kc = kcModuleRef.current!;
+            const p1 = cam.world_to_screen(new kc.Vec2(altRedline.x1, altRedline.y1));
+            const p2 = cam.world_to_screen(new kc.Vec2(altRedline.x2, altRedline.y2));
+            return (
+              <g data-testid="pcb-alt-redline">
+                <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="#EF4444" strokeWidth={1.5} />
+                <text x={(p1.x + p2.x) / 2} y={(p1.y + p2.y) / 2 - 5} fill="#FCA5A5" fontSize={10} textAnchor="middle" fontFamily="var(--vd-font-mono)">
+                  {altRedline.distMm.toFixed(2)} mm (dX {altRedline.dxMm.toFixed(2)}, dY {altRedline.dyMm.toFixed(2)})
+                </text>
+              </g>
+            );
+          })()}
 
           {/* 45-degree rubberband trace preview */}
           {routePreviewSvgPoints && (
@@ -1013,7 +1304,7 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
               <g data-testid="pcb-locked-trace-line">
                 <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="#F59E0B" strokeWidth={5} opacity={0.85} />
                 <text x={(p1.x + p2.x) / 2} y={(p1.y + p2.y) / 2 - 6} textAnchor="middle" fill="#FBBF24" fontSize={9}>
-                  🔒 {lockedTraceOverlay.net_name}
+                  [LOCKED] {lockedTraceOverlay.net_name}
                 </text>
               </g>
             );
@@ -1210,10 +1501,8 @@ export const Pcb2DPanel: React.FC<Pcb2DPanelProps> = ({
         <span>{statusNote}</span>
         <span>
           Cursor:{' '}
-          {cursorWorldMm
-            ? `${Math.round(cursorWorldMm.xMm * MM_TO_NM)} nm, ${Math.round(cursorWorldMm.yMm * MM_TO_NM)} nm`
-            : '—'}{' '}
-          · Selected: {selectedRefdes}
+          <span ref={cursorReadoutRef}>—</span>
+          {' '}· Layer: {activeLayer} · Selected: {selectedRefdes}
         </span>
       </div>
     </div>

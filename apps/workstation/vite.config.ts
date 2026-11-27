@@ -24,7 +24,7 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 5173,
     watch: {
-      ignored: ['**/vendor/**', '**/workers/sources/**', '**/.vd-runtime/**', '**/.vd-cache/**', '**/.venv/**', '**/target/**'],
+      ignored: ['**/vendor/**', '**/workers/**', '**/.vd-runtime/**', '**/.vd-portable/**', '**/.vd-cache/**', '**/.venv/**', '**/target/**', '**/.pnpm-store/**'],
     },
     proxy: {
       '/api': {

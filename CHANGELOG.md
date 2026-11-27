@@ -3,6 +3,30 @@
 All notable changes to Vajra-Dhīr EDA will be documented in this file.
 The format is based on Keep a Changelog.
 
+## [Unreleased]
+
+## [0.0.4] - 2026-11-27
+
+### Added
+- **Portable Desktop Launch & Runtime Packaging:** Added silent Windows `Vajra-Dhir-EDA.vbs` launcher, `scripts/create-shortcut.mjs` desktop shortcut installer, `scripts/launch.mjs` (`--portable`, `--offline`, `--headless-check`), `docker/docker-compose.portable.yml`, `bootstrap_routes.py` resumable Tier-1/Tier-2 pack downloads + offline `.tar.zst` import + `gc`, `BootstrapSplash.tsx`, and `scripts/check-repo-size.mjs`.
+- **Single-Renderer 3D & Bidirectional Workspace Sync:** Added `threeRendererPool.ts` singleton WebGL renderer, `sessionContextBus.ts`, 8 Smart Circuit Blocks in `kg_routes.py` (`/api/v1/blocks/catalog`, `/api/v1/blocks/drop`), `cosim_engine.py` live HW-IR pin macro generation, and `ArchitecturePlannerPanel` <-> HW-IR materialization.
+- **Unified CAD Canvas Ergonomics:** Added `useUnifiedViewport.ts` (cursor coordinate emit, grid snap, alignment guides, `Alt+Hover` redlines) wired into `Schematic2DPanel.tsx` and `Pcb2DPanel.tsx`, pin wiring, rubber-band move, mid-route vias (`V`), copper pour fill (`B`), octilinear `X` routing, flip (`Shift+F`), Net Spotlight, and pure-MIT octilinear autorouter fallback in `router_worker.py`.
+- **Verifier, Live SPICE Synthesis & Honest Fab Companion:** Added HW-IR SQLite -> SPICE compiler (`spice_synth.py`) with 3-tier behavioral models, cached KiCad/ngspice discovery (`ngspice_runner.py`), isolated `KICAD_CONFIG_HOME` DRC execution (`kicad_bridge.py`), live `/api/v1/diagnostics` + `/api/v1/diagnostics/waive` handlers (`ee_audit_routes.py`), real async job execution (`job_runner.py`), Schematic X-Ray thermal/DC overlay (`spiceSimStore.ts`), live `Z3` pinmux & `python-control` SMPS Bode routes (`daemon.py`), and `GET /api/v1/fab/status` + Bring-Up Companion (`fab_routes.py`, `FabReleasePanel.tsx`).
+- **Hermes-Core BYOK Agent Runtime:** Added `packages/vd-daemon/src/agent/{vault,providers,runtime}.py` with encrypted BYOK API key storage (`OpenAI`, `Anthropic`, `Gemini`, `DeepSeek`, `OpenRouter`, `Groq`, `Local Ollama`), loopback airgap enforcement (`NDA_AIRGAPPED` -> HTTP 403), SQLite FTS5 memory, 6 built-in EE skills, `@board`/`@drc`/`@spice` context mentions, `/rollback` checkpoint rewind, and Dual-Context lock auditing.
+- **App Icons, Offline User Guides & Help Center:** Added multi-OS icons (`assets/icons/`, `apps/workstation/public/`), PWA `manifest.webmanifest`, 10 offline markdown guides (`docs/guides/01..06-*.md`, `docs/{FAQ,TROUBLESHOOTING,KEYMAP,PACKS_AND_STORAGE}.md`), and interactive `HelpCenterModal.tsx` (`Shift+F1`).
+- **Stage 7 E2E Verification Gates:** Added `scripts/test-{cross-integration,canvas-ergonomics,verifier-and-lab,hermes-agent-byok,product-polish}-e2e.mjs` and `scripts/test-final-torture-gate.mjs`.
+
+### Changed & Fixed
+- **Clean Project Lifecycle & Delta Sync:** Stopped auto-seeding repo fixture boards on empty launch (`settings_store.py`), isolated `.vdproj/` create/open/close workspaces, emitted compact `< 4 KB` `STATE_DELTA` patches (`sync_propagator.py`), and wired `daemon.py` `/api/v1/components/search` directly to DuckDB (`starter_kg.duckdb` column mapping).
+- **Schema Idempotence & Cold-Boot Responsiveness:** Added `KERNEL_LOCK_VIOLATION` triggers to `001_v001_init.sql`, added `IF NOT EXISTS` guards to `002_manual_perfection.sql`, moved `/api/v1/jobs` outside `DB_LOCK`, and avoided eager heavy imports on `/stitch/physics/smps-bode`.
+- **KiCanvas Sub-Symbol Null Safety & Performance:** Guarded missing `lib_symbol` in `packages/kicanvas-core`, removed idle cursor pointermove React re-renders (`cursorWorldMmRef` + `emitLiveCursorCoords`), cleaned status/drawer jargon, and unified `usePolishStore.ts` workflows.
+
+## [0.0.3] - 2026-11-26
+
+### Added & Changed
+- **Workstation Shell & Desktop Polish (`apps/workstation`):** Rebuilt 6-zone UI with `MenuBar`, `TransportBar`, `ToolShelf`, `BottomDrawer`, `Ctrl+K` Command Palette, `Space` cursor context menu, `FileBrowserModal`, persistent settings (`.vd-cache/user-settings.json`), `job_runner.py`, and vendored `@tracespace/*` (`packages/tracespace-vendor`).
+- **Daemon & CI Hardening:** Added Windows MIME map, gzip, lazy solver loading, SQLite WAL tuning, `.github/actions-pins.lock.json`, and verified green cross-platform CI.
+
 ## [0.0.2] - 2026-11-26 (Human Release Signoff Pending)
 
 ### Added & Hardened
@@ -14,3 +38,8 @@ The format is based on Keep a Changelog.
 - **Simulation, Silicon & 3D Clearances:** Added lockstep co-simulation contracts (`packages/sim-compat/src/cosim_contract.rs`), Ring-2 `network_mode: none` enforcement (`packages/vd-daemon/src/x3_routes.py`, `x4_routes.py`), `packages/silicon-pack` (LibreLane Pack-2C C2P2B bridge), `packages/cad-transcoder/src/skidl_netlist.rs`, and integer `i64` nm MCAD 3D clearance DRC (`packages/cad-geom/src/mcad_clearance.rs`).
 - **Clean-Room Manufacturing & Persistence:** Added Rust `panelizer`, `rs274x`, `eagle_xml`, `wire-harness`, `pcb-diff`, `i_triangle` `i64` copper pour, `occt-import-js` isolated Web Worker, `cas-store` zstd compression, WAL checkpointing, transactional Undo/Redo, Win64/POSIX child supervision, and SSE agent proposal endpoints.
 - **License, Docs & Verification Hygiene:** Unified root `LICENSE` under Apache License 2.0 (with `NOTICE` & `docs/LICENSE_EXCEPTIONS.md`), adaptive dark/light SVG branding, hardened `Spec & Security CI`, and verified offline SPDX firewall, secret scanning, and verification harness (`0/3` PCBs physically fabricated).
+
+[Unreleased]: https://github.com/Dev-Solanki-09/Vajra-Dhir-EDA/compare/v0.0.4...HEAD
+[0.0.4]: https://github.com/Dev-Solanki-09/Vajra-Dhir-EDA/compare/v0.0.3...v0.0.4
+[0.0.3]: https://github.com/Dev-Solanki-09/Vajra-Dhir-EDA/compare/v0.0.2...v0.0.3
+[0.0.2]: https://github.com/Dev-Solanki-09/Vajra-Dhir-EDA/releases/tag/v0.0.2

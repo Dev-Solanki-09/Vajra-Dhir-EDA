@@ -1,6 +1,6 @@
 {
   "name": "vajra-dhir-eda",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "private": true,
   "license": "Apache-2.0 OR MIT",
   "packageManager": "pnpm@10.6.0",
@@ -24,7 +24,9 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
-    "studio": "python scripts/launch-studio.py",
+    "start": "node scripts/launch.mjs",
+    "start:portable": "node scripts/launch.mjs --portable",
+    "studio": "node scripts/launch.mjs",
     "setup:projects": "node scripts/sync-integrated-projects.mjs",
     "check:licenses": "node scripts/check-spdx-firewall.mjs"
   },

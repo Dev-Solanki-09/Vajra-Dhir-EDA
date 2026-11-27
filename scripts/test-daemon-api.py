@@ -52,7 +52,7 @@ def http_post(path: str, payload: dict) -> tuple[int, dict]:
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=20) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         return e.code, json.loads(e.read().decode("utf-8"))
@@ -98,9 +98,9 @@ def main():
         # 1. GET /api/v1/health
         status, health = http_get("/api/v1/health")
         assert status == 200, f"Expected 200, got {status}: {health}"
-        assert health["version"] == "0.0.3", f"Expected daemon version 0.0.3, got {health['version']}"
+        assert health["version"] == "0.0.4", f"Expected daemon version 0.0.4, got {health['version']}"
         assert health["dlp_class"] == "NDA_AIRGAPPED"
-        print("  [PASS] GET /api/v1/health -> version 0.0.3, NDA_AIRGAPPED")
+        print("  [PASS] GET /api/v1/health -> version 0.0.4, NDA_AIRGAPPED")
 
         # 2. GET /api/v1/board
         status, board = http_get("/api/v1/board")

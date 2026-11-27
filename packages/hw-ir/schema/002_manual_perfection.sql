@@ -2,7 +2,7 @@ PRAGMA foreign_keys = ON;
 PRAGMA user_version = 2;
 
 -- 1. ASSEMBLY BUILD VARIANTS (Multiple SKUs from 1 Design: Standard / Industrial / Lite)
-CREATE TABLE variants (
+CREATE TABLE IF NOT EXISTS variants (
     id                  TEXT PRIMARY KEY,              -- UUIDv7
     project_id          TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name                TEXT NOT NULL,                 -- 'Base','Industrial_-40C','No_WiFi_Lite'
@@ -11,7 +11,7 @@ CREATE TABLE variants (
     UNIQUE(project_id, name)
 );
 
-CREATE TABLE variant_overrides (
+CREATE TABLE IF NOT EXISTS variant_overrides (
     variant_id          TEXT NOT NULL REFERENCES variants(id) ON DELETE CASCADE,
     component_id        TEXT NOT NULL REFERENCES components(id) ON DELETE CASCADE,
     dnp_override        INTEGER CHECK(dnp_override IN (0,1)),
@@ -21,7 +21,7 @@ CREATE TABLE variant_overrides (
 );
 
 -- 2. MULTI-CHANNEL LAYOUT ROOMS (Route 1 Channel -> Replicate Identically to Channels 2..N)
-CREATE TABLE layout_rooms (
+CREATE TABLE IF NOT EXISTS layout_rooms (
     id                  TEXT PRIMARY KEY,              -- UUIDv7
     board_id            TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
     room_group          TEXT NOT NULL,                 -- 'bms_cell_channel', 'motor_phase'
@@ -59,7 +59,7 @@ END;
 
 -- 3. CRYPTOGRAPHICALLY SIGNED, GEOMETRY-HASH-BOUND DRC WAIVERS
 -- Auto-invalidates the millisecond any waived copper/component moves by >= 1 nm!
-CREATE TABLE drc_waivers (
+CREATE TABLE IF NOT EXISTS drc_waivers (
     id                  TEXT PRIMARY KEY,              -- UUIDv7
     project_id          TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     rule_code           TEXT NOT NULL,                 -- 'clearance','shorting_items','courtyard_overlap'
@@ -73,7 +73,7 @@ CREATE TABLE drc_waivers (
 );
 
 -- 4. CUSTOM PADSTACKS (Thermal Paste Windowpanes, Polygon Pads, Blind/Buried/Back-Drill Vias)
-CREATE TABLE padstacks (
+CREATE TABLE IF NOT EXISTS padstacks (
     id                  TEXT PRIMARY KEY,              -- UUIDv7
     project_id          TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name                TEXT NOT NULL,                 -- 'QFN56_EP_3x3_Windowpane', 'uVia_L1_L2'
@@ -86,14 +86,14 @@ CREATE TABLE padstacks (
 );
 
 -- 5. SAVED SELECTION FILTER QUERIES & DRAFTSMAN FABRICATION DRAWINGS
-CREATE TABLE selection_queries (
+CREATE TABLE IF NOT EXISTS selection_queries (
     id                  TEXT PRIMARY KEY,
     project_id          TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name                TEXT NOT NULL,                 -- 'Thin Power Traces'
     query_expr          TEXT NOT NULL                  -- "NetClass == 'PWR_3V3' && Width < 400000"
 );
 
-CREATE TABLE fab_drawings (
+CREATE TABLE IF NOT EXISTS fab_drawings (
     id                  TEXT PRIMARY KEY,
     board_id            TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
     sheet_title         TEXT NOT NULL,                 -- 'FAB-01 Fabrication Drawing', 'ASSY-01 Top Assembly'

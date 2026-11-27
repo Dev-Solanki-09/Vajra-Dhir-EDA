@@ -1,6 +1,6 @@
 {
   "name": "@vajradhir/arch-core",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "type": "module",
   "license": "MIT",
   "description": "System architecture, composite SBC/module catalog, power-budget solver, electrical mismatch checker, and system.yaml sync engine for xyflow",

@@ -16,5 +16,17 @@
       "moo": ["./src/shims/moo.ts"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "../../vendor/**",
+    "../../workers/**",
+    "../../.vd-runtime/**",
+    "../../.vd-portable/**",
+    "../../.vd-cache/**",
+    "../../.venv/**",
+    "../../target/**",
+    "../../.pnpm-store/**"
+  ]
 }

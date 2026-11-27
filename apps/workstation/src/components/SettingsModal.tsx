@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   KEYMAP_COMMANDS,
   findShortcutConflicts,
@@ -79,6 +79,30 @@ export const SettingsModal: React.FC<{
   const [conflictMsg, setConflictMsg] = useState('');
   const [importDraft, setImportDraft] = useState('');
   const [showImportBox, setShowImportBox] = useState(false);
+  const [byokProvider, setByokProvider] = useState('deterministic_offline');
+  const [byokModel, setByokModel] = useState('vd-offline-ee-v1');
+  const [byokBaseUrl, setByokBaseUrl] = useState('');
+  const [byokKeyDraft, setByokKeyDraft] = useState('');
+  const [vaultStatus, setVaultStatus] = useState<Record<string, { configured: boolean; masked: string }>>({});
+  const [memApproval, setMemApproval] = useState(true);
+  const [skillApproval, setSkillApproval] = useState(true);
+  const [connStatus, setConnStatus] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    void fetch('/api/v1/agent/providers')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        if (d.settings?.provider) setByokProvider(String(d.settings.provider));
+        if (d.settings?.model) setByokModel(String(d.settings.model));
+        if (d.settings?.base_url !== undefined) setByokBaseUrl(String(d.settings.base_url));
+        if (typeof d.settings?.memory_write_approval === 'boolean') setMemApproval(d.settings.memory_write_approval);
+        if (typeof d.settings?.skills_write_approval === 'boolean') setSkillApproval(d.settings.skills_write_approval);
+        if (d.vault_status) setVaultStatus(d.vault_status);
+      })
+      .catch(() => {});
+  }, [open]);
 
   const effectiveBindings = useMemo(
     () => resolveEffectiveBindings(settings.keymap.preset, settings.keymap.bindings),
@@ -629,7 +653,137 @@ export const SettingsModal: React.FC<{
 
             {cat === 'agent' && (
               <>
-                <SettingRow label="Default DLP Mode">
+                <SettingRow label="AI Provider (Hermes-Core BYOK)">
+                  <select
+                    data-testid="settings-byok-provider"
+                    className="vd-select vd-metric"
+                    value={byokProvider}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setByokProvider(next);
+                      void fetch('/api/v1/agent/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ provider: next }),
+                      });
+                    }}
+                  >
+                    <option value="deterministic_offline">Offline Planner ($0 Airgap)</option>
+                    <option value="ollama">Ollama (Loopback 127.0.0.1)</option>
+                    <option value="openai">OpenAI (BYOK)</option>
+                    <option value="anthropic">Anthropic Claude (BYOK)</option>
+                    <option value="gemini">Google Gemini (BYOK)</option>
+                    <option value="openrouter">OpenRouter (BYOK)</option>
+                    <option value="nous">Nous Portal (BYOK)</option>
+                    <option value="nvidia_nim">NVIDIA NIM (BYOK)</option>
+                    <option value="custom">Custom Endpoint</option>
+                  </select>
+                </SettingRow>
+                <SettingRow label="Model Identifier">
+                  <input
+                    className="vd-input vd-metric"
+                    style={{ width: 220 }}
+                    value={byokModel}
+                    onChange={(e) => setByokModel(e.target.value)}
+                    onBlur={() =>
+                      void fetch('/api/v1/agent/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ model: byokModel, base_url: byokBaseUrl }),
+                      })
+                    }
+                  />
+                </SettingRow>
+                <SettingRow label={`API Key Vault (${vaultStatus[byokProvider]?.configured ? vaultStatus[byokProvider].masked : 'Not Set'})`}>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <input
+                      data-testid="settings-byok-key-input"
+                      type="password"
+                      placeholder="Paste BYOK key (never logged)"
+                      className="vd-input vd-metric"
+                      style={{ width: 190 }}
+                      value={byokKeyDraft}
+                      onChange={(e) => setByokKeyDraft(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      data-testid="settings-byok-save-btn"
+                      className="vd-btn vd-btn-primary"
+                      onClick={async () => {
+                        const res = await fetch('/api/v1/agent/vault', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ provider: byokProvider, api_key: byokKeyDraft }),
+                        });
+                        const data = await res.json();
+                        setByokKeyDraft('');
+                        if (res.ok) {
+                          setVaultStatus((prev) => ({ ...prev, [byokProvider]: { configured: Boolean(data.configured), masked: String(data.masked || '') } }));
+                          setConnStatus(`Saved to ${data.backend || 'vault'} (${data.masked || 'cleared'})`);
+                        }
+                      }}
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="settings-byok-test-btn"
+                      className="vd-btn"
+                      onClick={async () => {
+                        const res = await fetch('/api/v1/agent/test-connection', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            provider: byokProvider,
+                            model: byokModel,
+                            base_url: byokBaseUrl,
+                            dlp_tier: settings.agent.dlpMode,
+                          }),
+                        });
+                        const data = await res.json();
+                        setConnStatus(String(data.message || (data.ok ? 'Connected' : 'Blocked')));
+                      }}
+                    >
+                      Test Connection
+                    </button>
+                  </div>
+                </SettingRow>
+                {connStatus && (
+                  <div data-testid="settings-byok-status" className="vd-metric" style={{ padding: '4px 8px', fontSize: 11, color: '#93C5FD' }}>
+                    {connStatus}
+                  </div>
+                )}
+                <SettingRow label="Require Approval Before Saving Agent Memory">
+                  <input
+                    type="checkbox"
+                    checked={memApproval}
+                    onChange={(e) => {
+                      const v = e.target.checked;
+                      setMemApproval(v);
+                      void fetch('/api/v1/agent/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ memory_write_approval: v }),
+                      });
+                    }}
+                  />
+                </SettingRow>
+                <SettingRow label="Require Approval Before Saving EE Skills">
+                  <input
+                    type="checkbox"
+                    checked={skillApproval}
+                    onChange={(e) => {
+                      const v = e.target.checked;
+                      setSkillApproval(v);
+                      void fetch('/api/v1/agent/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ skills_write_approval: v }),
+                      });
+                    }}
+                  />
+                </SettingRow>
+                <SettingRow label="Default Privacy / Network Policy">
                   <select className="vd-select vd-metric" value={settings.agent.dlpMode} onChange={(e) => void updateSettings({ agent: { dlpMode: e.target.value } })}>
                     <option value="NDA_AIRGAPPED">NDA_AIRGAPPED (Loopback Only)</option>
                     <option value="PRIVATE_CLOUD_OK">PRIVATE_CLOUD_OK</option>

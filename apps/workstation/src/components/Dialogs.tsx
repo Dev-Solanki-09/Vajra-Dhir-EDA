@@ -274,7 +274,7 @@ export const AboutModal: React.FC<{ open: boolean; onClose: () => void }> = ({ o
     <div className="vd-modal-backdrop" role="dialog" aria-modal="true" aria-label="About Vajra-Dhir EDA" data-testid="about-modal">
       <div className="vd-modal-panel" style={{ maxWidth: 560 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <strong>About Vajra-Dhīr EDA v0.0.3</strong>
+          <strong>About Vajra-Dhīr EDA v0.0.4</strong>
           <button type="button" className="vd-btn" onClick={onClose}>Close</button>
         </div>
         <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
@@ -283,7 +283,7 @@ export const AboutModal: React.FC<{ open: boolean; onClose: () => void }> = ({ o
         </div>
         {tab === 'info' ? (
           <div className="vd-metric" style={{ display: 'grid', gap: 6, fontSize: 11, backgroundColor: 'var(--vd-bg-canvas)', padding: 10, border: '1px solid var(--vd-border-subtle)' }}>
-            <div>Version: 0.0.3 (Architecture Frozen · Milestone 1)</div>
+            <div>Version: 0.0.4 (Architecture Frozen · Milestone 1)</div>
             <div>Ring 1 License: Apache-2.0 / MIT (Zero AGPL/EUPL in Core)</div>
             <div>Kernel: HW-IR SQLite WAL (i64 nm, i32 mdeg, UUIDv7)</div>
             <div>Security Floors: Wasmtime 51.0.0 · React 19.3.1 · TypeScript 7.0.2</div>
@@ -292,7 +292,7 @@ export const AboutModal: React.FC<{ open: boolean; onClose: () => void }> = ({ o
               className="vd-btn"
               style={{ justifySelf: 'start', marginTop: 4 }}
               onClick={() => {
-                void navigator.clipboard?.writeText('Vajra-Dhir EDA v0.0.3 | Apache-2.0 | Wasmtime 51 | React 19.3.1 | 127.0.0.1:41900').catch(() => {});
+                void navigator.clipboard?.writeText('Vajra-Dhir EDA v0.0.4 | Apache-2.0 | Wasmtime 51 | React 19.3.1 | 127.0.0.1:41900').catch(() => {});
                 setCopied(true);
               }}
             >

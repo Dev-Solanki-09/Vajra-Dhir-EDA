@@ -185,6 +185,15 @@ BEGIN
     SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot mutate human-locked trace');
 END;
 
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_traces_del
+BEFORE DELETE ON traces
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot delete human-locked trace');
+END;
+
 CREATE TRIGGER IF NOT EXISTS trg_protect_locked_vias_upd
 BEFORE UPDATE ON vias
 WHEN OLD.locked = 1
@@ -193,3 +202,219 @@ WHEN OLD.locked = 1
 BEGIN
     SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot mutate human-locked via');
 END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_vias_del
+BEFORE DELETE ON vias
+WHEN OLD.locked = 1
+ AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human'
+ AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN
+    SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot delete human-locked via');
+END;
+
+CREATE TABLE IF NOT EXISTS component_pins (
+    id                  TEXT PRIMARY KEY,
+    component_id        TEXT NOT NULL REFERENCES components(id) ON DELETE CASCADE,
+    pin_number          TEXT NOT NULL,
+    pin_name            TEXT NOT NULL,
+    elec_type           TEXT NOT NULL DEFAULT 'passive',
+    max_voltage_v       REAL,
+    min_voltage_v       REAL,
+    x_offset_nm         INTEGER NOT NULL DEFAULT 0,
+    y_offset_nm         INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(component_id, pin_number)
+);
+
+CREATE TABLE IF NOT EXISTS pin_net_bindings (
+    id                  TEXT PRIMARY KEY,
+    pin_id              TEXT NOT NULL REFERENCES component_pins(id) ON DELETE CASCADE,
+    net_id              TEXT NOT NULL REFERENCES nets(id) ON DELETE CASCADE,
+    provenance          TEXT NOT NULL CHECK(provenance IN ('human','agent','cubo','import','compiler')),
+    locked              INTEGER NOT NULL DEFAULT 0 CHECK(locked IN (0,1)),
+    rev_lamport         INTEGER NOT NULL DEFAULT 1,
+    UNIQUE(pin_id)
+);
+
+CREATE TABLE IF NOT EXISTS copper_zones (
+    id                  TEXT PRIMARY KEY,
+    board_id            TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+    net_id              TEXT REFERENCES nets(id) ON DELETE CASCADE,
+    layer_name          TEXT NOT NULL,
+    zone_kind           TEXT NOT NULL DEFAULT 'pour',
+    polygon_nm_json     TEXT NOT NULL,
+    clearance_nm        INTEGER NOT NULL DEFAULT 200000,
+    provenance          TEXT NOT NULL CHECK(provenance IN ('human','agent','cubo','import','compiler')),
+    locked              INTEGER NOT NULL DEFAULT 0 CHECK(locked IN (0,1)),
+    rev_lamport         INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS mcad_keepouts (
+    id                  TEXT PRIMARY KEY,
+    board_id            TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+    name                TEXT NOT NULL,
+    side                TEXT NOT NULL DEFAULT 'top',
+    polygon_nm_json     TEXT NOT NULL,
+    max_height_nm       INTEGER NOT NULL DEFAULT 10000000,
+    locked              INTEGER NOT NULL DEFAULT 1 CHECK(locked IN (0,1)),
+    rev_lamport         INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS electrical_constraints (
+    id                  TEXT PRIMARY KEY,
+    project_id          TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    constraint_kind     TEXT NOT NULL,
+    target_entity_id    TEXT NOT NULL,
+    expression_json     TEXT NOT NULL,
+    severity            TEXT NOT NULL DEFAULT 'error',
+    provenance          TEXT NOT NULL DEFAULT 'human',
+    locked              INTEGER NOT NULL DEFAULT 0 CHECK(locked IN (0,1)),
+    rev_lamport         INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS layout_rooms (
+    id                  TEXT PRIMARY KEY,
+    board_id            TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+    name                TEXT NOT NULL,
+    polygon_nm_json     TEXT NOT NULL,
+    provenance          TEXT NOT NULL DEFAULT 'human',
+    locked              INTEGER NOT NULL DEFAULT 0 CHECK(locked IN (0,1)),
+    rev_lamport         INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS variants (
+    id                  TEXT PRIMARY KEY,
+    project_id          TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name                TEXT NOT NULL,
+    description         TEXT NOT NULL DEFAULT '',
+    UNIQUE(project_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS variant_overrides (
+    id                  TEXT PRIMARY KEY,
+    variant_id          TEXT NOT NULL REFERENCES variants(id) ON DELETE CASCADE,
+    component_id        TEXT NOT NULL REFERENCES components(id) ON DELETE CASCADE,
+    dnp                 INTEGER NOT NULL DEFAULT 0 CHECK(dnp IN (0,1)),
+    override_value      TEXT,
+    override_mpn        TEXT,
+    UNIQUE(variant_id, component_id)
+);
+
+CREATE TABLE IF NOT EXISTS drc_waivers (
+    id                  TEXT PRIMARY KEY,
+    board_id            TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+    rule_id             TEXT NOT NULL,
+    entity_id           TEXT NOT NULL,
+    reason              TEXT NOT NULL,
+    waived_by           TEXT NOT NULL DEFAULT 'human',
+    created_at_utc      TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS padstacks (
+    id                  TEXT PRIMARY KEY,
+    board_id            TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+    name                TEXT NOT NULL,
+    shape               TEXT NOT NULL DEFAULT 'rect',
+    width_nm            INTEGER NOT NULL,
+    height_nm           INTEGER NOT NULL,
+    drill_nm            INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS selection_queries (
+    id                  TEXT PRIMARY KEY,
+    project_id          TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name                TEXT NOT NULL,
+    query_expr          TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS fab_drawings (
+    id                  TEXT PRIMARY KEY,
+    board_id            TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+    title               TEXT NOT NULL,
+    notes_json          TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version             INTEGER PRIMARY KEY,
+    applied_at_utc      TEXT NOT NULL
+);
+INSERT OR IGNORE INTO schema_migrations(version, applied_at_utc) VALUES (1, '2026-11-27T00:00:00Z');
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_boards_upd
+BEFORE UPDATE ON boards
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot mutate human-locked board'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_boards_del
+BEFORE DELETE ON boards
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot delete human-locked board'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_nets_upd
+BEFORE UPDATE ON nets
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot mutate human-locked net'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_nets_del
+BEFORE DELETE ON nets
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot delete human-locked net'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_pin_net_bindings_upd
+BEFORE UPDATE ON pin_net_bindings
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot mutate human-locked pin_net_binding'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_pin_net_bindings_del
+BEFORE DELETE ON pin_net_bindings
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot delete human-locked pin_net_binding'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_copper_zones_upd
+BEFORE UPDATE ON copper_zones
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot mutate human-locked copper_zone'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_copper_zones_del
+BEFORE DELETE ON copper_zones
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot delete human-locked copper_zone'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_mcad_keepouts_upd
+BEFORE UPDATE ON mcad_keepouts
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot mutate human-locked mcad_keepout'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_mcad_keepouts_del
+BEFORE DELETE ON mcad_keepouts
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot delete human-locked mcad_keepout'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_electrical_constraints_upd
+BEFORE UPDATE ON electrical_constraints
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot mutate human-locked electrical_constraint'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_electrical_constraints_del
+BEFORE DELETE ON electrical_constraints
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot delete human-locked electrical_constraint'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_firmware_pinmux_upd
+BEFORE UPDATE ON firmware_pinmux
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot mutate human-locked firmware_pinmux'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_firmware_pinmux_del
+BEFORE DELETE ON firmware_pinmux
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot delete human-locked firmware_pinmux'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_layout_rooms_upd
+BEFORE UPDATE ON layout_rooms
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot mutate human-locked layout_room'); END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_locked_layout_rooms_del
+BEFORE DELETE ON layout_rooms
+WHEN OLD.locked = 1 AND (SELECT actor_kind FROM _tx_actor_ctx WHERE singleton = 1) != 'human' AND (SELECT allow_lock_override FROM _tx_actor_ctx WHERE singleton = 1) = 0
+BEGIN SELECT RAISE(ABORT, 'KERNEL_LOCK_VIOLATION: Non-human actor cannot delete human-locked layout_room'); END;

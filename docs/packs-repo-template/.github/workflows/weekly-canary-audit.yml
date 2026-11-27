@@ -1,0 +1,12 @@
+name: Weekly Canary Audit (72h Cooldown + License Rug-Pull Check)
+on:
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+jobs:
+  canary-audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - run: node smoke-tests/run-pack-smoke.mjs
+      - run: echo "Enforce 72h upstream release cooldown and fail if SPDX license changed to AGPL/EUPL/NC"

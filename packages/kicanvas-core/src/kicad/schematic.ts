@@ -1421,7 +1421,7 @@ export class SchematicSymbol {
     }
 
     get unit_suffix() {
-        if (!this.unit || this.lib_symbol.unit_count <= 1) {
+        if (!this.unit || (this.lib_symbol?.unit_count ?? 1) <= 1) {
             return "";
         }
 
@@ -1468,13 +1468,13 @@ export class SchematicSymbol {
             case "UNIT":
                 return this.unit_suffix;
             case "SYMBOL_LIBRARY":
-                return this.lib_symbol.library_name;
+                return this.lib_symbol?.library_name;
             case "SYMBOL_NAME":
-                return this.lib_symbol.library_item_name;
+                return this.lib_symbol?.library_item_name;
             case "SYMBOL_DESCRIPTION":
-                return this.lib_symbol.description;
+                return this.lib_symbol?.description;
             case "SYMBOL_KEYWORDS":
-                return this.lib_symbol.keywords;
+                return this.lib_symbol?.keywords;
             case "EXCLUDE_FROM_BOM":
                 return this.in_bom ? "" : "Excluded from BOM";
             case "EXCLUDE_FROM_BOARD":
@@ -1521,14 +1521,14 @@ export class PinInstance {
     }
 
     get definition() {
-        return this.parent.lib_symbol.pin_by_number(
+        return this.parent.lib_symbol?.pin_by_number(
             this.number,
             this.parent.convert,
         );
     }
 
     get unit() {
-        return this.definition.unit;
+        return this.definition?.unit;
     }
 }
 

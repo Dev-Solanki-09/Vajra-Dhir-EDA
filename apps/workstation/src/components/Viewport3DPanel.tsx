@@ -8,6 +8,12 @@ import { globalStepWorkerClient } from '../workers/stepClient';
 import { globalPiHeatmapStore, lookupPiSampleAtWorldMm, samplePiColormapRgb, usePiHeatmap } from '../piHeatmapStore';
 import { globalMcadThermalStore, useMcadThermal } from '../mcadThermalStore';
 import { useDesignStore } from '../store/useDesignStore';
+import { useSettingsStore } from '../store/useSettingsStore';
+import {
+  acquireProjectWebGLRenderer,
+  releaseCanvasReference,
+  scheduleOnDemandRender,
+} from '../engines/threeRendererPool';
 
 export interface Component3DMeta {
   uuid: string;
@@ -141,6 +147,10 @@ export const Viewport3DPanel: React.FC = () => {
   const [aiGhost, setAiGhost] = useState<{ refdes: string; xMm: number; yMm: number } | null>(null);
   const piHeatmap = usePiHeatmap();
   const mcad = useMcadThermal();
+  const entitiesByRefdes = useDesignStore((s) => s.entitiesByRefdes);
+  const transientPreviews = useDesignStore((s) => s.transientPreviews);
+  const solderMaskColor = useSettingsStore((s) => s.projectSettings.solderMaskColor);
+  const entityCount = Object.keys(entitiesByRefdes).length;
 
   const selectedRefdes = probe.selection.entityIds[0] ?? 'J1';
   const actorKindRef = useRef(actorKind);
@@ -180,7 +190,7 @@ export const Viewport3DPanel: React.FC = () => {
 
   useEffect(() => {
     void fetchBoardMesh();
-  }, [fetchBoardMesh, sync.revision, sync.pcbSha256]);
+  }, [fetchBoardMesh, sync.pcbPath, entityCount]);
 
   useEffect(() => {
     if (sync.lastEventType === 'mcad:updated') {
@@ -224,15 +234,11 @@ export const Viewport3DPanel: React.FC = () => {
 
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+      renderer = acquireProjectWebGLRenderer(canvas);
     } catch (err) {
       setStatusNote(err instanceof Error ? `WebGL unavailable: ${err.message}` : 'WebGL unavailable');
       return;
     }
-
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-    renderer.setClearColor(0x0b0e14, 1);
-    renderer.localClippingEnabled = true;
 
     const onContextLost = (ev: Event) => {
       ev.preventDefault();
@@ -371,6 +377,13 @@ export const Viewport3DPanel: React.FC = () => {
     scene.add(tc.getHelper());
     transformRef.current = tc;
 
+    const renderNow = () => {
+      if (activeCamRef.current && rendererRef.current && sceneRef.current) {
+        rendererRef.current.render(sceneRef.current, activeCamRef.current);
+      }
+    };
+    const requestRender = () => scheduleOnDemandRender(renderNow);
+
     const resizeObserver = new ResizeObserver(() => {
       const w = Math.max(container.clientWidth, 240);
       const h = Math.max(container.clientHeight, 200);
@@ -381,21 +394,19 @@ export const Viewport3DPanel: React.FC = () => {
       ortho.left = (-frustum * asp) / 2;
       ortho.right = (frustum * asp) / 2;
       ortho.updateProjectionMatrix();
+      requestRender();
     });
     resizeObserver.observe(container);
 
-    let rafId = 0;
-    const animate = () => {
-      rafId = requestAnimationFrame(animate);
-      orbit.update();
-      if (activeCamRef.current) {
-        renderer.render(scene, activeCamRef.current);
-      }
-    };
-    rafId = requestAnimationFrame(animate);
+    const onOrbitChange = () => requestRender();
+    orbit.addEventListener('change', onOrbitChange);
+    const onTcChange = () => requestRender();
+    tc.addEventListener('change', onTcChange);
+    requestRender();
 
     return () => {
-      cancelAnimationFrame(rafId);
+      orbit.removeEventListener('change', onOrbitChange);
+      tc.removeEventListener('change', onTcChange);
       canvas.removeEventListener('webglcontextlost', onContextLost);
       canvas.removeEventListener('webglcontextrestored', onContextRestored);
       resizeObserver.disconnect();
@@ -403,12 +414,7 @@ export const Viewport3DPanel: React.FC = () => {
       tc.dispose();
       orbit.dispose();
       disposeObjectTree(boardRoot);
-      renderer.dispose();
-      try {
-        renderer.forceContextLoss();
-      } catch {
-        /* ignore unsupported drivers */
-      }
+      releaseCanvasReference(canvas);
       rendererRef.current = null;
     };
   }, []);
@@ -470,9 +476,16 @@ export const Viewport3DPanel: React.FC = () => {
     transformRef.current?.detach();
 
     // 1. FR4 Board Substrate
+    const maskHexMap: Record<string, string> = {
+      Green: '#103B2E',
+      'Matte Black': '#1B1C20',
+      Blue: '#133463',
+      Red: '#6B171D',
+      White: '#C8CCD4',
+    };
     const fr4Geo = new THREE.BoxGeometry(bw, th, bh);
     const fr4Mat = new THREE.MeshStandardMaterial({
-      color: '#103B2E',
+      color: maskHexMap[solderMaskColor] || '#103B2E',
       roughness: 0.72,
       metalness: 0.08,
       transparent: xray,
@@ -732,16 +745,74 @@ export const Viewport3DPanel: React.FC = () => {
             }
           }
           setStepDecodedCount(globalStepWorkerClient.getCachedCount());
+          if (rendererRef.current && sceneRef.current && activeCamRef.current) {
+            scheduleOnDemandRender(() => {
+              if (rendererRef.current && sceneRef.current && activeCamRef.current) {
+                rendererRef.current.render(sceneRef.current, activeCamRef.current);
+              }
+            });
+          }
         } catch (err) {
           setStepExportStatus(err instanceof Error ? `STEP err: ${err.message}` : 'STEP decode error');
         }
       })
     );
 
+    if (rendererRef.current && sceneRef.current && activeCamRef.current) {
+      scheduleOnDemandRender(() => {
+        if (rendererRef.current && sceneRef.current && activeCamRef.current) {
+          rendererRef.current.render(sceneRef.current, activeCamRef.current);
+        }
+      });
+    }
+
     return () => {
       cancelled = true;
     };
   }, [meshPayload, xray, showFr4, showCopper, showParts, selectedRefdes, clashRefs, snapCamera, piHeatmap.enabled, piHeatmap.result, piHeatmap.metric, piHeatmap.colormap, mcad.showThermal, mcad.thermal]);
+
+  // In-place uuid -> mesh patching (0 full-scene rebuilds on move/rotate/flip or solder mask color change)
+  useEffect(() => {
+    const th = meshPayload?.board.thickness_mm ?? 1.6;
+    for (const [refdes, anchor] of compAnchorsRef.current.entries()) {
+      const prev = transientPreviews[refdes];
+      const ent = entitiesByRefdes[refdes];
+      if (!prev && !ent) continue;
+      const xMm = (prev ? prev.x_nm : ent.x_nm) / MM_TO_NM;
+      const yMm = (prev ? prev.y_nm : ent.y_nm) / MM_TO_NM;
+      const rotDeg = ((prev ? prev.rot_mdeg : ent.rot_mdeg) || 0) / 1000;
+      const side = prev ? prev.side : ent.side;
+      anchor.position.set(xMm, side === 'bottom' ? -th / 2 : th / 2, yMm);
+      anchor.rotation.set(0, (rotDeg * Math.PI) / 180, side === 'bottom' ? Math.PI : 0);
+      anchor.userData.lastXMm = xMm;
+      anchor.userData.lastYMm = yMm;
+      const meta = compMetaMapRef.current.get(refdes);
+      if (meta) {
+        meta.x_mm = xMm;
+        meta.y_mm = yMm;
+        meta.rot_deg = rotDeg;
+        meta.side = side === 'bottom' ? 'bottom' : 'top';
+      }
+    }
+    const fr4 = fr4MeshRef.current;
+    if (fr4 && fr4.material instanceof THREE.MeshStandardMaterial) {
+      const maskHexMap: Record<string, string> = {
+        Green: '#103B2E',
+        'Matte Black': '#1B1C20',
+        Blue: '#133463',
+        Red: '#6B171D',
+        White: '#C8CCD4',
+      };
+      fr4.material.color.set(maskHexMap[solderMaskColor] || '#103B2E');
+    }
+    if (rendererRef.current && sceneRef.current && activeCamRef.current) {
+      scheduleOnDemandRender(() => {
+        if (rendererRef.current && sceneRef.current && activeCamRef.current) {
+          rendererRef.current.render(sceneRef.current, activeCamRef.current);
+        }
+      });
+    }
+  }, [entitiesByRefdes, transientPreviews, solderMaskColor, meshPayload?.board.thickness_mm]);
 
   // Render P14 CadQuery Parametric Enclosure, Clash Intersections, 3D Cross-Section Slicing Plane, & ElmerFEM Thermal Surface
   useEffect(() => {
@@ -1441,7 +1512,7 @@ export const Viewport3DPanel: React.FC = () => {
                   }
                 }}
               >
-                {c.refdes}{c.locked ? '🔒' : ''}
+                {c.refdes}{c.locked ? ' [LOCK]' : ''}
               </button>
             );
           })}

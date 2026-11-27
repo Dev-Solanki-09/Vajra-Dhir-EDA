@@ -19,6 +19,7 @@ try:
         new_uuidv7,
         sha256_text,
         sync_hwir_to_kicad_pcb,
+        sync_hwir_to_kicad_sch,
         sync_kicad_pcb_to_hwir,
         sync_kicad_sch_to_hwir,
     )
@@ -30,6 +31,7 @@ except ImportError:
         new_uuidv7,
         sha256_text,
         sync_hwir_to_kicad_pcb,
+        sync_hwir_to_kicad_sch,
         sync_kicad_pcb_to_hwir,
         sync_kicad_sch_to_hwir,
     )
@@ -51,6 +53,7 @@ _ACTIVE_STATE: Dict[str, Any] = {
 
 _WS_LOCK = threading.Lock()
 _WS_CLIENTS: Set[Any] = set()
+_WS_BY_TAB: Dict[str, Any] = {}
 
 
 def _ws_encode_frame(text: str) -> bytes:
@@ -68,14 +71,32 @@ def _ws_encode_frame(text: str) -> bytes:
     return bytes(header) + payload
 
 
-def register_ws_client(sock: Any) -> None:
+def register_ws_client(sock: Any, tab_id: Optional[str] = None) -> None:
+    stale = None
     with _WS_LOCK:
+        if tab_id:
+            prev = _WS_BY_TAB.get(tab_id)
+            if prev is not None and prev is not sock:
+                stale = prev
+                _WS_CLIENTS.discard(prev)
+            _WS_BY_TAB[tab_id] = sock
         _WS_CLIENTS.add(sock)
+    if stale is not None:
+        try:
+            stale.close()
+        except Exception:
+            pass
 
 
-def unregister_ws_client(sock: Any) -> None:
+def unregister_ws_client(sock: Any, tab_id: Optional[str] = None) -> None:
     with _WS_LOCK:
         _WS_CLIENTS.discard(sock)
+        if tab_id and _WS_BY_TAB.get(tab_id) is sock:
+            _WS_BY_TAB.pop(tab_id, None)
+        else:
+            dead_tabs = [tid for tid, s in _WS_BY_TAB.items() if s is sock]
+            for tid in dead_tabs:
+                _WS_BY_TAB.pop(tid, None)
 
 
 def broadcast_ws_event(event: Dict[str, Any]) -> None:
@@ -129,7 +150,11 @@ def _resolve_project_file(req: Dict[str, Any], key: str, ext: str, prefer_active
         proj_dir = _ensure_active_workspace()
     else:
         proj_dir = _DEFAULT_FIXTURE_DIR if _ACTIVE_STATE["project_dir"] is None else pathlib.Path(_ACTIVE_STATE["project_dir"])
-    matches = sorted(proj_dir.glob(f"*{ext}"))
+    matches = sorted(
+        list(proj_dir.glob(f"*{ext}"))
+        + list((proj_dir / "layout").glob(f"*{ext}"))
+        + list((proj_dir / "schematics").glob(f"*{ext}"))
+    )
     if matches:
         return matches[0]
     return proj_dir / f"golden-buck-mcu{ext}"
@@ -249,8 +274,11 @@ def sync_after_patch(
         target_pcb = pathlib.Path(explicit_pcb_path) if explicit_pcb_path else (
             pathlib.Path(_ACTIVE_STATE["pcb_path"]) if _ACTIVE_STATE.get("pcb_path") else _resolve_project_file({}, "pcb_path", ".kicad_pcb", prefer_active=True)
         )
+        target_sch = pathlib.Path(_ACTIVE_STATE["sch_path"]) if _ACTIVE_STATE.get("sch_path") else _resolve_project_file({}, "sch_path", ".kicad_sch", prefer_active=True)
         sync_res = sync_hwir_to_kicad_pcb(con, target_pcb, echo_ring=_BRIDGE.echo_ring)
+        sch_res = sync_hwir_to_kicad_sch(con, target_sch, echo_ring=_BRIDGE.echo_ring)
         _ACTIVE_STATE["last_pcb_sha256"] = sync_res["sha256"]
+        _ACTIVE_STATE["last_sch_sha256"] = sch_res.get("sha256", "")
         _ACTIVE_STATE["revision"] += 1
         rev = _ACTIVE_STATE["revision"]
 
@@ -260,11 +288,13 @@ def sync_after_patch(
         "revision": rev,
         "pcb_path": str(target_pcb),
         "pcb_sha256": sync_res["sha256"],
+        "sch_sha256": sch_res.get("sha256", ""),
         "ops": ops or [],
     })
     return {
         "pcb_path": str(target_pcb),
         "pcb_sha256": sync_res["sha256"],
+        "sch_sha256": sch_res.get("sha256", ""),
         "revision": rev,
     }
 

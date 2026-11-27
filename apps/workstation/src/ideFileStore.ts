@@ -233,6 +233,7 @@ class IdeWorkspaceStore {
         statusNote: status,
       });
       await globalKiCadSyncStore.pollEvents();
+      void import('./store/useDesignStore').then((m) => m.useDesignStore.getState().hydrateFromDaemon());
       return ok;
     } catch {
       this.update({ atoStatus: 'atopile offline' });

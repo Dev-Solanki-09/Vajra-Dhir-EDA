@@ -2,14 +2,15 @@ import { create } from '../shims/zustand';
 import type { WorkspaceId } from '../commandBus';
 
 export type UnitMode = 'mm' | 'mil';
-export type FocusedPresetId = 'plan' | 'sch_code' | 'pcb_3d' | 'virtual_lab' | 'fab_release';
+export type FocusedPresetId = 'plan' | 'sch_code' | 'pcb_3d' | 'mcad_3d' | 'virtual_lab' | 'fab_release';
 
 export const FOCUSED_PRESETS: Array<{ id: FocusedPresetId; label: string; targetWorkspace: WorkspaceId }> = [
-  { id: 'plan', label: '1. Plan', targetWorkspace: 'schematic' },
-  { id: 'sch_code', label: '2. Schematic & Code', targetWorkspace: 'firmware_pinmux' },
-  { id: 'pcb_3d', label: '3. PCB & 3D', targetWorkspace: 'pcb_layout' },
-  { id: 'virtual_lab', label: '4. Virtual Lab', targetWorkspace: 'sim_lab' },
-  { id: 'fab_release', label: '5. Fab & Release', targetWorkspace: 'mfg_diff' },
+  { id: 'plan', label: 'Plan', targetWorkspace: 'firmware_pinmux' },
+  { id: 'sch_code', label: 'Schematic', targetWorkspace: 'schematic' },
+  { id: 'pcb_3d', label: 'PCB', targetWorkspace: 'pcb_layout' },
+  { id: 'mcad_3d', label: '3D', targetWorkspace: 'mcad_3d' },
+  { id: 'virtual_lab', label: 'Test & Lab', targetWorkspace: 'sim_lab' },
+  { id: 'fab_release', label: 'Make', targetWorkspace: 'mfg_diff' },
 ];
 
 export interface FabPresetInfo {

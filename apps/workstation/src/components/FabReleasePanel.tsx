@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { globalCrossProbeBus } from '@vajradhir/crossprobe-bus';
 import { globalKiCadSyncStore } from '../kicadSyncClient';
 
@@ -61,12 +61,42 @@ export const FabReleasePanel: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bundle, setBundle] = useState<FabBundleResult | null>(null);
-  const [previewTab, setPreviewTab] = useState<'pcbdraw' | 'ibom'>('pcbdraw');
+  const [previewTab, setPreviewTab] = useState<'pcbdraw' | 'ibom' | 'bringup'>('pcbdraw');
   const [pcbSide, setPcbSide] = useState<'top' | 'bottom'>('top');
   const [actorId, setActorId] = useState('lead-ee@local');
+  const [fabStatus, setFabStatus] = useState<{
+    fabrication_status: string;
+    bringup_test_points: Array<{ tp: string; net: string; expected_min_v: number; expected_max_v: number; check: string }>;
+  } | null>(null);
+  const [tpChecked, setTpChecked] = useState<Record<string, boolean>>({});
+  const [serialLog, setSerialLog] = useState<string>('Connect USB-UART via WebSerial to capture MCU boot log.');
   const [signoffState, setSignoffState] = useState<{ authorized: boolean; digest?: string; message?: string }>({
     authorized: false,
   });
+
+  useEffect(() => {
+    void fetch('/api/v1/fab/status')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setFabStatus(d);
+      })
+      .catch(() => {});
+  }, []);
+
+  const connectWebSerial = async () => {
+    const nav = navigator as unknown as { serial?: { requestPort: () => Promise<{ open: (o: { baudRate: number }) => Promise<void> }> } };
+    if (!nav.serial) {
+      setSerialLog('WebSerial API unavailable in this browser runtime — connect USB-UART probe manually at 115200 8N1.');
+      return;
+    }
+    try {
+      const port = await nav.serial.requestPort();
+      await port.open({ baudRate: 115200 });
+      setSerialLog('WebSerial UART opened @ 115200 8N1 — awaiting board power-on telemetry.');
+    } catch (err) {
+      setSerialLog(`WebSerial skipped: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
 
   const buildBundle = useCallback(async () => {
     setLoading(true);
@@ -185,16 +215,25 @@ export const FabReleasePanel: React.FC = () => {
           >
             InteractiveHtmlBom
           </button>
+          <button
+            type="button"
+            data-testid="fab-tab-bringup"
+            className={`vd-btn ${previewTab === 'bringup' ? 'vd-btn-primary' : ''}`}
+            style={{ minHeight: 24, padding: '2px 8px', fontSize: 11 }}
+            onClick={() => setPreviewTab('bringup')}
+          >
+            Bring-Up Companion
+          </button>
         </div>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <span data-testid="fab-honesty-badge" style={{ color: '#FBBF24' }}>
-            {bundle?.fabrication_status ?? 'NOT_FABRICATED_0_OF_3'}
+            {bundle?.fabrication_status ?? fabStatus?.fabrication_status ?? 'NOT_FABRICATED_0_OF_3'}
           </span>
           <span data-testid="fab-2581-badge" style={{ color: bundle?.ipc2581?.valid ? '#6ee7b7' : 'var(--vd-text-secondary)' }}>
             {bundle?.ipc2581
               ? `2581check: ${bundle.ipc2581.valid ? 'PASS' : 'FAIL'} (${bundle.ipc2581.net_count} nets)`
-              : '2581check Ready'}
+              : '2581check: Not Run'}
           </span>
         </div>
       </div>
@@ -309,7 +348,7 @@ export const FabReleasePanel: React.FC = () => {
             </div>
           </div>
 
-          {/* Right column: PcbDraw Top/Bottom Assembly Pinout OR Embedded iBom HTML */}
+          {/* Right column: PcbDraw Top/Bottom Assembly Pinout, Embedded iBom HTML, or Bring-Up Companion */}
           <div
             style={{
               display: 'flex',
@@ -321,7 +360,47 @@ export const FabReleasePanel: React.FC = () => {
               minHeight: 320,
             }}
           >
-            {previewTab === 'pcbdraw' ? (
+            {previewTab === 'bringup' ? (
+              <div data-testid="fab-bringup-companion" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="vd-metric" style={{ fontWeight: 600 }}>First-Article Bench Bring-Up Checklist</span>
+                  <button type="button" className="vd-btn vd-btn-primary" style={{ minHeight: 22, fontSize: 11 }} onClick={() => void connectWebSerial()}>
+                    Connect WebSerial (115200)
+                  </button>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }} className="vd-metric">
+                  <thead>
+                    <tr style={{ textAlign: 'left', color: 'var(--vd-text-secondary)', borderBottom: '1px solid var(--vd-border-subtle)' }}>
+                      <th style={{ padding: '4px 6px' }}>OK</th>
+                      <th style={{ padding: '4px 6px' }}>Test Point</th>
+                      <th style={{ padding: '4px 6px' }}>Net</th>
+                      <th style={{ padding: '4px 6px' }}>Expected Window</th>
+                      <th style={{ padding: '4px 6px' }}>Bench Check</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(fabStatus?.bringup_test_points ?? []).map((tp) => (
+                      <tr key={tp.tp} style={{ borderBottom: '1px solid var(--vd-border-subtle)' }}>
+                        <td style={{ padding: '4px 6px' }}>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(tpChecked[tp.tp])}
+                            onChange={(e) => setTpChecked((prev) => ({ ...prev, [tp.tp]: e.target.checked }))}
+                          />
+                        </td>
+                        <td style={{ padding: '4px 6px', color: '#93C5FD' }}>{tp.tp}</td>
+                        <td style={{ padding: '4px 6px' }}>{tp.net}</td>
+                        <td style={{ padding: '4px 6px' }}>{tp.expected_min_v.toFixed(2)}V .. {tp.expected_max_v.toFixed(2)}V</td>
+                        <td style={{ padding: '4px 6px', color: 'var(--vd-text-secondary)' }}>{tp.check}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="vd-metric" style={{ padding: 8, backgroundColor: 'var(--vd-bg-panel)', border: '1px solid var(--vd-border-subtle)', fontSize: 11 }}>
+                  {serialLog}
+                </div>
+              </div>
+            ) : previewTab === 'pcbdraw' ? (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', backgroundColor: 'var(--vd-bg-panel)', borderBottom: '1px solid var(--vd-border-subtle)' }}>
                   <span className="vd-metric">PcbDraw Assembly & Pinout ({pcbSide.toUpperCase()})</span>

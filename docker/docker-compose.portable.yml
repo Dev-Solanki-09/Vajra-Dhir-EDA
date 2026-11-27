@@ -1,0 +1,27 @@
+services:
+  vajra-dhir-studio:
+    image: python:3.12-slim
+    container_name: vd-portable-workstation
+    working_dir: /workspace
+    volumes:
+      - ../:/workspace:rw
+      - vd-portable-data:/workspace/.vd-portable
+    ports:
+      - "127.0.0.1:41900:41900"
+    environment:
+      PYTHONUTF8: "1"
+      VD_PORT: "41900"
+      VD_STRICT_PORT: "1"
+      VD_PORTABLE: "1"
+      VD_DATA_DIR: "/workspace/.vd-portable"
+      VD_DB_DIR: "/workspace/.vd-portable/db"
+      VD_CACHE_DIR: "/workspace/.vd-portable/cache"
+      PYTHONPATH: "/workspace:/workspace/packages/vd-daemon/src"
+    command: ["python3", "packages/vd-daemon/src/daemon.py", "--port", "41900", "--strict-port"]
+    read_only: false
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  vd-portable-data:

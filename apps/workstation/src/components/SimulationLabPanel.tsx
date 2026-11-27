@@ -243,6 +243,17 @@ export const SimulationLabPanel: React.FC<{ autoRun?: boolean }> = ({ autoRun = 
     };
   }, [enginePref, mode, overlay.activeProbeNet, simData, wasmWaveform]);
 
+  useEffect(() => {
+    if (chartSeries.x.length > 1 && chartSeries.y.length === chartSeries.x.length) {
+      globalSpiceOverlayStore.update({
+        latestWaveX: chartSeries.x,
+        latestWaveY: chartSeries.y,
+        latestWaveXLabel: chartSeries.xLabel,
+        latestWaveSeriesLabel: chartSeries.yLabel,
+      });
+    }
+  }, [chartSeries]);
+
   const cursorStats = useMemo(() => {
     const { x, y } = chartSeries;
     if (x.length < 2 || y.length < 2) {
@@ -280,6 +291,14 @@ export const SimulationLabPanel: React.FC<{ autoRun?: boolean }> = ({ autoRun = 
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className={`vd-btn ${overlay.xrayEnabled ? 'vd-btn-primary' : ''}`}
+            data-testid="sim-xray-toggle-btn"
+            onClick={() => globalSpiceOverlayStore.update({ xrayEnabled: !overlay.xrayEnabled })}
+          >
+            {overlay.xrayEnabled ? 'X-Ray Overlay: On' : 'X-Ray Schematic'}
+          </button>
           <button
             type="button"
             className="vd-btn"

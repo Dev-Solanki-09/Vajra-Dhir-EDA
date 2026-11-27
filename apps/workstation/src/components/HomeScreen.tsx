@@ -40,6 +40,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [fabPreset, setFabPreset] = useState(settings.eda.fabProfile);
   const [dlpMode, setDlpMode] = useState(settings.agent.dlpMode);
   const [daemonHealth, setDaemonHealth] = useState<{ status: string; dlp?: string; ramMb?: number }>({ status: 'Checking' });
+  const [doctorReport, setDoctorReport] = useState<{
+    portable_mode?: boolean;
+    offline_mode?: boolean;
+    data_dir?: string;
+    py312_present?: boolean;
+    host_python?: string;
+    target?: string;
+    tier1_summary?: { verified: number; total: number };
+    tier2_summary?: { available: string[]; verified: number; total: number };
+  } | null>(null);
+  const [bootstrapPacks, setBootstrapPacks] = useState<Array<{ pack_id: string; name: string; tier: number; audience: string; source_kind: string; license_spdx: string; verified: boolean }>>([]);
+  const [tier2Syncing, setTier2Syncing] = useState(false);
   const [toolsList, setToolsList] = useState<Array<{ id: string; name: string; status: string; version: string }>>([]);
   const [catalog, setCatalog] = useState<{
     boards: Array<{ name: string; kind: string; path: string }>;
@@ -52,20 +64,38 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     setProjLocation(settings.general.defaultProjectsDir);
   }, [settings.general.defaultProjectsDir]);
 
-  useEffect(() => {
-    if (!open) return;
+  const refreshEnvironmentStatus = () => {
     fetch('/api/v1/health')
       .then((r) => (r.ok ? r.json() : null))
       .then((h) => {
-        if (h) setDaemonHealth({ status: 'Ready', dlp: h.dlp_class || 'NDA_AIRGAPPED', ramMb: 185 });
+        if (h) setDaemonHealth((prev) => ({ ...prev, status: 'Ready', dlp: h.dlp_class || 'NDA_AIRGAPPED' }));
         else setDaemonHealth({ status: 'Offline' });
       })
       .catch(() => setDaemonHealth({ status: 'Offline' }));
 
-    fetch('/api/v1/polish/tools')
+    fetch('/api/v1/system/memory')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m) => {
+        if (m && typeof m.rss_mb === 'number' && m.rss_mb > 0) {
+          setDaemonHealth((prev) => ({ ...prev, ramMb: Math.round(m.rss_mb) }));
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/doctor')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (Array.isArray(d?.tools)) setToolsList(d.tools);
+        if (d) {
+          setDoctorReport(d);
+          if (Array.isArray(d.tools)) setToolsList(d.tools);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/bootstrap/status')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => {
+        if (Array.isArray(b?.packs)) setBootstrapPacks(b.packs);
       })
       .catch(() => {});
 
@@ -75,6 +105,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         if (c && Array.isArray(c.boards)) setCatalog(c);
       })
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    refreshEnvironmentStatus();
   }, [open]);
 
   if (!open) return null;
@@ -166,8 +201,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} className="vd-metric">
             <span className="vd-pill">{settings.agent.dlpMode === 'NDA_AIRGAPPED' ? 'AIRGAP' : 'LOCAL OFFLINE'}</span>
             <span className="vd-pill">Daemon: {daemonHealth.status}</span>
-            <span className="vd-pill">MCP: :41900/mcp</span>
-            <span className="vd-pill">RAM: {daemonHealth.ramMb ?? 185} MB</span>
+            <span className="vd-pill">MCP: /mcp</span>
+            <span className="vd-pill">RAM: {daemonHealth.ramMb !== undefined ? `${daemonHealth.ramMb} MB` : '--'}</span>
             <button type="button" data-testid="home-close-btn" className="vd-btn vd-btn-primary" onClick={onClose}>
               Return to Workbench
             </button>
@@ -473,11 +508,28 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             )}
 
             {nav === 'environment' && (
-              <div style={{ maxWidth: 720, display: 'grid', gap: 10 }}>
-                <strong style={{ fontSize: 15 }}>Live Host Environment &amp; Integrated Projects</strong>
-                {catalog && (
-                  <div className="vd-metric" style={{ padding: 8, backgroundColor: 'var(--vd-bg-canvas)', border: '1px solid var(--vd-border-subtle)', fontSize: 11 }}>
-                    Integrated Upstream Manifest: {catalog.synced_count}/{catalog.total_manifest_count} present · Built-in Designs: {catalog.boards.length} · Run <code>pnpm setup:projects</code> to clone optional external source mirrors.
+              <div style={{ maxWidth: 760, display: 'grid', gap: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>Live Host Environment &amp; Pinned Runtime Packs</strong>
+                  <button type="button" className="vd-btn" onClick={refreshEnvironmentStatus}>
+                    Refresh Doctor
+                  </button>
+                </div>
+                {doctorReport && (
+                  <div className="vd-metric" style={{ padding: 10, backgroundColor: 'var(--vd-bg-canvas)', border: '1px solid var(--vd-border-subtle)', fontSize: 11, display: 'grid', gap: 4 }}>
+                    <div>
+                      Mode: <strong>{doctorReport.portable_mode ? 'Portable (.vd-portable)' : 'Standard (.vd-runtime)'}</strong>
+                      {' · '}
+                      Network: <strong>{doctorReport.offline_mode ? 'Offline Airgap' : 'Online-Ready'}</strong>
+                      {' · '}
+                      Python: <strong>{doctorReport.py312_present ? 'py312 isolated' : doctorReport.host_python || 'host'}</strong>
+                      {' · '}
+                      Target: <strong>{doctorReport.target || 'host'}</strong>
+                    </div>
+                    <div style={{ color: 'var(--vd-text-muted)' }}>
+                      Data Root: <code>{doctorReport.data_dir}</code> · Tier-1 Packs: {doctorReport.tier1_summary?.verified ?? 0}/{doctorReport.tier1_summary?.total ?? 0} verified
+                      {catalog ? ` · Built-in Designs: ${catalog.boards.length}` : ''}
+                    </div>
                   </div>
                 )}
                 <div style={{ display: 'grid', gap: 6 }}>
@@ -501,6 +553,55 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     </div>
                   ))}
                 </div>
+                {bootstrapPacks.some((p) => p.tier === 2 && p.source_kind === 'pinned_archive') && (
+                  <div style={{ display: 'grid', gap: 6, marginTop: 4 }}>
+                    <strong style={{ fontSize: 13 }}>Optional Tier-2 Physics &amp; GPL Packs (Isolated Ring-2)</strong>
+                    {bootstrapPacks
+                      .filter((p) => p.tier === 2 && p.source_kind === 'pinned_archive')
+                      .map((pack) => (
+                        <div
+                          key={pack.pack_id}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '6px 10px',
+                            backgroundColor: 'var(--vd-bg-canvas)',
+                            border: '1px solid var(--vd-border-subtle)',
+                          }}
+                          className="vd-metric"
+                        >
+                          <span>
+                            {pack.name} <span style={{ color: 'var(--vd-text-muted)' }}>({pack.license_spdx})</span>
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ color: pack.verified ? 'var(--vd-pass)' : 'var(--vd-text-muted)' }}>
+                              {pack.verified ? 'Verified' : 'Not Installed'}
+                            </span>
+                            {!pack.verified && !doctorReport?.offline_mode && (
+                              <button
+                                type="button"
+                                className="vd-btn"
+                                disabled={tier2Syncing}
+                                onClick={() => {
+                                  setTier2Syncing(true);
+                                  void fetch('/api/bootstrap/sync', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ tiers: [2], pack_ids: [pack.pack_id] }),
+                                  })
+                                    .then(() => setTimeout(() => { setTier2Syncing(false); refreshEnvironmentStatus(); }, 800))
+                                    .catch(() => setTier2Syncing(false));
+                                }}
+                              >
+                                Opt-In Sync
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             )}
           </main>

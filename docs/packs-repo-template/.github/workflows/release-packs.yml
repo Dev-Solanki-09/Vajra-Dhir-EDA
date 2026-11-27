@@ -1,0 +1,14 @@
+name: Release Modular Runtime Packs
+on:
+  workflow_dispatch:
+  push:
+    tags: ['packs-v*']
+jobs:
+  validate-and-release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node smoke-tests/run-pack-smoke.mjs

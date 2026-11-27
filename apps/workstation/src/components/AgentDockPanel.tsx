@@ -25,8 +25,9 @@ export const AgentDockPanel: React.FC = () => {
   const [dlpTier, setDlpTier] = useState<string>('NDA_AIRGAPPED');
   const [checkpointId, setCheckpointId] = useState<string>('');
   const [streaming, setStreaming] = useState(false);
+  const [planStages, setPlanStages] = useState<Array<{ id: string; title: string; status: string }>>([]);
   const [thoughts, setThoughts] = useState<string[]>([
-    'Offline ACP agent ready (Wasmtime 51 Code Mode · 12 canonical MCP verbs).',
+    'Offline assistant ready (local planner + 16 hardware tools). Use @board, @drc, @spice or /rollback.',
   ]);
   const [toolCalls, setToolCalls] = useState<string[]>([]);
   const [proposals, setProposals] = useState<AgentProposalCard[]>([]);
@@ -180,7 +181,9 @@ export const AgentDockPanel: React.FC = () => {
             currentEvent = line.slice(7).trim();
           } else if (line.startsWith('data: ')) {
             const payload = JSON.parse(line.slice(6));
-            if (currentEvent === 'thought_delta' && payload.text) {
+            if (currentEvent === 'plan_card' && Array.isArray(payload.stages)) {
+              setPlanStages(payload.stages);
+            } else if (currentEvent === 'thought_delta' && payload.text) {
               setThoughts((prev) => [...prev, String(payload.text)]);
             } else if (currentEvent === 'tool_call') {
               setToolCalls((prev) => [...prev, `${payload.verb}(${JSON.stringify(payload.args)})`]);
@@ -324,6 +327,58 @@ export const AgentDockPanel: React.FC = () => {
         >
           {streaming ? 'Running EE Team P1..P17...' : 'Run Autonomous EE Loop (Halts @ Gate 8)'}
         </button>
+      )}
+
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        {(['@board', '@drc', '@spice', '/rollback'] as const).map((chip) => (
+          <button
+            key={chip}
+            type="button"
+            className="vd-btn"
+            style={{ minHeight: 20, padding: '1px 6px', fontSize: 10 }}
+            onClick={() => setPrompt((prev) => (prev.includes(chip) ? prev : `${prev} ${chip}`.trim()))}
+          >
+            {chip}
+          </button>
+        ))}
+        <button
+          type="button"
+          data-testid="agent-dual-audit-btn"
+          className="vd-btn"
+          style={{ minHeight: 20, padding: '1px 6px', fontSize: 10 }}
+          onClick={async () => {
+            const res = await fetch('/api/v1/agent/audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+            if (res.ok) {
+              const d = await res.json();
+              setThoughts((prev) => [...prev, `Dual-Context Auditor: ${d.verdict} (${d.error_count} errors, ${d.warning_count} warnings, ${d.human_locked_entities} locked)`]);
+            }
+          }}
+        >
+          Dual Audit
+        </button>
+      </div>
+
+      {planStages.length > 0 && (
+        <div
+          data-testid="agent-plan-card"
+          style={{
+            border: '1px solid var(--vd-border-subtle)',
+            backgroundColor: 'var(--vd-bg-canvas)',
+            borderRadius: 4,
+            padding: '6px 8px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            fontSize: 10.5,
+          }}
+        >
+          <strong style={{ color: 'var(--vd-text-primary)' }}>Design Workflow Plan</strong>
+          {planStages.map((s) => (
+            <div key={s.id} style={{ color: s.status === 'done' ? 'var(--vd-pass)' : s.status === 'in_progress' ? '#3D7EC7' : 'var(--vd-text-secondary)' }}>
+              [{s.status === 'done' ? 'x' : s.status === 'in_progress' ? '>' : ' '}] {s.title}
+            </div>
+          ))}
+        </div>
       )}
 
       <form onSubmit={submitPrompt} style={{ display: 'flex', gap: 6 }}>

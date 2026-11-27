@@ -15,12 +15,12 @@ import urllib.parse
 from typing import Any, Dict, List, Optional
 
 try:
-    from .kicad_routes import _ensure_active_workspace, _ACTIVE_STATE, _BRIDGE
-    from .kicad_bridge import sha256_text, sync_kicad_pcb_to_hwir, sync_kicad_sch_to_hwir
+    from .kicad_routes import _ensure_active_workspace, _ACTIVE_STATE, _BRIDGE, broadcast_ws_event
+    from .kicad_bridge import new_uuidv7, sha256_text, sync_kicad_pcb_to_hwir, sync_kicad_sch_to_hwir
     from .polish_engine import probe_tool_manager_status
 except ImportError:
-    from kicad_routes import _ensure_active_workspace, _ACTIVE_STATE, _BRIDGE
-    from kicad_bridge import sha256_text, sync_kicad_pcb_to_hwir, sync_kicad_sch_to_hwir
+    from kicad_routes import _ensure_active_workspace, _ACTIVE_STATE, _BRIDGE, broadcast_ws_event
+    from kicad_bridge import new_uuidv7, sha256_text, sync_kicad_pcb_to_hwir, sync_kicad_sch_to_hwir
     from polish_engine import probe_tool_manager_status
 
 
@@ -232,6 +232,97 @@ def build_projects_catalog() -> Dict[str, Any]:
     }
 
 
+def _reset_hwir_for_project(
+    con: sqlite3.Connection,
+    name: str,
+    fab_preset: str,
+    dlp_class: str,
+    layers: int = 4,
+    width_nm: int = 80_000_000,
+    height_nm: int = 50_000_000,
+) -> tuple[str, str]:
+    """Re-initializes the active SQLite HW-IR database cleanly for an isolated project (0 fake demo boards)."""
+    now_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    cur = con.cursor()
+    cur.execute("UPDATE _tx_actor_ctx SET actor_kind = 'human', allow_lock_override = 1 WHERE singleton = 1")
+    for tbl in (
+        "pin_net_bindings",
+        "component_pins",
+        "traces",
+        "vias",
+        "copper_zones",
+        "mcad_keepouts",
+        "firmware_pinmux",
+        "electrical_constraints",
+        "layout_rooms",
+        "variant_overrides",
+        "variants",
+        "drc_waivers",
+        "padstacks",
+        "fab_drawings",
+        "hardware_patches",
+        "components",
+        "nets",
+        "net_classes",
+        "boards",
+        "projects",
+    ):
+        try:
+            cur.execute(f"DELETE FROM {tbl}")
+        except sqlite3.OperationalError:
+            pass
+
+    pid = new_uuidv7()
+    bid = new_uuidv7()
+    nc_sig = new_uuidv7()
+    nc_pwr = new_uuidv7()
+    cur.execute(
+        """
+        INSERT INTO projects (id, name, domain, dlp_class, autonomy_level, current_gate, target_fab_or_pdk, max_bom_cost_usd, ambient_temp_max_c, rev_lamport, created_at_utc, updated_at_utc)
+        VALUES (?, ?, 'pcb', ?, 'L3_GATE_COPILOT', 'G1_SPEC_LOCK', ?, 25.0, 40.0, 1, ?, ?)
+        """,
+        (pid, name, dlp_class if dlp_class in ("PUBLIC_OPEN", "PRIVATE_CLOUD_OK", "NDA_AIRGAPPED") else "NDA_AIRGAPPED", fab_preset, now_ts, now_ts),
+    )
+    cur.execute(
+        """
+        INSERT INTO boards (id, project_id, name, board_kind, width_nm, height_nm, thickness_nm, layer_count, provenance, locked, rev_lamport)
+        VALUES (?, ?, 'main_pcb', 'rigid_pcb', ?, ?, 1600000, ?, 'human', 0, 1)
+        """,
+        (bid, pid, width_nm, height_nm, layers),
+    )
+    cur.execute(
+        "INSERT INTO net_classes (id, board_id, name, trace_width_nm, min_width_nm, clearance_nm, via_drill_nm, via_diameter_nm, working_voltage_v) VALUES (?, ?, 'SIGNAL', 200000, 150000, 200000, 300000, 600000, 5.0)",
+        (nc_sig, bid),
+    )
+    cur.execute(
+        "INSERT INTO net_classes (id, board_id, name, trace_width_nm, min_width_nm, clearance_nm, via_drill_nm, via_diameter_nm, working_voltage_v) VALUES (?, ?, 'PWR', 800000, 400000, 250000, 300000, 600000, 20.0)",
+        (nc_pwr, bid),
+    )
+    cur.execute("UPDATE _tx_actor_ctx SET actor_kind = 'human', allow_lock_override = 0 WHERE singleton = 1")
+    con.commit()
+    return pid, bid
+
+
+def _persist_project_jsonl(con: sqlite3.Connection, jsonl_path: pathlib.Path) -> None:
+    try:
+        rows = con.execute("SELECT id, board_id, refdes, value_str, mpn, package_name, footprint_ref, x_nm, y_nm, rot_mdeg, side, locked, provenance FROM components ORDER BY refdes").fetchall()
+        lines = []
+        for r in rows:
+            lines.append(json.dumps({
+                "type": "Component",
+                "data": {
+                    "id": str(r[0]), "board_id": str(r[1]), "refdes": str(r[2]), "value_str": str(r[3]),
+                    "mpn": str(r[4]), "package_name": str(r[5]), "footprint_ref": str(r[6]),
+                    "x_nm": int(r[7]), "y_nm": int(r[8]), "rot_mdeg": int(r[9]), "side": str(r[10]),
+                    "locked": bool(r[11]), "provenance": str(r[12]),
+                },
+            }))
+        jsonl_path.parent.mkdir(parents=True, exist_ok=True)
+        jsonl_path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    except Exception:
+        pass
+
+
 def open_project_on_disk(req: Dict[str, Any], con: Optional[sqlite3.Connection] = None) -> Dict[str, Any]:
     raw_path = str(req.get("path") or "").strip()
     root = _repo_root()
@@ -240,8 +331,8 @@ def open_project_on_disk(req: Dict[str, Any], con: Optional[sqlite3.Connection] 
         target = (root / raw_path).resolve()
     if not target.is_dir():
         return {"opened": False, "error": "PROJECT_DIR_NOT_FOUND", "path": str(target)}
-    pcbs = sorted(target.glob("*.kicad_pcb"))
-    schs = sorted(target.glob("*.kicad_sch"))
+    pcbs = sorted(list(target.glob("*.kicad_pcb")) + list((target / "layout").glob("*.kicad_pcb")))
+    schs = sorted(list(target.glob("*.kicad_sch")) + list((target / "schematics").glob("*.kicad_sch")))
     pcb_p = pcbs[0] if pcbs else (target / f"{target.name}.kicad_pcb")
     sch_p = schs[0] if schs else (target / f"{target.name}.kicad_sch")
 
@@ -253,6 +344,19 @@ def open_project_on_disk(req: Dict[str, Any], con: Optional[sqlite3.Connection] 
     _ACTIVE_STATE["revision"] = int(_ACTIVE_STATE.get("revision") or 1) + 1
 
     if con is not None:
+        meta = {}
+        meta_p = target / "project.vd.json"
+        if meta_p.is_file():
+            try:
+                meta = json.loads(meta_p.read_text(encoding="utf-8"))
+            except Exception:
+                meta = {}
+        _reset_hwir_for_project(
+            con,
+            name=str(meta.get("name") or target.name),
+            fab_preset=str(meta.get("fabProfileOverride") or "jlcpcb_4l"),
+            dlp_class=str(meta.get("dlpClass") or "NDA_AIRGAPPED"),
+        )
         if sch_p.is_file():
             try:
                 sync_kicad_sch_to_hwir(con, sch_p, actor_kind="human", echo_ring=_BRIDGE.echo_ring)
@@ -263,6 +367,13 @@ def open_project_on_disk(req: Dict[str, Any], con: Optional[sqlite3.Connection] 
                 sync_kicad_pcb_to_hwir(con, pcb_p, actor_kind="human", echo_ring=_BRIDGE.echo_ring)
             except Exception:
                 pass
+
+    broadcast_ws_event({
+        "type": "PROJECT_SWITCHED",
+        "project_name": target.name,
+        "project_dir": str(target),
+        "rev_id": 1,
+    })
 
     cfg = load_global_settings()
     rel_or_abs = str(req.get("path") or target)
@@ -283,15 +394,10 @@ def load_global_settings() -> Dict[str, Any]:
         try:
             raw = json.loads(p.read_text(encoding="utf-8"))
             if isinstance(raw, dict):
-                merged = _deep_merge(DEFAULT_GLOBAL_SETTINGS, raw)
-                if not merged["general"].get("recentProjects") and not merged["general"].get("recentSeeded"):
-                    merged["general"]["recentProjects"] = _discover_repo_projects()
-                return merged
+                return _deep_merge(DEFAULT_GLOBAL_SETTINGS, raw)
         except Exception:
             pass
-    fresh = copy.deepcopy(DEFAULT_GLOBAL_SETTINGS)
-    fresh["general"]["recentProjects"] = _discover_repo_projects()
-    return fresh
+    return copy.deepcopy(DEFAULT_GLOBAL_SETTINGS)
 
 
 def save_global_settings(patch: Dict[str, Any], replace: bool = False) -> Dict[str, Any]:
@@ -326,16 +432,19 @@ def save_project_settings(patch: Dict[str, Any]) -> Dict[str, Any]:
     return merged
 
 
-def create_project_on_disk(req: Dict[str, Any]) -> Dict[str, Any]:
+def create_project_on_disk(req: Dict[str, Any], con: Optional[sqlite3.Connection] = None) -> Dict[str, Any]:
     name = re.sub(r"[^a-zA-Z0-9._-]+", "-", str(req.get("name") or "untitled-board")).strip("-") or "untitled-board"
     loc_raw = str(req.get("location") or "").strip()
     base_dir = pathlib.Path(loc_raw) if loc_raw else pathlib.Path(load_global_settings()["general"]["defaultProjectsDir"])
     project_dir = (base_dir / name).resolve()
     project_dir.mkdir(parents=True, exist_ok=True)
+    for sub in ("schematics", "layout", "enclosure", "firmware/include", "simulation", "verification", "release", ".vd-history", "elec/src"):
+        (project_dir / sub).mkdir(parents=True, exist_ok=True)
 
     starter_kind = str(req.get("starter") or "blank")
     fab_preset = str(req.get("fab_preset") or "jlcpcb_4l")
     dlp_class = str(req.get("dlp_class") or "NDA_AIRGAPPED")
+    layers = 2 if starter_kind == "blank_2l" else 4
 
     proj_meta = _deep_merge(
         DEFAULT_PROJECT_SETTINGS,
@@ -345,6 +454,13 @@ def create_project_on_disk(req: Dict[str, Any]) -> Dict[str, Any]:
             "dlpClass": dlp_class,
             "starterKind": starter_kind,
             "createdAtUtc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "paths": {
+                "schematic": f"schematics/{name}.kicad_sch",
+                "pcb": f"layout/{name}.kicad_pcb",
+                "ato": "elec/src/main.ato",
+                "system": "system.yaml",
+                "jsonl": "design.vd-ir.jsonl",
+            },
         },
     )
     _atomic_write_json(project_dir / "project.vd.json", proj_meta)
@@ -352,20 +468,70 @@ def create_project_on_disk(req: Dict[str, Any]) -> Dict[str, Any]:
     sys_yaml = project_dir / "system.yaml"
     if not sys_yaml.exists():
         sys_yaml.write_text(
-            f'project: "{name}"\nversion: "0.0.2"\npurpose: "{starter_kind} hardware design"\nblocks: []\nbuses: []\n',
+            f'project: "{name}"\nversion: "0.0.4"\npurpose: "{starter_kind} hardware design"\nblocks: []\nbuses: []\n',
             encoding="utf-8",
         )
 
-    if starter_kind in ("blank_2l", "blank_4l", "buck_pd", "stm32_can", "esp32_sensor", "rpi_hat"):
-        layers = 2 if starter_kind == "blank_2l" else 4
-        pcb_file = project_dir / f"{name}.kicad_pcb"
-        if not pcb_file.exists():
-            pcb_file.write_text(
-                f'(kicad_pcb (version 20261030) (generator "vajra-dhir-eda") (generator_version "0.0.2")\n'
-                f'  (general (thickness 1.6) (copper_layers {layers}))\n'
-                f'  (gr_rect (start 0 0) (end 80 50) (stroke (width 0.15)) (layer "Edge.Cuts"))\n)\n',
-                encoding="utf-8",
-            )
+    pcb_file = project_dir / "layout" / f"{name}.kicad_pcb"
+    if not pcb_file.exists():
+        pcb_file.write_text(
+            f'(kicad_pcb (version 20261030) (generator "vajra-dhir-eda") (generator_version "0.0.4")\n'
+            f'  (general (thickness 1.6) (copper_layers {layers}))\n'
+            f'  (layers (0 "F.Cu" signal) (31 "B.Cu" signal) (44 "Edge.Cuts" user))\n'
+            f'  (net 0 "")\n'
+            f'  (gr_rect (start 0 0) (end 80 50) (stroke (width 0.15) (type solid)) (fill none) (layer "Edge.Cuts"))\n)\n',
+            encoding="utf-8",
+        )
+
+    sch_file = project_dir / "schematics" / f"{name}.kicad_sch"
+    if not sch_file.exists():
+        sch_file.write_text(
+            f'(kicad_sch (version 20250114) (generator "vajra-dhir-eda") (generator_version "0.0.4")\n'
+            f'  (uuid "{new_uuidv7()}")\n'
+            f'  (paper "A4")\n'
+            f'  (title_block (title "{name}"))\n)\n',
+            encoding="utf-8",
+        )
+
+    ato_file = project_dir / "elec" / "src" / "main.ato"
+    if not ato_file.exists():
+        ato_file.write_text(f'# Vajra-Dhir .ato entry for {name}\nmodule Main:\n    pass\n', encoding="utf-8")
+
+    (project_dir / "hw.lock").write_text(json.dumps({"project": name, "rev_lamport": 1, "sha256": sha256_text(name)}, indent=2), encoding="utf-8")
+    (project_dir / "design.vd-ir.jsonl").write_text("", encoding="utf-8")
+
+    _ACTIVE_STATE["project_dir"] = str(project_dir)
+    _ACTIVE_STATE["pcb_path"] = str(pcb_file)
+    _ACTIVE_STATE["sch_path"] = str(sch_file)
+    _ACTIVE_STATE["last_pcb_sha256"] = sha256_text(pcb_file.read_text(encoding="utf-8"))
+    _ACTIVE_STATE["last_sch_sha256"] = sha256_text(sch_file.read_text(encoding="utf-8"))
+    _ACTIVE_STATE["revision"] = 1
+
+    if con is not None:
+        _reset_hwir_for_project(con, name=name, fab_preset=fab_preset, dlp_class=dlp_class, layers=layers)
+        if starter_kind in ("buck_pd", "stm32_can", "esp32_sensor", "rpi_hat"):
+            tpl_map = {
+                "buck_pd": _repo_root() / "designs" / "board-1-buck-pd",
+                "esp32_sensor": _repo_root() / "designs" / "board-2-esp32s3-node",
+                "stm32_can": _repo_root() / "designs" / "board-3-stm32g4-motor",
+            }
+            tpl_dir = tpl_map.get(starter_kind)
+            if tpl_dir and tpl_dir.is_dir():
+                for ext, dest in ((".kicad_pcb", pcb_file), (".kicad_sch", sch_file)):
+                    src_files = sorted(tpl_dir.glob(f"*{ext}"))
+                    if src_files:
+                        dest.write_text(src_files[0].read_text(encoding="utf-8"), encoding="utf-8")
+                        if ext == ".kicad_pcb":
+                            sync_kicad_pcb_to_hwir(con, dest, actor_kind="human", echo_ring=_BRIDGE.echo_ring)
+                        else:
+                            sync_kicad_sch_to_hwir(con, dest, actor_kind="human", echo_ring=_BRIDGE.echo_ring)
+
+    broadcast_ws_event({
+        "type": "PROJECT_SWITCHED",
+        "project_name": name,
+        "project_dir": str(project_dir),
+        "rev_id": 1,
+    })
 
     # Record in recentProjects atomically
     cfg = load_global_settings()
@@ -379,7 +545,7 @@ def create_project_on_disk(req: Dict[str, Any]) -> Dict[str, Any]:
         "path": str(project_dir),
         "lastOpenedUtc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     })
-    save_global_settings({"general": {"recentProjects": recents[:12]}})
+    save_global_settings({"general": {"recentProjects": recents[:12], "recentSeeded": True}})
 
     return {"created": True, "name": name, "path": str(project_dir), "project": proj_meta}
 
@@ -417,7 +583,7 @@ def build_diagnostic_bundle(con: Optional[sqlite3.Connection] = None) -> Dict[st
             pass
     bundle = {
         "app": "Vajra-Dhir EDA",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "platform": {
             "system": platform.system(),
@@ -456,6 +622,10 @@ def handle_settings_get(handler: Any, path: str, full_path: str = "", con: Optio
     if path == "/api/v1/projects/catalog":
         _send_json(handler, 200, build_projects_catalog())
         return True
+    if path == "/api/v1/projects/recent":
+        cfg = load_global_settings()
+        _send_json(handler, 200, {"projects": cfg.get("general", {}).get("recentProjects") or []})
+        return True
     return False
 
 
@@ -482,12 +652,18 @@ def handle_settings_post(handler: Any, path: str, req: Dict[str, Any], con: Opti
         saved = save_global_settings(req, replace=True)
         _send_json(handler, 200, saved)
         return True
-    if path == "/api/v1/project/create":
-        res = create_project_on_disk(req if isinstance(req, dict) else {})
+    if path in ("/api/v1/project/create", "/api/v1/projects/create"):
+        res = create_project_on_disk(req if isinstance(req, dict) else {}, con=con)
         _send_json(handler, 200, res)
         return True
     if path == "/api/v1/projects/open":
         res = open_project_on_disk(req if isinstance(req, dict) else {}, con=con)
         _send_json(handler, 200 if res.get("opened") else 404, res)
+        return True
+    if path in ("/api/v1/project/close", "/api/v1/projects/close"):
+        _ACTIVE_STATE["project_dir"] = None
+        _ACTIVE_STATE["pcb_path"] = None
+        _ACTIVE_STATE["sch_path"] = None
+        _send_json(handler, 200, {"closed": True})
         return True
     return False

@@ -2,7 +2,7 @@
   "name": "vajra-dhir-vscode",
   "displayName": "Vajra-Dhīr EDA",
   "description": "Deterministic Hardware + Software Co-Design IDE for VS Code & VSCodium",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "icon": "assets/logo-white.png",
   "publisher": "vajradhir",
   "license": "MIT",

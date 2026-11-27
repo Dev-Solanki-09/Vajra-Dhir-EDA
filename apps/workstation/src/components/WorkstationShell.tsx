@@ -18,6 +18,10 @@ import { AgentDockPanel } from './AgentDockPanel';
 import { CalculatorDrawer } from './CalculatorDrawer';
 import { ActiveWorkspaceView } from './Workspaces';
 import { useDesignStore } from '../store/useDesignStore';
+import { globalKiCadSyncStore } from '../kicadSyncClient';
+import { globalIdeWorkspaceStore } from '../ideFileStore';
+import { globalSessionContextBus } from '../store/sessionContextBus';
+import { disposeProjectWebGLRenderer } from '../engines/threeRendererPool';
 import { registerUiControlCallbacks, startUiControlBridge } from '../store/uiControlBridge';
 import { PolishToolsModal } from './PolishToolsModal';
 import { FOCUSED_PRESETS, FocusedPresetId, formatCoordUnit, usePolishStore } from '../store/usePolishStore';
@@ -25,6 +29,7 @@ import { formatKeyboardEventCombo, resolveEffectiveBindings } from '../store/use
 import { useSettingsStore } from '../store/useSettingsStore';
 import { VajraIcon } from './VajraIcons';
 import { HomeScreen } from './HomeScreen';
+import { HelpCenterModal } from './HelpCenterModal';
 import { SettingsModal } from './SettingsModal';
 import { EnterpriseDrawers, ToastStack } from './EnterpriseDrawers';
 import { ScrubInput } from './ScrubInput';
@@ -382,7 +387,10 @@ const InspectorPanel: React.FC<IDockviewPanelProps> = () => {
 
   return (
     <PanelErrorBoundary panelTitle="Inspector">
-      <div style={{ height: '100%', backgroundColor: 'var(--vd-bg-panel)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+      <div
+        data-testid="inspector-panel"
+        style={{ height: '100%', backgroundColor: 'var(--vd-bg-panel)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}
+      >
         {/* Dynamic Entity Header */}
         <div style={{ padding: '6px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--vd-border-subtle)', backgroundColor: 'var(--vd-bg-elevated)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -577,9 +585,9 @@ const DockEeAuditPanel: React.FC<IDockviewPanelProps> = () => (
 );
 
 const DockSimulationLabPanel: React.FC<IDockviewPanelProps> = () => (
-  <PanelErrorBoundary panelTitle="SPICE Virtual Lab (P10)">
+  <PanelErrorBoundary panelTitle="SPICE Virtual Lab">
     <div style={{ padding: 6, height: '100%', backgroundColor: 'var(--vd-bg-canvas)', overflowY: 'auto' }}>
-      <Suspense fallback={<div className="vd-metric" style={{ padding: 8 }}>Loading ngspice-wasm Virtual Lab...</div>}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 8 }}>Loading ngspice Virtual Lab...</div>}>
         <LazySimulationLabPanel autoRun={false} />
       </Suspense>
     </div>
@@ -587,9 +595,9 @@ const DockSimulationLabPanel: React.FC<IDockviewPanelProps> = () => (
 );
 
 const DockCosimPanel: React.FC<IDockviewPanelProps> = () => (
-  <PanelErrorBoundary panelTitle="Renode Co-Sim (P11)">
+  <PanelErrorBoundary panelTitle="MCU Co-Simulation">
     <div style={{ padding: 6, height: '100%', backgroundColor: 'var(--vd-bg-canvas)', overflowY: 'auto' }}>
-      <Suspense fallback={<div className="vd-metric" style={{ padding: 8 }}>Loading Renode/SBC Digital Twin...</div>}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 8 }}>Loading MCU Digital Twin...</div>}>
         <LazyCosimPanel autoRun={false} />
       </Suspense>
     </div>
@@ -597,9 +605,9 @@ const DockCosimPanel: React.FC<IDockviewPanelProps> = () => (
 );
 
 const DockGerberInspectorPanel: React.FC<IDockviewPanelProps> = () => (
-  <PanelErrorBoundary panelTitle="Gerber Fab (P15)">
+  <PanelErrorBoundary panelTitle="Gerber Inspector">
     <div style={{ padding: 6, height: '100%', backgroundColor: 'var(--vd-bg-canvas)', overflowY: 'auto' }}>
-      <Suspense fallback={<div className="vd-metric" style={{ padding: 8 }}>Loading tracespace Gerber Worker...</div>}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 8 }}>Loading Gerber Layer Viewer...</div>}>
         <LazyGerberInspectorPanel autoLoad={false} />
       </Suspense>
     </div>
@@ -607,9 +615,9 @@ const DockGerberInspectorPanel: React.FC<IDockviewPanelProps> = () => (
 );
 
 const DockFabReleasePanel: React.FC<IDockviewPanelProps> = () => (
-  <PanelErrorBoundary panelTitle="Fab Release (P16)">
+  <PanelErrorBoundary panelTitle="Fab Release">
     <div style={{ padding: 6, height: '100%', backgroundColor: 'var(--vd-bg-canvas)', overflowY: 'auto' }}>
-      <Suspense fallback={<div className="vd-metric" style={{ padding: 8 }}>Loading Fab Release Package Engine...</div>}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 8 }}>Loading Fab Release Package...</div>}>
         <LazyFabReleasePanel />
       </Suspense>
     </div>
@@ -617,9 +625,9 @@ const DockFabReleasePanel: React.FC<IDockviewPanelProps> = () => (
 );
 
 const DockReportPreviewPanel: React.FC<IDockviewPanelProps> = () => (
-  <PanelErrorBoundary panelTitle="Report Dossier (P17)">
+  <PanelErrorBoundary panelTitle="Engineering Dossier">
     <div style={{ padding: 6, height: '100%', backgroundColor: 'var(--vd-bg-canvas)', overflowY: 'auto' }}>
-      <Suspense fallback={<div className="vd-metric" style={{ padding: 8 }}>Loading Engineering Dossier PDF Preview...</div>}>
+      <Suspense fallback={<div className="vd-metric" style={{ padding: 8 }}>Loading Engineering Dossier Preview...</div>}>
         <LazyReportPreviewPanel />
       </Suspense>
     </div>
@@ -710,6 +718,8 @@ export const WorkstationShell: React.FC = () => {
 
   const [showTemplates, setShowTemplates] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showHelpCenter, setShowHelpCenter] = useState(false);
+  const [splitViewEnabled, setSplitViewEnabled] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [showCalculators, setShowCalculators] = useState(false);
   const [showHomeScreen, setShowHomeScreen] = useState(false);
@@ -1034,6 +1044,9 @@ export const WorkstationShell: React.FC = () => {
         toggleInspectorDock();
       } else if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'm') {
         setRulerActive(!usePolishStore.getState().rulerActive);
+      } else if (e.key === 'F1' && e.shiftKey) {
+        e.preventDefault();
+        setShowHelpCenter((prev) => !prev);
       } else if (e.key === 'F1' || e.key === '?') {
         e.preventDefault();
         setShowShortcuts((prev) => !prev);
@@ -1078,11 +1091,11 @@ export const WorkstationShell: React.FC = () => {
     event.api.addPanel({ id: 'terminal_panel', component: 'terminal', title: 'Terminal (PTY)', position: { referencePanel: center, direction: 'within' } });
     event.api.addPanel({ id: 'architecture_panel', component: 'architecture', title: 'Architecture (xyflow)', position: { referencePanel: center, direction: 'within' } });
     event.api.addPanel({ id: 'ee_audit_panel', component: 'eeAudit', title: 'EE Audit (Z3/SymPy)', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'sim_lab_panel', component: 'simLab', title: 'SPICE Lab (ngspice)', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'cosim_panel', component: 'cosimLab', title: 'Renode Co-Sim (P11)', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'gerber_panel', component: 'gerberInspector', title: 'Gerber Fab (P15)', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'fab_release_panel', component: 'fabRelease', title: 'Fab Release (P16)', position: { referencePanel: center, direction: 'within' } });
-    event.api.addPanel({ id: 'report_preview_panel', component: 'reportPreview', title: 'Report Dossier (P17)', position: { referencePanel: center, direction: 'within' } });
+    event.api.addPanel({ id: 'sim_lab_panel', component: 'simLab', title: 'SPICE Lab', position: { referencePanel: center, direction: 'within' } });
+    event.api.addPanel({ id: 'cosim_panel', component: 'cosimLab', title: 'MCU Co-Sim', position: { referencePanel: center, direction: 'within' } });
+    event.api.addPanel({ id: 'gerber_panel', component: 'gerberInspector', title: 'Gerber Inspector', position: { referencePanel: center, direction: 'within' } });
+    event.api.addPanel({ id: 'fab_release_panel', component: 'fabRelease', title: 'Fab Release', position: { referencePanel: center, direction: 'within' } });
+    event.api.addPanel({ id: 'report_preview_panel', component: 'reportPreview', title: 'Engineering Dossier', position: { referencePanel: center, direction: 'within' } });
     center.api.setActive();
     const left = event.api.addPanel({
       id: 'explorer_panel',
@@ -1261,6 +1274,7 @@ export const WorkstationShell: React.FC = () => {
       id: 'help',
       label: 'Help',
       items: [
+        { id: 'help.center', label: 'Help Center & Design Guides', shortcut: 'F1', onSelect: () => setShowHelpCenter(true) },
         { id: 'help.palette', label: 'Command Palette', shortcut: 'Ctrl+K', onSelect: () => setShowPalette(true) },
         { id: 'help.shortcuts', label: 'Keyboard Shortcuts', shortcut: '?', onSelect: () => setShowShortcuts(true) },
         { id: 'help.activity', label: 'Activity Log', onSelect: () => setShowActivityLog(true) },
@@ -1374,6 +1388,26 @@ export const WorkstationShell: React.FC = () => {
                   {p.label}
                 </button>
               ))}
+              <button
+                type="button"
+                data-testid="toggle-split-view-btn"
+                className={`vd-btn ${splitViewEnabled ? 'vd-btn-primary' : ''}`}
+                style={{ minHeight: 20, padding: '1px 6px', fontSize: 10.5 }}
+                onClick={() => {
+                  const next = !splitViewEnabled;
+                  setSplitViewEnabled(next);
+                  const pcbPanel = dockApiRef.current?.getPanel('pcb2d_panel');
+                  const schPanel = dockApiRef.current?.getPanel('schematic2d_panel');
+                  if (next && pcbPanel && schPanel?.group) {
+                    schPanel.api.setActive();
+                    pcbPanel.api.moveTo({ group: schPanel.group, position: 'right' });
+                  } else if (!next) {
+                    dockApiRef.current?.getPanel('viewport_panel')?.api.setActive();
+                  }
+                }}
+              >
+                Split View
+              </button>
             </div>
           </div>
 
@@ -1523,10 +1557,10 @@ export const WorkstationShell: React.FC = () => {
         {settings.appearance.showStatusBar && (
           <footer className="vd-statusbar" data-testid="zone6-statusbar">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} className="vd-metric">
-              <span>X: 12.500 mm  Y: 15.000 mm</span>
+              <span data-testid="status-cursor-coords">X: —  Y: —</span>
               <span>Grid: {settings.navigation.gridMm.toFixed(2)} mm</span>
               <span>Layer: F.Cu</span>
-              <span>Selection: {probeSnapshot.selection.entityIds[0] || 'U2'}</span>
+              <span>Selection: {probeSnapshot.selection.entityIds[0] || '—'}</span>
             </div>
 
             <button
@@ -1540,10 +1574,12 @@ export const WorkstationShell: React.FC = () => {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} className="vd-metric">
               <button type="button" data-testid="statusbar-drawer-toggle" className="vd-status-chip" onClick={() => { setBottomDrawerTab('diagnostics'); setBottomDrawerOpen((v) => !v); }}>
-                ERC 0 · DRC 0 · EE 0
+                Diagnostics &amp; Checks
               </button>
-              <span style={{ color: 'var(--vd-dlp-airgap)' }}>NDA_AIRGAPPED</span>
-              <span>{hwLockShort}</span>
+              <span style={{ color: 'var(--vd-dlp-airgap)' }}>
+                {settings.agent.dlpMode === 'NDA_AIRGAPPED' ? 'Offline Airgapped' : settings.agent.dlpMode}
+              </span>
+              <span>Rev #{revId}</span>
               <span>CrossProbe: {probeSnapshot.lastLatencyMs.toFixed(2)} ms</span>
               <span>Measured FPS: {fps}</span>
               <button type="button" className="vd-status-chip" onClick={() => setEnterpriseDrawer('notifications')} title="Notification Center">
@@ -1720,12 +1756,14 @@ export const WorkstationShell: React.FC = () => {
           onSaveAndContinue={() => {
             setDirty(false);
             setShowUnsavedGuard(false);
+            disposeProjectWebGLRenderer();
             setShowHomeScreen(true);
             setStatusMessage('Saved & returned to Home');
           }}
           onDiscardAndContinue={() => {
             setDirty(false);
             setShowUnsavedGuard(false);
+            disposeProjectWebGLRenderer();
             setShowHomeScreen(true);
           }}
           onCancel={() => setShowUnsavedGuard(false)}
@@ -1750,6 +1788,7 @@ export const WorkstationShell: React.FC = () => {
         />
         <CalculatorDrawer open={showCalculators} onClose={() => setShowCalculators(false)} />
         <PolishToolsModal open={showToolManagerModal} onClose={() => setShowToolManagerModal(false)} />
+        <HelpCenterModal open={showHelpCenter} onClose={() => setShowHelpCenter(false)} />
         <HomeScreen
           open={showHomeScreen}
           activeProjectName={projectName}
@@ -1758,6 +1797,10 @@ export const WorkstationShell: React.FC = () => {
             setProjectName(name);
             setDirty(false);
             setStatusMessage(`Loaded ${name}`);
+            globalSessionContextBus.updateContext({ projectName: name, dirty: false });
+            void useDesignStore.getState().hydrateFromDaemon();
+            void globalKiCadSyncStore.fetchFiles();
+            void globalIdeWorkspaceStore.refreshTree();
           }}
           onOpenFileBrowser={(mode = 'folder', ext = '', onPicked) => setFileBrowserState({ open: true, mode, ext, onPicked })}
           onOpenSettings={() => setShowSettingsModal(true)}

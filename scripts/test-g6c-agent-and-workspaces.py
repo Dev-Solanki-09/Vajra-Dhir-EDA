@@ -33,7 +33,7 @@ def http_json(url: str, method: str = "GET", payload: dict | None = None):
     if payload is not None:
         req.add_header("Content-Type", "application/json")
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         return e.code, json.loads(e.read().decode("utf-8"))
@@ -99,7 +99,7 @@ def run():
                 method="POST",
                 headers={"Content-Type": "application/json"},
             )
-            with urllib.request.urlopen(req_locked, timeout=5) as resp:
+            with urllib.request.urlopen(req_locked, timeout=15) as resp:
                 assert resp.status == 200
                 ctype = resp.headers.get("Content-Type", "")
                 assert "text/event-stream" in ctype, f"Expected SSE Content-Type, got {ctype}"

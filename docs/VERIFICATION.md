@@ -1,4 +1,4 @@
-# Verification Guide — Vajra-Dhīr EDA (`v0.0.2`)
+# Verification Guide — Vajra-Dhīr EDA (`v0.0.4`)
 
 > **Physical Hardware Status:** `0/3 Physically Fabricated` (`NOT_FABRICATED_0_OF_3`). Reference boards in `designs/` are software-verified blueprints pending factory fabrication and bench testing.
 
@@ -7,9 +7,10 @@
 Run checks sequentially for low-memory environments:
 
 ```bash
-# 1. Dependency firewall & secrets/link hygiene
+# 1. Dependency firewall, repo size, secrets, and link hygiene
 node scripts/check-spdx-firewall.mjs
 node scripts/test-g8-lockfile-spdx.mjs
+node scripts/check-repo-size.mjs
 python scripts/audit-secrets-and-paths.py
 python scripts/check-links.py
 
@@ -19,12 +20,23 @@ cargo test --workspace
 
 # 3. Frontend builds & Node/TS packages
 pnpm install --offline --frozen-lockfile
-pnpm --filter @vajradhir/collab test
+pnpm test
 pnpm --filter @vajradhir/workstation build
 
-# 4. Full verification harness & Chromium headless E2E
+# 4. Python solver, daemon & E2E verification harnesses
+python -m pytest packages -q
+python scripts/test-live-mcp-harness-plugins.py
+node scripts/launch.mjs --headless-check
 node scripts/verify-all.mjs
 python scripts/test-g6d-e2e-golden-journeys.py
+
+# 5. Stage 1-6 subsystem E2E checks
+node scripts/test-cross-integration-e2e.mjs
+node scripts/test-canvas-ergonomics-e2e.mjs
+node scripts/test-verifier-and-lab-e2e.mjs
+node scripts/test-hermes-agent-byok-e2e.mjs
+node scripts/test-product-polish-e2e.mjs
+node scripts/test-final-torture-gate.mjs
 ```
 
 ## Toolchain Notes

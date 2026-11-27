@@ -71,6 +71,35 @@ function indexEntities(list: CanonicalEntity[]): Record<string, CanonicalEntity>
   return map;
 }
 
+function mergeEntitiesDelta(
+  prev: Record<string, CanonicalEntity>,
+  payload: Record<string, unknown>
+): Record<string, CanonicalEntity> {
+  const deltas = Array.isArray(payload.changed_deltas) ? (payload.changed_deltas as CanonicalEntity[]) : null;
+  const full = Array.isArray(payload.entities) ? (payload.entities as CanonicalEntity[]) : null;
+  const deleted = Array.isArray(payload.deleted_refdes) ? (payload.deleted_refdes as string[]) : [];
+  if (deltas && deltas.length > 0) {
+    const next = { ...prev };
+    for (const delRef of deleted) delete next[delRef];
+    for (const e of deltas) {
+      if (e.refdes) next[e.refdes] = e;
+    }
+    return next;
+  }
+  if (full && (full.length > 0 || deleted.length > 0 || (payload.bom_summary as { component_count?: number } | undefined)?.component_count === 0)) {
+    const next = { ...prev };
+    for (const delRef of deleted) delete next[delRef];
+    if (deltas === null && full.length > 0 && !Array.isArray(payload.changed_entities)) {
+      return indexEntities(full);
+    }
+    for (const e of full) {
+      if (e.refdes) next[e.refdes] = e;
+    }
+    return next;
+  }
+  return prev;
+}
+
 export const useDesignStore = create<DesignStoreState>((set, get) => ({
   revId: 0,
   entitiesByRefdes: {},
@@ -179,16 +208,16 @@ export const useDesignStore = create<DesignStoreState>((set, get) => ({
       }
 
       if (typeof data.rev_id === 'number' && data.rev_id > get().revId) {
-        set({
+        set((s) => ({
           isApplyingSyncDelta: true,
           revId: data.rev_id,
           lastOriginPaneId: originPaneId,
-          entitiesByRefdes: indexEntities(data.entities ?? []),
-          bomSummary: data.bom_summary ?? get().bomSummary,
-          stageFreshness: data.stage_freshness ?? get().stageFreshness,
+          entitiesByRefdes: mergeEntitiesDelta(s.entitiesByRefdes, data as Record<string, unknown>),
+          bomSummary: data.bom_summary ?? s.bomSummary,
+          stageFreshness: data.stage_freshness ?? s.stageFreshness,
           transientPreviews: {},
           lockConflict: null,
-        });
+        }));
         set({ isApplyingSyncDelta: false });
       }
       if (syncBc) {
@@ -284,15 +313,15 @@ export const useDesignStore = create<DesignStoreState>((set, get) => ({
         } else if (msg.type === 'STATE_DELTA' && msg.payload) {
           const rev = Number(msg.payload.rev_id ?? 0);
           if (rev > get().revId) {
-            set({
+            set((s) => ({
               isApplyingSyncDelta: true,
               revId: rev,
-              lastOriginPaneId: String(msg.payload.origin_pane_id ?? 'broadcast'),
-              entitiesByRefdes: indexEntities((msg.payload.entities as CanonicalEntity[]) ?? []),
-              bomSummary: (msg.payload.bom_summary as DesignStoreState['bomSummary']) ?? get().bomSummary,
-              stageFreshness: (msg.payload.stage_freshness as Record<string, StageFreshnessState>) ?? get().stageFreshness,
+              lastOriginPaneId: String(msg.payload!.origin_pane_id ?? 'broadcast'),
+              entitiesByRefdes: mergeEntitiesDelta(s.entitiesByRefdes, msg.payload!),
+              bomSummary: (msg.payload!.bom_summary as DesignStoreState['bomSummary']) ?? s.bomSummary,
+              stageFreshness: (msg.payload!.stage_freshness as Record<string, StageFreshnessState>) ?? s.stageFreshness,
               transientPreviews: {},
-            });
+            }));
             set({ isApplyingSyncDelta: false });
           }
         }
@@ -301,23 +330,67 @@ export const useDesignStore = create<DesignStoreState>((set, get) => ({
 
     try {
       const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      syncWs = new WebSocket(`${proto}//${window.location.host}/ws/sync`);
+      let tabId = '';
+      try {
+        tabId = sessionStorage.getItem('vd_tab_id') || '';
+        if (!tabId) {
+          tabId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `tab-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          sessionStorage.setItem('vd_tab_id', tabId);
+        }
+      } catch {
+        tabId = `tab-${Date.now()}`;
+      }
+      if (syncWs) {
+        try {
+          syncWs.close();
+        } catch {
+          /* ignore */
+        }
+      }
+      syncWs = new WebSocket(`${proto}//${window.location.host}/ws/sync?tab_id=${encodeURIComponent(tabId)}`);
       syncWs.onopen = () => set({ syncWsConnected: true });
       syncWs.onclose = () => set({ syncWsConnected: false });
+      const teardown = () => {
+        if (syncWs) {
+          try {
+            syncWs.close(1000, 'tab-unload');
+          } catch {
+            /* ignore */
+          }
+          syncWs = null;
+        }
+        if (syncBc) {
+          try {
+            syncBc.close();
+          } catch {
+            /* ignore */
+          }
+          syncBc = null;
+        }
+        channelsConnected = false;
+      };
+      window.addEventListener('beforeunload', teardown, { once: true });
+      window.addEventListener('pagehide', teardown, { once: true });
       syncWs.onmessage = (ev: MessageEvent) => {
         try {
           const msg = JSON.parse(String(ev.data)) as Record<string, unknown>;
+          if (msg.type === 'PROJECT_SWITCHED') {
+            set({ revId: 0, entitiesByRefdes: {}, transientPreviews: {}, lockConflict: null });
+            void get().hydrateFromDaemon();
+            void globalKiCadSyncStore.fetchFiles();
+            return;
+          }
           if (msg.type === 'STATE_DELTA' && typeof msg.rev_id === 'number') {
             if (msg.rev_id > get().revId) {
-              set({
+              set((s) => ({
                 isApplyingSyncDelta: true,
-                revId: msg.rev_id,
+                revId: msg.rev_id as number,
                 lastOriginPaneId: String(msg.origin_pane_id ?? 'ws'),
-                entitiesByRefdes: indexEntities((msg.entities as CanonicalEntity[]) ?? []),
-                bomSummary: (msg.bom_summary as DesignStoreState['bomSummary']) ?? get().bomSummary,
-                stageFreshness: (msg.stage_freshness as Record<string, StageFreshnessState>) ?? get().stageFreshness,
+                entitiesByRefdes: mergeEntitiesDelta(s.entitiesByRefdes, msg),
+                bomSummary: (msg.bom_summary as DesignStoreState['bomSummary']) ?? s.bomSummary,
+                stageFreshness: (msg.stage_freshness as Record<string, StageFreshnessState>) ?? s.stageFreshness,
                 transientPreviews: {},
-              });
+              }));
               set({ isApplyingSyncDelta: false });
               void globalKiCadSyncStore.fetchFiles();
             }

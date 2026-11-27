@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Background,
-  Controls,
   Handle,
   Position,
   ReactFlow,
@@ -367,7 +366,6 @@ export const ArchitecturePlannerPanel: React.FC = () => {
             fitView
           >
             <Background color="#1E293B" gap={18} />
-            <Controls />
           </ReactFlow>
         </div>
 

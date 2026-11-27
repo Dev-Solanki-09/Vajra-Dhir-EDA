@@ -280,16 +280,36 @@ export const CodeEditorPanel: React.FC = () => {
     };
   }, []);
 
-  // Sync open tab text & language cleanly when switching tabs or loading from daemon
+  // Sync open tab text & language cleanly with max-8 LRU Monaco model eviction
+  const lruModelsRef = useRef<Map<string, monaco.editor.ITextModel>>(new Map());
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor || !activeTab) return;
-    const model = editor.getModel();
-    if (!model) return;
-    if (model.getValue() !== activeTab.content) {
-      model.setValue(activeTab.content);
+    const map = lruModelsRef.current;
+    let model = map.get(activeTab.path) ?? null;
+    if (!model || model.isDisposed()) {
+      model = monaco.editor.createModel(activeTab.content, activeTab.language);
+      map.set(activeTab.path, model);
+    } else {
+      map.delete(activeTab.path);
+      map.set(activeTab.path, model);
+      if (model.getValue() !== activeTab.content && !activeTab.dirty) {
+        model.setValue(activeTab.content);
+      }
+      monaco.editor.setModelLanguage(model, activeTab.language);
     }
-    monaco.editor.setModelLanguage(model, activeTab.language);
+    if (editor.getModel() !== model) {
+      editor.setModel(model);
+    }
+    while (map.size > 8) {
+      const oldestKey = map.keys().next().value;
+      if (!oldestKey) break;
+      const oldModel = map.get(oldestKey);
+      map.delete(oldestKey);
+      if (oldModel && !oldModel.isDisposed() && editor.getModel() !== oldModel) {
+        oldModel.dispose();
+      }
+    }
   }, [activeTab?.path, activeTab?.savedContent]);
 
   // Honor file:line jumps triggered from TerminalPanel clickable error/component links

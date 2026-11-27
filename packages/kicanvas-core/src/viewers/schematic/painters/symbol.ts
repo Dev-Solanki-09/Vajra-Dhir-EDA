@@ -87,7 +87,7 @@ export class SchematicSymbolPainter extends SchematicItemPainter {
     }
 
     paint(layer: ViewLayer, si: schematic_items.SchematicSymbol) {
-        if (layer.name == LayerNames.interactive && si.lib_symbol.power) {
+        if (layer.name == LayerNames.interactive && si.lib_symbol?.power) {
             // Don't draw power symbols on the interactive layer.
             return;
         }
@@ -97,20 +97,23 @@ export class SchematicSymbolPainter extends SchematicItemPainter {
         this.view_painter.current_symbol = si;
         this.view_painter.current_symbol_transform = transform;
 
-        this.gfx.state.push();
-        this.gfx.state.matrix = Matrix3.translation(
-            si.at.position.x,
-            si.at.position.y,
-        );
-        this.gfx.state.multiply(transform.matrix);
+        if (si.lib_symbol) {
+            this.gfx.state.push();
+            this.gfx.state.matrix = Matrix3.translation(
+                si.at.position.x,
+                si.at.position.y,
+            );
+            this.gfx.state.multiply(transform.matrix);
 
-        const body_style = si.convert ?? 1;
+            const body_style = si.convert ?? 1;
 
-        this.view_painter.paint_item(layer, si.lib_symbol, body_style);
+            this.view_painter.paint_item(layer, si.lib_symbol, body_style);
 
-        this.gfx.state.pop();
+            this.gfx.state.pop();
+        }
 
         if (
+            si.lib_symbol &&
             [
                 LayerNames.symbol_pin,
                 LayerNames.symbol_foreground,
@@ -131,7 +134,7 @@ export class SchematicSymbolPainter extends SchematicItemPainter {
             }
         }
 
-        if (si.dnp && layer.name == LayerNames.marks) {
+        if (si.dnp && si.lib_symbol && layer.name == LayerNames.marks) {
             const bbox = get_symbol_body_and_pins_bbox(this.theme, si);
             const width = schematic_items.DefaultValues.line_width * 3;
             const color = this.theme.erc_error;

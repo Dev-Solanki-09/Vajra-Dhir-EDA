@@ -1,6 +1,6 @@
 [project]
 name = "ambient-knowledge"
-version = "0.0.3"
+version = "0.0.4"
 description = "Vajra-Dhīr EDA — 7-Level Ambient Knowledge UX Engine"
 requires-python = ">=3.10"
 dependencies = [

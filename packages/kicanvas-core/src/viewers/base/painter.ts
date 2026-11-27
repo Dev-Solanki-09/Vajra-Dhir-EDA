@@ -123,10 +123,16 @@ export class DocumentPainter {
     }
 
     painter_for(item: any): ItemPainter | undefined {
+        if (item == null) {
+            return undefined;
+        }
         return this.painters.get(item.constructor);
     }
 
     layers_for(item: any): string[] {
+        if (item == null) {
+            return [];
+        }
         return this.painters.get(item.constructor)?.layers_for(item) || [];
     }
 }

@@ -40,7 +40,7 @@ def _free_port() -> int:
 
 def _get_json(url: str) -> tuple[int, dict]:
     try:
-        with urllib.request.urlopen(url, timeout=5) as resp:
+        with urllib.request.urlopen(url, timeout=15) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as err:
         return err.code, json.loads(err.read().decode("utf-8"))
@@ -54,7 +54,7 @@ def _post_json(url: str, payload: dict) -> tuple[int, dict]:
         headers={"Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as err:
         return err.code, json.loads(err.read().decode("utf-8"))

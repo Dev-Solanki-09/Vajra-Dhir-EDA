@@ -11,8 +11,8 @@ PATTERNS = [
     re.compile(r"C:\\Users\\[a-zA-Z0-9._-]+"),
 ]
 
-IGNORED_DIRS = {".git", ".venv", "node_modules", ".pnpm-store", "target", "dist", "prompt-and-skills", "prompt and skill", ".vd-dev"}
-IGNORED_REL_PREFIXES = ("workers/sources", "vendor/ring1-refs", "vendor/quarantine", ".vd-dev")
+IGNORED_DIRS = {".git", ".venv", "node_modules", ".pnpm-store", "target", "dist", "prompt-and-skills", "prompt and skill", ".vd-dev", ".vd-runtime", ".vd-portable", ".vd-cache"}
+IGNORED_REL_PREFIXES = ("workers/sources", "vendor/ring1-refs", "vendor/quarantine", ".vd-dev", ".vd-runtime", ".vd-portable", ".vd-cache")
 IGNORED_FILES = {"audit-secrets-and-paths.py", "publish-github.sh", "publish-github.ps1"}
 
 violations = []

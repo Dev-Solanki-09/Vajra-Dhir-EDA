@@ -41,7 +41,18 @@ assert "pcbnew" not in sys.modules, "GPL_FIREWALL_VIOLATION: pcbnew must NEVER b
 
 DEFAULT_SUPPRESSION_WINDOW_SEC = 5.0
 DEFAULT_CLI_TIMEOUT_SEC = 240.0
-INSTALL_KICAD_CMD = "winget install KiCad.KiCad"
+INSTALL_KICAD_CMD = "Install KiCad 10 pack via Environment -> Resource Packs (or local KiCad 10)"
+
+
+def _replace_with_retry(src: str, dest: pathlib.Path, attempts: int = 5) -> None:
+    for idx in range(attempts):
+        try:
+            os.replace(src, dest)
+            return
+        except PermissionError:
+            if idx == attempts - 1:
+                raise
+            time.sleep(0.03 * (idx + 1))
 
 
 def new_uuidv7() -> str:
@@ -140,7 +151,7 @@ def write_text_atomic(path: pathlib.Path, content: str, echo_ring: Optional[Echo
             f.write(content)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp_name, path)
+        _replace_with_retry(tmp_name, path)
     except Exception:
         if os.path.exists(tmp_name):
             os.remove(tmp_name)
@@ -173,7 +184,7 @@ class CasStore:
                     f.write(data)
                     f.flush()
                     os.fsync(f.fileno())
-                os.replace(tmp_name, dest)
+                _replace_with_retry(tmp_name, dest)
             except Exception:
                 if os.path.exists(tmp_name):
                     os.remove(tmp_name)
@@ -369,8 +380,18 @@ def _parse_version_tuple(raw: str) -> Tuple[int, ...]:
     return tuple(int(x or 0) for x in m.groups())
 
 
+_KICAD_CLI_CACHE: Optional[Dict[str, Any]] = None
+_KICAD_LIBS_CACHE: Dict[str, Dict[str, Any]] = {}
+
+
 def find_kicad_cli() -> Dict[str, Any]:
-    """Detect KiCad 10+ `kicad-cli` binary strictly out-of-process."""
+    """Detect KiCad 10+ `kicad-cli` binary strictly out-of-process (cached per path)."""
+    global _KICAD_CLI_CACHE
+    if _KICAD_CLI_CACHE is not None and _KICAD_CLI_CACHE.get("installed"):
+        cp = _KICAD_CLI_CACHE.get("path")
+        if cp and os.path.isfile(cp):
+            return dict(_KICAD_CLI_CACHE)
+
     candidates: List[str] = []
     env_cli = os.environ.get("KICAD10_CLI") or os.environ.get("KICAD_CLI")
     if env_cli:
@@ -406,7 +427,7 @@ def find_kicad_cli() -> Dict[str, Any]:
                 )
                 ver_str = (proc.stdout or proc.stderr or "").strip()
                 ver_tuple = _parse_version_tuple(ver_str)
-                return {
+                found_cli = {
                     "installed": proc.returncode == 0,
                     "path": cand,
                     "version": ver_str,
@@ -414,6 +435,9 @@ def find_kicad_cli() -> Dict[str, Any]:
                     "meets_v10_floor": ver_tuple >= (10, 0, 0),
                     "install_command": INSTALL_KICAD_CMD,
                 }
+                if found_cli["installed"]:
+                    _KICAD_CLI_CACHE = found_cli
+                return dict(found_cli)
             except Exception as exc:
                 return {
                     "installed": False,
@@ -722,6 +746,37 @@ def sync_hwir_to_kicad_pcb(
         else:
             k_uuid = mapped_uuid or cid
             layer = "F.Cu" if side == "top" else "B.Cu"
+            fp_low = str(fp_ref or "").lower()
+            pad_nodes: List[Any] = []
+            if "sot-23-6" in fp_low or "essop" in fp_low or "soic" in fp_low or "qfn" in fp_low:
+                cnt = 6 if "sot-23-6" in fp_low else (10 if "essop-10" in fp_low else 8)
+                half = cnt // 2
+                for idx_p in range(cnt):
+                    col = idx_p % half
+                    row_s = -1.2 if idx_p < half else 1.2
+                    px = round((col - (half - 1) / 2.0) * 0.95, 3)
+                    pnum = str(idx_p + 1)
+                    pad_nodes.append([
+                        SAtom("pad"), SStr(pnum), SAtom("smd"), SAtom("roundrect"),
+                        [SAtom("at"), SAtom(str(px)), SAtom(str(row_s))],
+                        [SAtom("size"), SAtom("0.6"), SAtom("1.0")],
+                        [SAtom("layers"), SStr("F.Cu"), SStr("F.Paste"), SStr("F.Mask")],
+                    ])
+            else:
+                pad_nodes = [
+                    [
+                        SAtom("pad"), SStr("1"), SAtom("smd"), SAtom("roundrect"),
+                        [SAtom("at"), SAtom("-0.8"), SAtom("0")],
+                        [SAtom("size"), SAtom("0.9"), SAtom("0.9")],
+                        [SAtom("layers"), SStr("F.Cu"), SStr("F.Paste"), SStr("F.Mask")],
+                    ],
+                    [
+                        SAtom("pad"), SStr("2"), SAtom("smd"), SAtom("roundrect"),
+                        [SAtom("at"), SAtom("0.8"), SAtom("0")],
+                        [SAtom("size"), SAtom("0.9"), SAtom("0.9")],
+                        [SAtom("layers"), SStr("F.Cu"), SStr("F.Paste"), SStr("F.Mask")],
+                    ],
+                ]
             new_fp: List[Any] = [
                 SAtom("footprint"),
                 SStr(fp_ref),
@@ -730,12 +785,19 @@ def sync_hwir_to_kicad_pcb(
                 [SAtom("at"), SAtom(nm_to_mm_str(x_nm)), SAtom(nm_to_mm_str(y_nm)), SAtom(mdeg_to_deg_str(rot_mdeg))],
                 [SAtom("property"), SStr("Reference"), SStr(refdes), [SAtom("at"), SAtom("0"), SAtom("-2")], [SAtom("layer"), SStr("F.SilkS")], [SAtom("uuid"), SStr(new_uuidv7())]],
                 [SAtom("property"), SStr("Value"), SStr(val), [SAtom("at"), SAtom("0"), SAtom("2")], [SAtom("layer"), SStr("F.Fab")], [SAtom("uuid"), SStr(new_uuidv7())]],
+                *pad_nodes,
             ]
             if locked:
                 new_fp.insert(4, [SAtom("locked"), SAtom("yes")])
             root.append(new_fp)
             added_fps += 1
         _ensure_external_mapping(con, cid, "components", "kicad_pcb", k_uuid, "")
+
+    active_refs = {str(c[1]) for c in comps}
+    root[:] = [
+        item for item in root
+        if not (isinstance(item, list) and item and _head_tag(item) == "footprint" and (_extract_fp_ref_and_val(item)[0] not in (None, "") and _extract_fp_ref_and_val(item)[0] not in active_refs))
+    ]
 
     # Index existing nets in .kicad_pcb by name
     net_name_to_idx: Dict[str, int] = {}
@@ -1194,6 +1256,103 @@ def sync_kicad_sch_to_hwir(
     }
 
 
+def sync_hwir_to_kicad_sch(
+    con: sqlite3.Connection,
+    sch_path: pathlib.Path,
+    echo_ring: Optional[EchoSuppressionRing] = None,
+) -> Dict[str, Any]:
+    """Channel A: Materialize HW-IR components & pin-net wires cleanly into `.kicad_sch`."""
+    assert "pcbnew" not in sys.modules
+    ensure_external_id_map(con)
+    sch_path = pathlib.Path(sch_path)
+    cur = con.cursor()
+    board = cur.execute("SELECT id FROM boards LIMIT 1").fetchone()
+    if not board:
+        return {"direction": "hwir_to_kicad_sch", "sch_path": str(sch_path), "sha256": ""}
+    board_id = board[0]
+    comps = cur.execute(
+        "SELECT id, refdes, value_str, footprint_ref, x_nm, y_nm FROM components WHERE board_id = ? AND COALESCE(deleted, 0) = 0 ORDER BY refdes",
+        (board_id,),
+    ).fetchall()
+
+    if sch_path.is_file():
+        trees = parse_sexpr(sch_path.read_text(encoding="utf-8"))
+        root = trees[0] if trees else [SAtom("kicad_sch"), [SAtom("version"), SAtom("20250114")], [SAtom("generator"), SStr("vajra-dhir-eda")]]
+    else:
+        root = [SAtom("kicad_sch"), [SAtom("version"), SAtom("20250114")], [SAtom("generator"), SStr("vajra-dhir-eda")], [SAtom("uuid"), SStr(new_uuidv7())], [SAtom("paper"), SStr("A4")]]
+
+    existing_refs: Dict[str, list] = {}
+    for sym in _find_children(root, "symbol"):
+        ref_p = _find_property(sym, "Reference")
+        if ref_p and len(ref_p) >= 3:
+            existing_refs[_atom_or_str_val(ref_p[2])] = sym
+
+    active_refs = {str(c[1]) for c in comps}
+    root[:] = [
+        item for item in root
+        if not (isinstance(item, list) and item and _head_tag(item) == "symbol" and _find_property(item, "Reference") and len(_find_property(item, "Reference")) >= 3 and _atom_or_str_val(_find_property(item, "Reference")[2]) not in active_refs and not _atom_or_str_val(_find_property(item, "Reference")[2]).startswith("#"))
+    ]
+
+    added_syms = 0
+    for idx, (cid, refdes, val, fp_ref, x_nm, y_nm) in enumerate(comps):
+        sx = round(50.0 + (idx % 5) * 35.0, 2)
+        sy = round(50.0 + (idx // 5) * 30.0, 2)
+        if refdes in existing_refs:
+            val_p = _find_property(existing_refs[refdes], "Value")
+            if val_p and len(val_p) >= 3:
+                val_p[2] = SStr(str(val or ""))
+            continue
+        lib_id = "Device:C" if refdes.startswith("C") else ("Device:L" if refdes.startswith("L") else ("Device:D" if refdes.startswith("D") else ("Device:R" if refdes.startswith("R") else "Device:U")))
+        sym_uuid = new_uuidv7()
+        new_sym = [
+            SAtom("symbol"),
+            [SAtom("lib_id"), SStr(lib_id)],
+            [SAtom("at"), SAtom(str(sx)), SAtom(str(sy)), SAtom("0")],
+            [SAtom("unit"), SAtom("1")],
+            [SAtom("uuid"), SStr(sym_uuid)],
+            [SAtom("property"), SStr("Reference"), SStr(refdes), [SAtom("at"), SAtom(str(sx)), SAtom(str(sy - 3.81)), SAtom("0")]],
+            [SAtom("property"), SStr("Value"), SStr(str(val or "")), [SAtom("at"), SAtom(str(sx)), SAtom(str(sy + 3.81)), SAtom("0")]],
+            [SAtom("property"), SStr("Footprint"), SStr(str(fp_ref or "")), [SAtom("at"), SAtom(str(sx)), SAtom(str(sy + 6.35)), SAtom("0")]],
+            [SAtom("pin"), SStr("1"), [SAtom("uuid"), SStr(new_uuidv7())]],
+            [SAtom("pin"), SStr("2"), [SAtom("uuid"), SStr(new_uuidv7())]],
+        ]
+        root.append(new_sym)
+        _ensure_external_mapping(con, cid, "components", "kicad_sch", sym_uuid, "")
+        added_syms += 1
+
+    try:
+        bindings = cur.execute(
+            """
+            SELECT c.refdes, cp.pin_number, n.name
+            FROM pin_net_bindings pnb
+            JOIN component_pins cp ON cp.id = pnb.pin_id
+            JOIN components c ON c.id = cp.component_id
+            JOIN nets n ON n.id = pnb.net_id
+            WHERE c.board_id = ?
+            """,
+            (board_id,),
+        ).fetchall()
+        existing_labels = {
+            _atom_or_str_val(lbl[1])
+            for lbl in _find_children(root, "label")
+            if len(lbl) >= 2
+        }
+        for b_idx, (b_ref, b_pin, net_name) in enumerate(bindings):
+            if net_name and net_name not in existing_labels:
+                lx = round(50.0 + (b_idx % 5) * 35.0, 2)
+                ly = round(42.0 + (b_idx // 5) * 30.0, 2)
+                root.append([SAtom("wire"), [SAtom("pts"), [SAtom("xy"), SAtom(str(lx)), SAtom(str(ly))], [SAtom("xy"), SAtom(str(lx + 10.16)), SAtom(str(ly))]], [SAtom("stroke"), [SAtom("width"), SAtom("0.15")], [SAtom("type"), SAtom("default")]], [SAtom("uuid"), SStr(new_uuidv7())]])
+                root.append([SAtom("label"), SStr(str(net_name)), [SAtom("at"), SAtom(str(lx + 2.54)), SAtom(str(ly)), SAtom("0")], [SAtom("uuid"), SStr(new_uuidv7())]])
+                existing_labels.add(net_name)
+    except Exception:
+        pass
+
+    serialized = format_sexpr(root) + "\n"
+    digest = write_text_atomic(sch_path, serialized, echo_ring=echo_ring)
+    con.commit()
+    return {"direction": "hwir_to_kicad_sch", "sch_path": str(sch_path), "sha256": digest, "added_symbols": added_syms}
+
+
 # ============================================================================
 # Channel C: Supervised `kicad-cli` Worker + Canonical Findings + CasStore
 # ============================================================================
@@ -1214,14 +1373,16 @@ def _run_kicad_cli(
     for k in ("KICAD10_SYMBOL_DIR", "KICAD10_FOOTPRINT_DIR", "KICAD10_3DMODEL_DIR"):
         if libs.get(k):
             env.setdefault(k, libs[k])
-    with SupervisedProcessGroup() as sup:
-        # Capture UTF-8 output cleanly via pipe on SupervisedProcessGroup
+    with tempfile.TemporaryDirectory(prefix="vd_kcfg_") as cfg_tmp, SupervisedProcessGroup() as sup:
+        # Isolate KiCad user config dir & detach stdin so Windows GUI/first-run dialogs never hang headless runs
+        env["KICAD_CONFIG_HOME"] = cfg_tmp
         orig_spawn = sup.spawn
 
         def _spawn_captured() -> subprocess.Popen:
             kwargs: Dict[str, Any] = {
                 "cwd": str(cwd) if cwd else None,
                 "env": env,
+                "stdin": subprocess.DEVNULL,
                 "stdout": subprocess.PIPE,
                 "stderr": subprocess.PIPE,
             }

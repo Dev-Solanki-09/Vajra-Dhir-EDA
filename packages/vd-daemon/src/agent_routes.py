@@ -31,6 +31,16 @@ try:
         run_autonomous_ee_loop,
         set_dlp_policy,
     )
+    from .agent import (
+        HermesRuntime,
+        PROVIDER_CATALOG,
+        clear_provider_secret,
+        get_provider_secret_status,
+        get_session_budget_status,
+        set_provider_secret,
+        test_provider_connection,
+    )
+    from .kicad_routes import _ACTIVE_STATE
 except ImportError:
     from acp_orchestrator import (
         CANONICAL_12_VERBS,
@@ -40,6 +50,19 @@ except ImportError:
         run_autonomous_ee_loop,
         set_dlp_policy,
     )
+    from agent import (
+        HermesRuntime,
+        PROVIDER_CATALOG,
+        clear_provider_secret,
+        get_provider_secret_status,
+        get_session_budget_status,
+        set_provider_secret,
+        test_provider_connection,
+    )
+    from kicad_routes import _ACTIVE_STATE
+
+_HERMES_RUNTIME = HermesRuntime(pathlib.Path(__file__).resolve().parents[3])
+APPROVAL_PATH_RE = re.compile(r"^/api(?:/v1)?/agent/approvals/([0-9a-zA-Z_-]{6,64})/(accept|reject)$")
 
 ALLOWED_MCP_VERBS = frozenset(CANONICAL_12_VERBS)
 
@@ -145,7 +168,39 @@ def handle_agent_get(handler, path: str, full_path: str = "", con: sqlite3.Conne
     if path in ("/api/v1/agent/policy", "/api/agent/policy"):
         pol = get_dlp_policy()
         pol["canonical_verbs"] = list(CANONICAL_12_VERBS)
+        pol["agent_settings"] = dict(_HERMES_RUNTIME.agent_settings)
         _send_json(handler, 200, pol)
+        return True
+    if path == "/api/v1/agent/providers":
+        ids = [p["id"] for p in PROVIDER_CATALOG if p.get("requires_key")]
+        _send_json(handler, 200, {
+            "providers": PROVIDER_CATALOG,
+            "vault_status": get_provider_secret_status(ids),
+            "settings": dict(_HERMES_RUNTIME.agent_settings),
+            "dlp": get_dlp_policy(),
+            "budget": get_session_budget_status(),
+        })
+        return True
+    if path == "/api/v1/agent/budget":
+        _send_json(handler, 200, get_session_budget_status())
+        return True
+    if path == "/api/v1/agent/skills":
+        _send_json(handler, 200, {
+            "skills": _HERMES_RUNTIME.list_skills(),
+            "skills_write_approval": _HERMES_RUNTIME.agent_settings.get("skills_write_approval", True),
+        })
+        return True
+    if path == "/api/v1/agent/memory":
+        qs = urllib.parse.parse_qs(urllib.parse.urlparse(full_path or path).query)
+        q = (qs.get("q") or [""])[0]
+        _send_json(handler, 200, {
+            "entries": _HERMES_RUNTIME.list_memory(query=q),
+            "memory_write_approval": _HERMES_RUNTIME.agent_settings.get("memory_write_approval", True),
+            "pending_approvals": [v for v in _HERMES_RUNTIME.pending_approvals.values() if v.get("status") == "pending"],
+        })
+        return True
+    if path == "/api/v1/agent/plan":
+        _send_json(handler, 200, {"stages": _HERMES_RUNTIME.active_plan})
         return True
     return False
 
@@ -161,6 +216,74 @@ def handle_agent_post(
     if path in ("/api/v1/agent/policy", "/api/agent/policy"):
         pol = set_dlp_policy(tier=req.get("tier"), mode=req.get("mode"))
         _send_json(handler, 200, pol)
+        return True
+
+    if path == "/api/v1/agent/settings":
+        for k in ("provider", "model", "base_url"):
+            if k in req and req[k] is not None:
+                _HERMES_RUNTIME.agent_settings[k] = str(req[k]).strip()
+        for k in ("memory_write_approval", "skills_write_approval"):
+            if k in req:
+                _HERMES_RUNTIME.agent_settings[k] = bool(req[k])
+        _send_json(handler, 200, {"ok": True, "settings": dict(_HERMES_RUNTIME.agent_settings)})
+        return True
+
+    if path == "/api/v1/agent/vault":
+        prov = str(req.get("provider") or "").strip().lower()
+        if not prov:
+            _send_json(handler, 400, {"error": "Missing provider"})
+            return True
+        if req.get("clear"):
+            _send_json(handler, 200, clear_provider_secret(prov))
+            return True
+        res = set_provider_secret(prov, str(req.get("api_key") or ""))
+        _send_json(handler, 200, res)
+        return True
+
+    if path == "/api/v1/agent/test-connection":
+        pol = get_dlp_policy()
+        dlp_tier = str(req.get("dlp_tier") or pol.get("tier") or "NDA_AIRGAPPED")
+        res = test_provider_connection(
+            provider=str(req.get("provider") or _HERMES_RUNTIME.agent_settings.get("provider") or "deterministic_offline"),
+            model=str(req.get("model") or _HERMES_RUNTIME.agent_settings.get("model") or ""),
+            base_url=str(req.get("base_url") or _HERMES_RUNTIME.agent_settings.get("base_url") or ""),
+            api_key=req.get("api_key"),
+            dlp_tier=dlp_tier,
+        )
+        code = 403 if res.get("error_code") == "NDA_AIRGAP_VIOLATION" else (200 if res.get("ok") else 400)
+        _send_json(handler, code, res)
+        return True
+
+    if path == "/api/v1/agent/audit":
+        _send_json(handler, 200, _HERMES_RUNTIME.run_dual_context_auditor(handler.con))
+        return True
+
+    if path == "/api/v1/agent/memory":
+        res = _HERMES_RUNTIME.propose_memory_write(
+            layer=str(req.get("layer") or "ee_lessons"),
+            title=str(req.get("title") or "Engineering Decision"),
+            content=str(req.get("content") or ""),
+            project_id=str(req.get("project_id") or "default"),
+            force_approve=bool(req.get("approved", False)),
+        )
+        _send_json(handler, 200, res)
+        return True
+
+    if path == "/api/v1/agent/skills":
+        res = _HERMES_RUNTIME.propose_skill_write(req, force_approve=bool(req.get("approved", False)))
+        _send_json(handler, 200, res)
+        return True
+
+    if path == "/api/v1/agent/plan/stage":
+        stages = _HERMES_RUNTIME.update_plan_stage(str(req.get("stage_id") or ""), str(req.get("status") or "done"))
+        _send_json(handler, 200, {"ok": True, "stages": stages})
+        return True
+
+    app_match = APPROVAL_PATH_RE.match(path)
+    if app_match:
+        aid, action = app_match.group(1), app_match.group(2)
+        res = _HERMES_RUNTIME.resolve_approval(aid, accept=(action == "accept"))
+        _send_json(handler, 200 if res.get("ok") else 404, res)
         return True
 
     if path in ("/api/v1/agent/checkpoint", "/api/agent/checkpoint"):
@@ -185,11 +308,43 @@ def handle_agent_post(
             _send_json(handler, 409, {"error_code": "AGENT_MODE_OFF", "error": "Agent dock is set to manual OFF mode."})
             return True
         prompt = str(req.get("prompt", "")).strip() or "Analyze placement spacing on SW_NODE"
+        if prompt.lower().startswith("/rollback"):
+            rw = rewind_dual_checkpoint(handler.con)
+            handler.send_response(200)
+            handler.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            handler.send_header("Cache-Control", "no-cache")
+            handler._send_cors()
+            handler.end_headers()
+            _write_sse(handler, "thought_delta", {"text": f"Rolled back workspace to checkpoint {rw.get('rewound_to', 'latest')}." if rw.get("success") else str(rw.get("error") or "No checkpoint available")})
+            _write_sse(handler, "done", {"provider": "rollback", "airgap": True})
+            return True
+
         try:
             provider, ollama_endpoint = resolve_llm_provider()
         except ValueError as err:
             _send_json(handler, 403, {"error": str(err), "error_code": "NDA_AIRGAP_VIOLATION", "airgap": True})
             return True
+
+        # Check active Hermes BYOK provider against DLP policy if non-offline
+        eff_prov = str(req.get("provider") or _HERMES_RUNTIME.agent_settings.get("provider") or provider)
+        if eff_prov != "deterministic_offline" and eff_prov != "ollama":
+            try:
+                hermes_test = _HERMES_RUNTIME.generate_plan_and_narrative(
+                    handler.con,
+                    prompt,
+                    str(pol.get("tier") or "NDA_AIRGAPPED"),
+                    {"tags": [], "snippets": []},
+                    "BOARD",
+                    False,
+                )
+            except PermissionError as err:
+                _send_json(handler, 403, {"error": str(err), "error_code": "NDA_AIRGAP_VIOLATION", "airgap": True})
+                return True
+            except Exception as exc:
+                _send_json(handler, 400, {"error": str(exc)})
+                return True
+        else:
+            hermes_test = None
 
         comp = _select_target_component(handler.con, prompt)
         if comp is None:
@@ -199,6 +354,18 @@ def handle_agent_post(
         comp_id = str(comp["id"])
         refdes = str(comp["refdes"])
         locked = bool(int(comp["locked"] or 0))
+        proj_dir = _ACTIVE_STATE.get("project_dir")
+        at_ctx = _HERMES_RUNTIME.resolve_at_context(
+            handler.con, prompt, pathlib.Path(str(proj_dir)) if proj_dir else None
+        )
+        hermes_res = hermes_test or _HERMES_RUNTIME.generate_plan_and_narrative(
+            handler.con,
+            prompt,
+            str(pol.get("tier") or "NDA_AIRGAPPED"),
+            at_ctx,
+            refdes,
+            locked,
+        )
         x_nm = int(comp["x_nm"])
         y_nm = int(comp["y_nm"])
         dx_nm = 1_000_000
@@ -237,10 +404,11 @@ def handle_agent_post(
         handler.end_headers()
 
         ollama_note = _maybe_query_loopback_ollama(ollama_endpoint, prompt) if ollama_endpoint else None
-        thought_msg = ollama_note or (
+        thought_msg = ollama_note or hermes_res.get("thought") or (
             f"Evaluating integer-nm clearance around {refdes} "
             f"({'LOCKED by human' if locked else 'unlocked'})."
         )
+        _write_sse(handler, "plan_card", {"stages": hermes_res.get("plan", _HERMES_RUNTIME.active_plan)})
         _write_sse(handler, "thought_delta", {"text": thought_msg})
 
         verb = "hw_inspect"

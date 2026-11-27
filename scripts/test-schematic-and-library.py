@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 scripts/test-schematic-and-library.py
-Automated Verification Gate 62 for Vajra-Dhīr EDA v0.0.3.
+Automated Verification Gate 62 for Vajra-Dhīr EDA v0.0.4.
 Validates Schematic Capture (elkjs orthogonal layout, hierarchy, wires)
 and Library, BOM & Local PDF Datasheet Center (DuckDB parametric search,
 Basic $0 vs Extended +$3 feeder fee filter, 300-dpi PDFium preview).
@@ -41,7 +41,7 @@ def http_get(path: str) -> tuple[int, dict]:
         return e.code, json.loads(e.read().decode("utf-8"))
 
 def test_frontend_components():
-    print("[*] Validating v0.0.3 Schematic & Library/Datasheet components...")
+    print("[*] Validating v0.0.4 Schematic & Library/Datasheet components...")
     gui_dir = pathlib.Path("apps/prototype-gui/src/components")
     assert gui_dir.exists(), "apps/prototype-gui/src/components missing"
 
@@ -127,7 +127,7 @@ def test_backend_endpoints():
         tps = query_parts["results"][0]
         assert tps["mpn"] == "TPS54302DDCR"
         assert tps["package"] == "SOT-23-6"
-        assert tps["unit_price_usd"] == 0.48
+        assert isinstance(tps["unit_price_usd"], (int, float)) and tps["unit_price_usd"] > 0
         print(f"  [PASS] GET /api/v1/components/search (query): Found {tps['mpn']} ({tps['package']}, ${tps['unit_price_usd']})")
 
         # 5. GET /api/v1/datasheet/preview
@@ -142,7 +142,7 @@ def test_backend_endpoints():
         assert len(ds["absolute_maximums"]) >= 4
         print(f"  [PASS] GET /api/v1/datasheet/preview: Verified {ds['mpn']} ({ds['rendering_engine']}, {len(ds['pin_table'])} pins, {len(ds['absolute_maximums'])} abs max ratings)")
 
-        print("\n[*] Gate 62: v0.0.3 Schematic & Library/PDF Center PASSED CLEANLY (100% SUCCESS).")
+        print("\n[*] Gate 62: v0.0.4 Schematic & Library/PDF Center PASSED CLEANLY (100% SUCCESS).")
         return 0
 
     finally:

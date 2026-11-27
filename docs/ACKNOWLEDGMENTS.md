@@ -5,6 +5,7 @@ Vajra-Dhīr EDA builds upon the work of open-source libraries, formal verificati
 ## Core Runtime & Systems Foundations (Ring 1)
 - **[Rust](https://www.rust-lang.org/)** & **Crate Authors:** `rusqlite`, `rstar`, `iOverlay`, `iTriangle`, `cavalier_contours`, `wasmtime`, `serde`, `sha2`, `uuid`, `zstd`, `tokio`, `axum`, `rayon` — powering deterministic integer-nanometer geometry, WAL persistence, and WASI sandboxing.
 - **TypeScript & Workstation UI:** `React`, `TypeScript`, `Vite`, `dockview-react` (MIT), `zustand`, `uPlot`, `Yjs`, `three.js`, `@modelcontextprotocol/sdk`, and `lucide-react`.
+- **Agentic Co-Designer Patterns:** [`NousResearch/hermes-agent`](https://github.com/NousResearch/hermes-agent) (MIT architecture patterns for 3-layer memory, progressive skill disclosure, and local BYOK vaulting).
 - **Neuro-Symbolic Verification & Compilers (Python):** `atopile`, `Z3` (`z3-solver`), `SymPy`, `Pint`, `python-control`, `DuckDB`, `pypdfium2`, `pdfplumber`, `cyclonedx-python`, `InteractiveHtmlBom`, `PcbDraw`, `jlcparts`, `JLC2KiCad_lib`, and `2581check`.
 
 ## Documented Isolated Runtime Components

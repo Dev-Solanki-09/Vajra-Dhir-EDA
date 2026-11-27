@@ -273,7 +273,7 @@ def handle_fs_pty_get(handler: Any, path: str, full_path: str = "", con: Optiona
     if path in ("/api/v1/fs/tree", "/api/fs/tree"):
         root = ensure_ide_starter_files(_ensure_active_workspace())
         entries: List[Dict[str, Any]] = []
-        skip_dirs = {".git", "node_modules", "__pycache__", ".vd-dev"}
+        skip_dirs = {".git", "node_modules", "__pycache__", ".vd-dev", ".vd-runtime", ".vd-portable", ".vd-cache", ".venv", "target", ".pnpm-store", "vendor", "workers"}
         for p in sorted(root.rglob("*")):
             if any(part in skip_dirs for part in p.relative_to(root).parts):
                 continue

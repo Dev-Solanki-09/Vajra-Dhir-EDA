@@ -6,10 +6,14 @@ import {
 } from '@vajradhir/webgpu-cad-engine';
 import { globalCrossProbeBus } from '@vajradhir/crossprobe-bus';
 import { WorkspaceId } from '../commandBus';
-import { PcbEngineCanvas } from './PcbEngineCanvas';
+import { useDesignStore } from '../store/useDesignStore';
 
 const SchematicElkCanvas = React.lazy(() =>
   import('./SchematicElkCanvas').then((m) => ({ default: m.SchematicElkCanvas }))
+);
+// Retained for fallback compatibility tests (primary 2D PCB viewer is KiCanvas Pcb2DPanel)
+export const _FallbackPcbEngineCanvas = React.lazy(() =>
+  import('./PcbEngineCanvas').then((m) => ({ default: m.PcbEngineCanvas }))
 );
 const Pcb2DPanel = React.lazy(() =>
   import('./Pcb2DPanel').then((m) => ({ default: m.Pcb2DPanel }))
@@ -116,7 +120,6 @@ const WorkspaceFrame: React.FC<{
 }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 }}>
     <StateToolbar signature={signature} viewState={viewState} setViewState={setViewState} />
-
     {viewState === 'loading' && (
       <div
         data-testid="workspace-state-loading"
@@ -277,16 +280,24 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
   const [constraintSummary, setConstraintSummary] = useState<string>(
     'Netclass USB_HS: PASS (skew 80 um <= 250 um)'
   );
-  const [bomRows, setBomRows] = useState([
-    { refdes: 'U2', mpn: 'TPS54302DDCR', pkg: 'SOT-23-6', feeder: 'Extended (+$3)', qty: 1, side: 'top' },
-    { refdes: 'U1', mpn: 'CH224K', pkg: 'ESSOP-10', feeder: 'Basic ($0)', qty: 1, side: 'top' },
-    { refdes: 'L1', mpn: 'SWPA4020S4R7MT', pkg: '4x4mm', feeder: 'Basic ($0)', qty: 1, side: 'top' },
-    { refdes: 'C1', mpn: 'CL21A226MQQNNNE', pkg: '0805', feeder: 'Basic ($0)', qty: 2, side: 'bottom' },
-  ]);
+  const entitiesByRefdes = useDesignStore((s) => s.entitiesByRefdes);
+  const [bomRows, setBomRows] = useState<Array<{ refdes: string; mpn: string; pkg: string; feeder: string; qty: number; side: string }>>([]);
+  useEffect(() => {
+    const ents = Object.values(entitiesByRefdes);
+    setBomRows(
+      ents.map((e) => ({
+        refdes: e.refdes,
+        mpn: e.mpn || e.value || e.refdes,
+        pkg: e.package || 'SMD',
+        feeder: e.locked ? 'Locked ($0)' : 'Basic ($0)',
+        qty: 1,
+        side: e.side || 'top',
+      }))
+    );
+  }, [entitiesByRefdes]);
   const [datasheetInfo, setDatasheetInfo] = useState<string>('Select a part row to inspect PDFium datasheet metadata.');
 
   const [mfgSubTab, setMfgSubTab] = useState<'panel' | 'diff' | 'harness' | 'ibom'>('panel');
-  const [pcbEngineMode, setPcbEngineMode] = useState<'kicanvas' | 'webgpu'>('kicanvas');
   const [schEngineMode, setSchEngineMode] = useState<'kicanvas' | 'elkjs' | 'architecture'>('kicanvas');
   const [panelPreview, setPanelPreview] = useState<string>(
     `(kicad_pcb (version 20240108) (generator "vd-panelizer-mit")\n  (layers (0 "F.Cu" signal) (31 "B.Cu" signal) (44 "Edge.Cuts" user))\n  ;; 2x2 Matrix · 5.0 mm breakaway rails · 8 mouse-bites · 3 tooling holes\n)`
@@ -502,44 +513,16 @@ export const ActiveWorkspaceView: React.FC<ActiveWorkspaceProps> = ({
     >
       {workspace === 'pcb_layout' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-            <div className="vd-metric" style={{ fontSize: 11, color: 'var(--vd-text-secondary)', padding: '2px 4px' }}>
-              {constraintSummary}
-            </div>
-            <div style={{ display: 'flex', gap: 4 }}>
-              <button
-                type="button"
-                className={`vd-btn ${pcbEngineMode === 'kicanvas' ? 'vd-btn-primary' : ''}`}
-                style={{ minHeight: 22, padding: '2px 7px', fontSize: 11 }}
-                onClick={() => setPcbEngineMode('kicanvas')}
-              >
-                KiCanvas 2D
-              </button>
-              <button
-                type="button"
-                className={`vd-btn ${pcbEngineMode === 'webgpu' ? 'vd-btn-primary' : ''}`}
-                style={{ minHeight: 22, padding: '2px 7px', fontSize: 11 }}
-                onClick={() => setPcbEngineMode('webgpu')}
-              >
-                WebGPU Preview
-              </button>
-            </div>
+          <div className="vd-metric" style={{ fontSize: 11, color: 'var(--vd-text-secondary)', padding: '2px 4px' }}>
+            {constraintSummary}
           </div>
-          {pcbEngineMode === 'kicanvas' ? (
-            <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading KiCanvas PCB engine...</div>}>
-              <Pcb2DPanel
-                layersVisible={layersVisible}
-                ratsnestVisible={ratsnestVisible}
-                lockRingsVisible={lockRingsVisible}
-              />
-            </Suspense>
-          ) : (
-            <PcbEngineCanvas
+          <Suspense fallback={<div className="vd-metric" style={{ padding: 12 }}>Loading KiCanvas PCB engine...</div>}>
+            <Pcb2DPanel
               layersVisible={layersVisible}
               ratsnestVisible={ratsnestVisible}
               lockRingsVisible={lockRingsVisible}
             />
-          )}
+          </Suspense>
         </div>
       )}
 

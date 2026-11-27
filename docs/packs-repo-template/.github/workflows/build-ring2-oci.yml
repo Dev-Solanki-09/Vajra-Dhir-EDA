@@ -1,0 +1,9 @@
+name: Build Ring-2 Specialist OCI Packs
+on:
+  workflow_dispatch:
+jobs:
+  verify-oci:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - run: echo "Build and digest-pin Ring-2 specialist OCI images with network_mode=none"

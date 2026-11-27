@@ -13,7 +13,7 @@ members = [
 
 [[package]]
 name = "ambient-knowledge"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "packages/ambient-knowledge" }
 dependencies = [
     { name = "duckdb" },
@@ -2382,7 +2382,7 @@ wheels = [
 
 [[package]]
 name = "vajra-dhir-cubo-engine"
-version = "0.0.3"
+version = "0.0.4"
 source = { virtual = "packages/cubo-engine" }
 dependencies = [
     { name = "atopile" },
@@ -2399,7 +2399,7 @@ requires-dist = [
 
 [[package]]
 name = "vajra-dhir-eda-py"
-version = "0.0.3"
+version = "0.0.4"
 source = { virtual = "." }
 dependencies = [
     { name = "atopile" },
@@ -2449,7 +2449,7 @@ provides-extras = ["dev", "pcb-lib"]
 
 [[package]]
 name = "vajra-dhir-kg-brain"
-version = "0.0.3"
+version = "0.0.4"
 source = { virtual = "packages/kg-brain" }
 dependencies = [
     { name = "duckdb" },
@@ -2468,7 +2468,7 @@ requires-dist = [
 
 [[package]]
 name = "vajra-dhir-symbolic-verifier"
-version = "0.0.3"
+version = "0.0.4"
 source = { virtual = "packages/symbolic-verifier" }
 dependencies = [
     { name = "control" },

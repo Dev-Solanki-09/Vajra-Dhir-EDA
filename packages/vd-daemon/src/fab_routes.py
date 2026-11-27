@@ -93,6 +93,35 @@ def _serve_cas_artifact(handler: Any, sha_hex: str) -> bool:
 
 
 def handle_fab_get(handler: Any, path: str, full_path: str = "", con: Optional[sqlite3.Connection] = None) -> bool:
+    if path == "/api/v1/fab/status":
+        try:
+            pcb_path = _resolve_project_file({}, "pcb_path", ".kicad_pcb", prefer_active=True)
+            pcb_exists = pathlib.Path(pcb_path).is_file()
+            pcb_sha = sha256_text(pathlib.Path(pcb_path).read_text(encoding="utf-8", errors="replace")) if pcb_exists else ""
+        except Exception:
+            pcb_path = ""
+            pcb_exists = False
+            pcb_sha = ""
+        gerber_cache_hit = bool(pcb_sha and (_gerber_cas_dir() / f"{pcb_sha}.json").is_file())
+        bringup_tps = [
+            {"tp": "TP_VIN", "net": "VIN_12V", "expected_min_v": 11.4, "expected_max_v": 12.6, "check": "Reverse-polarity & fuse continuity"},
+            {"tp": "TP_3V3", "net": "VOUT_3V3", "expected_min_v": 3.13, "expected_max_v": 3.47, "check": "Buck regulation before MCU jumper"},
+            {"tp": "TP_SW", "net": "SW_NODE", "expected_min_v": 0.0, "expected_max_v": 12.6, "check": "Oscilloscope 500kHz switching edge"},
+            {"tp": "TP_GND", "net": "GND", "expected_min_v": -0.02, "expected_max_v": 0.02, "check": "Continuity < 0.2 Ohm across plane"},
+        ]
+        _send_json(handler, 200, {
+            "ok": True,
+            "fabrication_status": "NOT_FABRICATED_0_OF_3",
+            "pcb_path": str(pcb_path),
+            "pcb_exists": pcb_exists,
+            "pcb_sha256": pcb_sha,
+            "gerbers_cached": gerber_cache_hit,
+            "gerbers_stale": not gerber_cache_hit,
+            "ipc2581_validated": False,
+            "bringup_test_points": bringup_tps,
+        })
+        return True
+
     if path == "/api/v1/fab/gerbers":
         parsed = urllib.parse.urlparse(full_path or path)
         qs = urllib.parse.parse_qs(parsed.query)

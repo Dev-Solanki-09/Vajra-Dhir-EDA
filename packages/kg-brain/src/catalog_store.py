@@ -251,6 +251,9 @@ def open_kg_connection(db_path: pathlib.Path, seed_if_empty: bool = True) -> duc
     db_path = pathlib.Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(db_path))
+    con.execute("SET memory_limit='256MB';")
+    con.execute("SET threads=2;")
+    con.execute("SET preserve_insertion_order=false;")
     con.execute(_SCHEMA_PATH.read_text(encoding="utf-8"))
     if seed_if_empty:
         _seed_starter_rows(con)
