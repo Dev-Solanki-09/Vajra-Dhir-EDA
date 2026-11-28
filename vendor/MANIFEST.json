@@ -6,7 +6,7 @@
   "companion_registry": {
     "url": "https://github.com/Dev-Solanki-09/Vajra-Dhir-Packs/releases/download/v1.0.0/registry.v1.json",
     "raw_fallback_url": "https://raw.githubusercontent.com/Dev-Solanki-09/Vajra-Dhir-Packs/main/registry/registry.v1.json",
-    "sha256": "d115daa680ba8f99e9437a80734daaca37bcd92426fceff0a549c29326176bba",
+    "sha256": "236cf1e98627d8c8bd0711d9cbc7fc9b08758edc8a5983f422747142d260d9f1",
     "release_tag": "v1.0.0",
     "repositories": {
       "dependencies": "https://github.com/Dev-Solanki-09/Vajra-Dhir-Dependencies",
