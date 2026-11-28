@@ -116,7 +116,7 @@ for (const lockName of ["uv.lock", "Cargo.lock"]) {
 }
 
 // 4. Scan for committed vendor PDF files (Copyright & Security Quarantine)
-const IGNORED_PDF_REL_PREFIXES = ["workers/sources/", "vendor/ring1-refs/", "vendor/quarantine/", ".vd-dev/", ".vd-runtime/", ".vd-portable/", ".vd-cache/"];
+const IGNORED_PDF_REL_PREFIXES = [".archive/", "workers/sources/", "vendor/ring1-refs/", "vendor/quarantine/", ".vd-dev/", ".vd-runtime/", ".vd-portable/", ".vd-cache/"];
 function scanPdf(dir) {
   if (!fs.existsSync(dir)) return;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -128,6 +128,7 @@ function scanPdf(dir) {
         entry.name === "node_modules" ||
         entry.name === ".pnpm-store" ||
         entry.name === "target" ||
+        entry.name === ".archive" ||
         entry.name === ".vd-dev" ||
         entry.name === ".vd-runtime" ||
         entry.name === ".vd-portable" ||

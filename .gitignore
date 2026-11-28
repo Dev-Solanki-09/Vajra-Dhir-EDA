@@ -4,8 +4,14 @@
 target/
 dist/
 build/
+# Python & test caches
 *.pyc
 __pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.tmp
+*.bak
 
 # Dependencies
 node_modules/
@@ -48,7 +54,8 @@ plugins/sources/
 evalops/sources/
 tools/local-mcps/
 
-# Internal orchestration & session files — never committed
+# Internal orchestration, session notes & archived legacy files — never committed
+.archive/
 .ai-sync/
 .ai-sync/private/
 .agents/
@@ -60,7 +67,7 @@ task_plan.md
 scripts/verify-handoff.mjs
 docs/REVERSE_ENGINEERED_ENGINES.md
 
-# Hallmark redesign records/screenshots
+# Local Rust/cargo caches & Hallmark redesign records
 .hallmark/
 
 # IDE and OS files
