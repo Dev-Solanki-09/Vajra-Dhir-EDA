@@ -196,7 +196,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <VajraIcon name="airgapShield" size={16} color="var(--vd-border-active)" />
             <strong style={{ fontSize: 12.5 }}>Vajra-Dhīr EDA</strong>
-            <span className="vd-metric" style={{ fontSize: 10.5, color: 'var(--vd-text-muted)' }}>v0.0.4</span>
+            <span className="vd-metric" style={{ fontSize: 10.5, color: 'var(--vd-text-muted)' }}>v0.0.5</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} className="vd-metric">
             <span className="vd-pill">{settings.agent.dlpMode === 'NDA_AIRGAPPED' ? 'Airgapped Local' : 'Local Offline'}</span>

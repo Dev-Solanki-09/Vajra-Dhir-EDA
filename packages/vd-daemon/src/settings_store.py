@@ -468,14 +468,14 @@ def create_project_on_disk(req: Dict[str, Any], con: Optional[sqlite3.Connection
     sys_yaml = project_dir / "system.yaml"
     if not sys_yaml.exists():
         sys_yaml.write_text(
-            f'project: "{name}"\nversion: "0.0.4"\npurpose: "{starter_kind} hardware design"\nblocks: []\nbuses: []\n',
+            f'project: "{name}"\nversion: "0.0.5"\npurpose: "{starter_kind} hardware design"\nblocks: []\nbuses: []\n',
             encoding="utf-8",
         )
 
     pcb_file = project_dir / "layout" / f"{name}.kicad_pcb"
     if not pcb_file.exists():
         pcb_file.write_text(
-            f'(kicad_pcb (version 20261030) (generator "vajra-dhir-eda") (generator_version "0.0.4")\n'
+            f'(kicad_pcb (version 20261030) (generator "vajra-dhir-eda") (generator_version "0.0.5")\n'
             f'  (general (thickness 1.6) (copper_layers {layers}))\n'
             f'  (layers (0 "F.Cu" signal) (31 "B.Cu" signal) (44 "Edge.Cuts" user))\n'
             f'  (net 0 "")\n'
@@ -486,7 +486,7 @@ def create_project_on_disk(req: Dict[str, Any], con: Optional[sqlite3.Connection
     sch_file = project_dir / "schematics" / f"{name}.kicad_sch"
     if not sch_file.exists():
         sch_file.write_text(
-            f'(kicad_sch (version 20250114) (generator "vajra-dhir-eda") (generator_version "0.0.4")\n'
+            f'(kicad_sch (version 20250114) (generator "vajra-dhir-eda") (generator_version "0.0.5")\n'
             f'  (uuid "{new_uuidv7()}")\n'
             f'  (paper "A4")\n'
             f'  (title_block (title "{name}"))\n)\n',
@@ -583,7 +583,7 @@ def build_diagnostic_bundle(con: Optional[sqlite3.Connection] = None) -> Dict[st
             pass
     bundle = {
         "app": "Vajra-Dhir EDA",
-        "version": "0.0.4",
+        "version": "0.0.5",
         "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "platform": {
             "system": platform.system(),

@@ -1,6 +1,6 @@
 {
   "name": "@vajradhir/tracespace-vendor",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": true,
   "license": "MIT",
   "description": "Vendored pure-MIT @tracespace packages (identify-layers, parser, plotter) for offline zero-mirror RS-274X Gerber builds"

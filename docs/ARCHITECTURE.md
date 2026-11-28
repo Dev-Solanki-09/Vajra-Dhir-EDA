@@ -1,4 +1,4 @@
-# Architecture Overview — Vajra-Dhīr EDA (`v0.0.4`)
+# Architecture Overview — Vajra-Dhīr EDA (`v0.0.5`)
 
 Vajra-Dhīr EDA is a local-first hardware and firmware co-design workspace combining a Rust geometry/state kernel, a Python neuro-symbolic verification layer, and a browser workstation UI served strictly on `127.0.0.1:41900` (with fallback across `41900..41950` and portable `launch.bat` / `launch.command` / `launch.sh` / `Vajra-Dhir-EDA.vbs` entrypoints).
 
@@ -17,12 +17,12 @@ Vajra-Dhīr EDA is a local-first hardware and firmware co-design workspace combi
    - Wasmtime sandbox (`>= 51.0.0`), DLP airgap enforcement, and semantic 3-way HW-IR merge (`wasm-sandbox`, `hw-dlp`, `hw-merge`, `cas-store`).
 
 3. **Python Solver, Verification & Agent Daemon (`packages/vd-daemon`, `packages/symbolic-verifier`, `packages/dfm-dfa-safety`):**
-   - Exposes REST, SSE agent routes, live DuckDB catalog search (`kg_routes.py`), HW-IR-driven SPICE synthesis & `ngspice` simulation (`spice_synth.py`, `ngspice_runner.py`), Z3 pinmux & `python-control` SMPS Bode solvers, isolated `kicad-cli` ERC/DRC (`kicad_bridge.py`), waivable diagnostics (`ee_audit_routes.py`), and honest fabrication status (`fab_routes.py`) exclusively on `127.0.0.1`.
-   - Implements the Hermes-Core BYOK agent runtime (`packages/vd-daemon/src/agent/{vault,providers,runtime}.py`) with encrypted key storage, DLP airgap enforcement, SQLite FTS5 memory, and Dual-Context lock auditing.
-   - Manages Tier-1/Tier-2 offline pack downloads (`bootstrap_routes.py`) and child process supervision with clean OS shutdown isolation.
+   - Exposes REST, SSE agent routes (`Connection: close`), live DuckDB + companion library search (`kg_routes.py`), HW-IR-driven SPICE synthesis & `ngspice` simulation (`spice_synth.py`, `ngspice_runner.py`), Z3 pinmux & `python-control` SMPS Bode solvers, isolated `kicad-cli` ERC/DRC (`kicad_bridge.py`), waivable diagnostics (`ee_audit_routes.py`), and honest fabrication status (`fab_routes.py`) exclusively on `127.0.0.1`.
+   - Implements the hardened Hermes progressive `agentskills.io` `SKILL.md` loader (`hermes_bridge.py`) + 7-layer closed-loop autonomous orchestrator (`autonomous_loop.py`) with OWASP ASI01/ASI03 approval defaults, DLP airgap enforcement, SQLite FTS5 memory, Dual-Context lock auditing, and `defer_loading: True` plugin MCP tools (`mcp_live_server.py`).
+   - Manages Tier-1/Tier-2 offline pack bootstrap & caching (`bootstrap_routes.py`) and child process supervision with clean OS shutdown isolation.
 
 4. **Workstation UI (`apps/workstation`):**
-   - React 19.3.1 + TypeScript 7.0.2 + `dockview-react` interface with WebGL2/Canvas2D KiCanvas interactive Schematic & PCB canvases, unified cursor/redline/alignment hooks (`useUnifiedViewport.ts`), singleton `threeRendererPool` 3D STEP/MCAD viewport, `elkjs` schematic layout, `uPlot` waveform plotting, pure-MIT IEEE-1364 VCD viewer, RS-274X Gerber preview, offline Help Center (`HelpCenterModal.tsx`), and sub-16 ms cross-probing (`packages/crossprobe-bus`).
+   - React 19.3.1 + TypeScript 7.0.2 + `dockview-react` interface featuring a Canva-style `48px` `StudioDrawerRail.tsx` (`272px` drawer), 6 Affinity Personas (`Plan | Schematic | PCB | 3D | Lab & Sim | Make`), on-demand floating studio windows (`BespokeStudioWindows.tsx`), self-healing `vd.layout.v7` docking layout, WebGL2/Canvas2D KiCanvas Schematic & PCB canvases with Live Net Spotlight and Circuit X-Ray rings, singleton `threeRendererPool` 3D STEP/MCAD viewport (`0` WebGL on Home), `elkjs` schematic layout, `uPlot` waveform plotting, pure-MIT IEEE-1364 VCD viewer, RS-274X Gerber preview, offline Help Center (`F1` / `HelpCenterModal.tsx`), Shortcuts (`?`), and sub-16 ms cross-probing (`packages/crossprobe-bus`).
 
 5. **Ring 2 Isolated Solvers (`WorkerContract` / OCI):**
    - Heavy external tools (`KiCad`, `KiKit`, `openEMS`, `Palace`, `ElmerFEM`, `CalculiX`, `LibreLane`, `Renode`) run out-of-process with `network_mode: none` isolation. See [LICENSE_EXCEPTIONS.md](LICENSE_EXCEPTIONS.md).

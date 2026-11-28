@@ -1,6 +1,6 @@
 [project]
 name = "vajra-dhir-symbolic-verifier"
-version = "0.0.4"
+version = "0.0.5"
 description = "Vajra-Dhīr Neuro-Symbolic Verification Engine (Z3 SMT, SymPy & Pint)"
 requires-python = ">=3.11"
 license = { text = "MIT" }

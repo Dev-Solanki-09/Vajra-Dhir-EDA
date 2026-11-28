@@ -1,4 +1,4 @@
-# Claims Register — Vajra-Dhīr EDA (`v0.0.4`)
+# Claims Register — Vajra-Dhīr EDA (`v0.0.5`)
 
 > **Hardware Status:** `Software Reference Blueprints (0/3 Physically Fabricated)`. Reference designs in `designs/` are verified through software DRC, formal constraints, and simulation harnesses; physical bench testing has not yet been performed.
 
@@ -18,3 +18,4 @@
 | `CLM-012` | Portable Launcher & Packs | OS launchers (`launch.bat`, `launch.command`, `launch.sh`, `Vajra-Dhir-EDA.vbs`, `scripts/launch.mjs --headless-check`), isolated Tier-1/2 pack downloader/GC (`bootstrap_routes.py`), and `< 150 MiB` repo size guard. | `scripts/check-repo-size.mjs`, `scripts/test-final-torture-gate.mjs` | 2026-11-27 |
 | `CLM-013` | Live SPICE, Z3/Bode & Fab | Live HW-IR -> SPICE synthesis (`spice_synth.py`), KiCad/ngspice discovery & isolated DRC (`kicad_bridge.py`, `ngspice_runner.py`), Z3 pinmux & `python-control` SMPS Bode, waivable diagnostics, and honest `NOT_FABRICATED_0_OF_3` fab bring-up status. | `scripts/test-verifier-and-lab-e2e.mjs`, `packages/vd-daemon/tests/test_kicad_bridge.py`, `packages/vd-daemon/tests/test_p10_spice_sim.py` | 2026-11-27 |
 | `CLM-014` | Hermes BYOK Agent & Offline Docs | Encrypted BYOK vault (`vault.py`), airgap enforcement, SQLite FTS5 memory, Dual-Context lock audit, multi-OS icons (`assets/icons/`), and 10 offline guides + `HelpCenterModal.tsx`. | `scripts/test-hermes-agent-byok-e2e.mjs`, `scripts/test-product-polish-e2e.mjs` | 2026-11-27 |
+| `CLM-015` | 6-Persona Workstation, 7-Layer Loop & 20 EE Skills | Canva `48px` drawer rail, 6 Personas, Live Net Spotlight & Circuit X-Ray, progressive `agentskills.io` `SKILL.md` loader + 20 EE skills (`hermes_bridge.py`), 7-layer closed-loop engine with oscillation detector + Gate-8 hold (`autonomous_loop.py`), and `defer_loading` plugin tools. | `scripts/test-agent-mcp-plugins-e2e.py`, `scripts/test-5repo-bootstrap-and-launch.py`, `scripts/test-real-circuit-to-fab.py`, `scripts/test-ultimate-ux-perf-torture.py` | 2026-11-28 |

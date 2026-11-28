@@ -712,7 +712,7 @@ async fn get_health(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     };
     match load_snapshot(&guard) {
         Ok(snap) => Json(HealthResponse {
-            version: "0.0.4",
+            version: "0.0.5",
             bind_addr: "127.0.0.1:41900",
             rev_lamport: snap.project.rev_lamport,
             dlp_class: snap.project.dlp_class,

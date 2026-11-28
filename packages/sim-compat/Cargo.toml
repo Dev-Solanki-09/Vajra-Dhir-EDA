@@ -1,6 +1,6 @@
 [package]
 name = "vd-sim-compat"
-version = "0.0.4"
+version = "0.0.5"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Deterministic Vendor SPICE Compatibility, LTspice/PSpice AST Transpiler & Encrypted Model Sanitizer"

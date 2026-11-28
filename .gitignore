@@ -81,21 +81,6 @@ prompt and skill/
 *prompt*.txt
 *prompt*.md
 .qoder/
-docs/*
-!docs/ACKNOWLEDGMENTS.md
-!docs/ARCHITECTURE.md
-!docs/CLAIMS_REGISTER.md
-!docs/FAQ.md
-!docs/KEYMAP.md
-!docs/LICENSE_EXCEPTIONS.md
-!docs/PACKS_AND_STORAGE.md
-!docs/RELEASE_NOTES.md
-!docs/THREAT_MODEL.md
-!docs/TROUBLESHOOTING.md
-!docs/VERIFICATION.md
-!docs/guides/
-!docs/guides/**
-!docs/packs-repo-template/
-!docs/packs-repo-template/**
+
 
 

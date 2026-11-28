@@ -5,6 +5,19 @@ The format is based on Keep a Changelog.
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-11-28
+
+### Added
+- **Universal Semantic Hub & Live Circuit Feedback (`sync_propagator.py`, `Schematic2DPanel.tsx`, `Pcb2DPanel.tsx`, `Workspaces.tsx`):** Added `SYNC_PLAN_BLOCKS` deterministic HW-IR net/component materialization, Live Net Spotlight (`sch-wire-*`), Circuit X-Ray voltage/wattage rings (`sch-xray-*`), `spiceOverlay.xrayEnabled` PCB overlay wiring, and live `sim_lab` `uPlot` scope bindings.
+- **Canva + Affinity Silicon Darkroom Workstation (`StudioDrawerRail.tsx`, `BespokeStudioWindows.tsx`, `WorkstationShell.tsx`, `usePolishStore.ts`):** Overhauled workstation ergonomics with a `48px` vertical rail (`parts | blocks | modules | outliner | files | plugins`) + `272px` collapsible drawer, 6 Affinity Personas (`Plan | Schematic | PCB | 3D | Lab & Sim | Make`), 9 on-demand floating studio windows, self-healing `vd.layout.v7` Dockview layout, `0` WebGL on Home return, hairline `4px` `.vd-scroll-slim` scrollbars, `F1` Help Center, `?` Shortcuts modal, and clean `Escape` window dismissal.
+- **Hardened Hermes Progressive Skills & 7-Layer Closed-Loop Engine (`hermes_bridge.py`, `autonomous_loop.py`, `AgentDockPanel.tsx`):** Integrated progressive `agentskills.io` `SKILL.md` discovery (Stage-1 metadata index + Stage-2 lazy body load) with OWASP ASI01/ASI03 approval defaults (`skills_write_approval`, `memory_write_approval`), full `L1 -> L7` closed-loop autonomous engineering flow with `>=3` oscillation detection and mandatory Gate-8 human hold, and `defer_loading: True` plugin tools in `mcp_live_server.py`.
+- **20 Master-of-Electronics `SKILL.md` Library & 5-Repo Companion Readiness:** Authored 20 `agentskills.io` hardware engineering & orchestration skills (`res-ee-skills`), updated `vendor/MANIFEST.json`, wired `/api/v1/libraries/*` and `/api/v1/sbc-modules` companion endpoints (`kg_routes.py`, `daemon.py`), and verified 5-repo `.tar.zst`/`.sha256` bootstrap flows.
+- **Multi-OS Custom Emblem Icons (`assets/icons/`, `apps/workstation/public/icons/`, `BootstrapSplash.tsx`):** Generated custom vector/ICO/ICNS/PNG icon sets and polished the bootstrap splash.
+
+### Changed & Fixed
+- **Daemon Latency, Hotkeys & Jargon Cleanup (`daemon.py`, `kg_routes.py`, `WorkstationShell.tsx`, `BespokeStudioWindows.tsx`):** Fixed missing `_REPO_ROOT` in `kg_routes.py`, hoisted `/api/v1/agent/` and `/api/v1/tx/` routes above unrelated lazy imports, aligned SPICE simulation route to `/api/v1/sim/run`, and removed internal database jargon from user-facing UI labels.
+- **Repository Hygiene & Archive Organization (`.gitignore`, `.archive/`, `audit-secrets-and-paths.py`, `check-spdx-firewall.mjs`):** Relocated legacy root planning notes, superseded docs, old handoff scripts, prompt archives, and stale test caches into gitignored `.archive/` without altering tracked package/app paths.
+
 ### Fixed
 - **Windows Launcher Python Auto-Detection (`scripts/launch.mjs`):** Resolved Windows App Execution Alias / host Python paths (`python` / `py`, `%LOCALAPPDATA%\Python`, `%LOCALAPPDATA%\Programs\Python`) and raised `hasCoreDeps` timeout to `15000 ms` so `vd-daemon` boots with `duckdb`, `z3`, `sympy`, `pint`, and `control` loaded (`boot_ms=346`).
 - **Tokenized Browser URL & Public App Icons (`scripts/launch.mjs`, `packages/vd-daemon/src/daemon.py`):** Printed the full authenticated `http://127.0.0.1:<port>/?token=<hex>` URL on startup and permitted `/favicon.svg`, `/icon-192.png`, and `/icon-512.png` publicly while keeping API/workbench routes fail-closed (`401`).
@@ -43,7 +56,8 @@ The format is based on Keep a Changelog.
 - **Clean-Room Manufacturing & Persistence:** Added Rust `panelizer`, `rs274x`, `eagle_xml`, `wire-harness`, `pcb-diff`, `i_triangle` `i64` copper pour, `occt-import-js` isolated Web Worker, `cas-store` zstd compression, WAL checkpointing, transactional Undo/Redo, Win64/POSIX child supervision, and SSE agent proposal endpoints.
 - **License, Docs & Verification Hygiene:** Unified root `LICENSE` under Apache License 2.0 (with `NOTICE` & `docs/LICENSE_EXCEPTIONS.md`), adaptive dark/light SVG branding, hardened `Spec & Security CI`, and verified offline SPDX firewall, secret scanning, and verification harness (`0/3` PCBs physically fabricated).
 
-[Unreleased]: https://github.com/Dev-Solanki-09/Vajra-Dhir-EDA/compare/v0.0.4...HEAD
+[Unreleased]: https://github.com/Dev-Solanki-09/Vajra-Dhir-EDA/compare/v0.0.5...HEAD
+[0.0.5]: https://github.com/Dev-Solanki-09/Vajra-Dhir-EDA/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/Dev-Solanki-09/Vajra-Dhir-EDA/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/Dev-Solanki-09/Vajra-Dhir-EDA/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/Dev-Solanki-09/Vajra-Dhir-EDA/releases/tag/v0.0.2

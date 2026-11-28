@@ -992,7 +992,7 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             bound_port = self.server.server_address[1] if getattr(self, "server", None) else PORT
             res = {
                 "status": "ok",
-                "version": "0.0.4",
+                "version": "0.0.5",
                 "bind_addr": f"{HOST}:{bound_port}",
                 "port": bound_port,
                 "rev_lamport": snap["project"]["rev_lamport"],

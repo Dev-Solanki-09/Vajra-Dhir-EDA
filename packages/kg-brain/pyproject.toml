@@ -1,6 +1,6 @@
 [project]
 name = "vajra-dhir-kg-brain"
-version = "0.0.4"
+version = "0.0.5"
 description = "Vajra-Dhīr Component Knowledge Graph & Zero-Trust Datasheet Quarantine"
 requires-python = ">=3.11"
 license = { text = "MIT" }
