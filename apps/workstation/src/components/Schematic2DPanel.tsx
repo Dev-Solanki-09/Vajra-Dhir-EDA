@@ -60,7 +60,7 @@ export const Schematic2DPanel: React.FC<Schematic2DPanelProps> = ({
   const [symItems, setSymItems] = useState<SchSymbolScreenItem[]>([]);
   const [wirePolylines, setWirePolylines] = useState<Array<{ key: string; points: string; net?: string }>>([]);
   const [viewportTick, setViewportTick] = useState(0);
-  const [statusNote, setStatusNote] = useState('Interactive Schematic synced to HW-IR');
+  const [statusNote, setStatusNote] = useState('Interactive Schematic synced');
 
   // Figma direct-manipulation state
   const [wireDrag, setWireDrag] = useState<{

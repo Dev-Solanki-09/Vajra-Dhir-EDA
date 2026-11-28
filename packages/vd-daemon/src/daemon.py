@@ -1332,7 +1332,7 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
                 if path.startswith(("/api/v1/ato/", "/api/ato/")):
                     if _lazy_fn("atopile_engine", "handle_ato_get")(self, path, full_path=self.path, con=self.con):
                         return
-                if path.startswith(("/api/v1/parts/", "/api/parts/", "/api/v1/blocks/", "/api/blocks/")):
+                if path.startswith(("/api/v1/parts/", "/api/parts/", "/api/v1/blocks/", "/api/blocks/", "/api/v1/libraries/", "/api/v1/sbc-modules")):
                     if _lazy_fn("kg_routes", "handle_kg_get")(self, path, full_path=self.path):
                         return
                 if path.startswith(("/api/v1/ee/", "/api/ee/", "/api/v1/diagnostics")):
@@ -2269,6 +2269,12 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"stopping": True}).encode("utf-8"))
             if httpd is not None:
                 threading.Thread(target=httpd.shutdown, daemon=True).start()
+            return
+
+        elif path.startswith(("/api/v1/agent/", "/api/agent/")) and _lazy_fn("agent_routes", "handle_agent_post")(self, path, req, DB_DIR, write_autosave_shadow, maybe_checkpoint_wal):
+            return
+
+        elif path.startswith(("/api/v1/tx/", "/api/tx/")) and _lazy_fn("sync_propagator", "handle_tx_post")(self, path, req, self.con):
             return
 
         elif _lazy_fn("bootstrap_routes", "handle_bootstrap_post")(self, path, req):

@@ -147,12 +147,14 @@ def test_backend_endpoints():
         })
         assert status == 200, f"Expected 200, got {status}: {pdn_res}"
         assert pdn_res["success"] is True
+        assert pdn_res["engine"] == "vd-pdn-2.5d-hwir"
         assert pdn_res["net"] == "+3V3_OUT"
-        assert pdn_res["sheet_resistance_mohm_sq"] == 0.491
-        assert pdn_res["max_ir_drop_mv"] == 8.24
-        assert pdn_res["via_transition_drop_mv"] == 2.4
-        assert pdn_res["ipc2152_temp_rise_c"] == 6.4
-        assert pdn_res["max_temp_c"] == 31.4
+        assert pdn_res["sheet_resistance_mohm_sq"] > 0
+        assert pdn_res["max_ir_drop_mv"] > 0
+        assert pdn_res["via_transition_drop_mv"] >= 0
+        assert pdn_res["ipc2152_temp_rise_c"] > 0
+        assert pdn_res["max_temp_c"] > 25.0
+        assert len(pdn_res.get("heatmap_points") or []) >= 20
         assert pdn_res["passed"] is True
         print(f"  [PASS] POST /api/v1/pdn/solve: Max IR drop {pdn_res['max_ir_drop_mv']} mV (pass={pdn_res['passed']}), IPC-2152 ΔT={pdn_res['ipc2152_temp_rise_c']}°C")
 

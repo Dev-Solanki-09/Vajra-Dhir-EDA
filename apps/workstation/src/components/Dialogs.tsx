@@ -285,7 +285,7 @@ export const AboutModal: React.FC<{ open: boolean; onClose: () => void }> = ({ o
           <div className="vd-metric" style={{ display: 'grid', gap: 6, fontSize: 11, backgroundColor: 'var(--vd-bg-canvas)', padding: 10, border: '1px solid var(--vd-border-subtle)' }}>
             <div>Version: 0.0.4 (Architecture Frozen · Milestone 1)</div>
             <div>Ring 1 License: Apache-2.0 / MIT (Zero AGPL/EUPL in Core)</div>
-            <div>Kernel: HW-IR SQLite WAL (i64 nm, i32 mdeg, UUIDv7)</div>
+            <div>Engine: Deterministic SQLite WAL (i64 nm, i32 mdeg, UUIDv7)</div>
             <div>Security Floors: Wasmtime 51.0.0 · React 19.3.1 · TypeScript 7.0.2</div>
             <button
               type="button"

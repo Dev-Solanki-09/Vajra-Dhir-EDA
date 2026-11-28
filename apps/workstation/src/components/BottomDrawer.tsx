@@ -268,7 +268,7 @@ export const BottomDrawer: React.FC<{
         {activeTab === 'history' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} className="vd-metric">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>Current HW-IR Revision: rev #{revId}</span>
+              <span>Project Revision #{revId}</span>
               <div style={{ display: 'flex', gap: 4 }}>
                 <button type="button" className="vd-btn" onClick={() => void undoTx()}>Undo Revision</button>
                 <button type="button" className="vd-btn" onClick={() => void redoTx()}>Redo Revision</button>

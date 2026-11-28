@@ -74,7 +74,7 @@ export const AgentDockPanel: React.FC = () => {
       const data = await res.json();
       if (res.ok && data.checkpoint_id) {
         setCheckpointId(String(data.checkpoint_id));
-        setThoughts((prev) => [...prev, `Dual Checkpoint saved: ${data.checkpoint_id} (Lamport ${data.hw_ir_lamport_seq})`]);
+        setThoughts((prev) => [...prev, `Dual Checkpoint saved: ${data.checkpoint_id} (rev #${data.hw_ir_lamport_seq})`]);
       }
     } catch {
       setThoughts((prev) => [...prev, 'Checkpoint unavailable (daemon offline)']);

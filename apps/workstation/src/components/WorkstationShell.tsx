@@ -692,6 +692,22 @@ const DOCK_COMPONENTS = {
   inspector: InspectorPanel,
 };
 
+const PANEL_CATALOG: Record<string, { component: keyof typeof DOCK_COMPONENTS; title: string }> = {
+  viewport_panel: { component: 'viewport', title: 'Workspace' },
+  pcb2d_panel: { component: 'pcb2d', title: 'PCB 2D' },
+  schematic2d_panel: { component: 'schematic2d', title: 'Schematic 2D' },
+  viewport3d_panel: { component: 'viewport3d', title: '3D View' },
+  code_editor_panel: { component: 'codeEditor', title: 'Code Editor' },
+  terminal_panel: { component: 'terminal', title: 'Terminal' },
+  architecture_panel: { component: 'architecture', title: 'System Plan' },
+  ee_audit_panel: { component: 'eeAudit', title: 'Design Audit' },
+  sim_lab_panel: { component: 'simLab', title: 'SPICE Lab' },
+  cosim_panel: { component: 'cosimLab', title: 'Firmware Co-Sim' },
+  gerber_panel: { component: 'gerberInspector', title: 'Gerber Inspector' },
+  fab_release_panel: { component: 'fabRelease', title: 'Fab Release' },
+  report_preview_panel: { component: 'reportPreview', title: 'Dossier' },
+};
+
 export const WorkstationShell: React.FC = () => {
   const settings = useSettingsStore((s) => s.settings);
   const updateSettings = useSettingsStore((s) => s.updateSettings);
@@ -805,7 +821,10 @@ export const WorkstationShell: React.FC = () => {
       getWorkspace: () => activeWsRef.current,
       setWorkspace: (w) => setActiveWorkspace(w),
       focusPanel: (panelId) => openOrFocusPanel(panelId),
-      listPanels: () => dockApiRef.current?.panels.map((p) => p.id) ?? [],
+      listPanels: () => Array.from(new Set([
+        ...Object.keys(PANEL_CATALOG),
+        ...(dockApiRef.current?.panels.map((p) => p.id) ?? []),
+      ])),
     });
     startUiControlBridge();
     globalCrossProbeBus.select(['U2'], 'tree');
@@ -900,7 +919,7 @@ export const WorkstationShell: React.FC = () => {
       pushNotification({
         severity: 'pass',
         title: `${cmd.label} Completed`,
-        detail: `Verified at HW-IR rev #${useDesignStore.getState().revId}`,
+        detail: `Verified at project rev #${useDesignStore.getState().revId}`,
         actionTarget: 'diagnostics',
         actionLabel: 'Open Diagnostics',
       });
@@ -915,22 +934,6 @@ export const WorkstationShell: React.FC = () => {
         actionLabel: 'Inspect',
       });
     }
-  };
-
-  const PANEL_CATALOG: Record<string, { component: keyof typeof DOCK_COMPONENTS; title: string }> = {
-    viewport_panel: { component: 'viewport', title: 'Workspace' },
-    pcb2d_panel: { component: 'pcb2d', title: 'PCB 2D' },
-    schematic2d_panel: { component: 'schematic2d', title: 'Schematic 2D' },
-    viewport3d_panel: { component: 'viewport3d', title: '3D View' },
-    code_editor_panel: { component: 'codeEditor', title: 'Code Editor' },
-    terminal_panel: { component: 'terminal', title: 'Terminal' },
-    architecture_panel: { component: 'architecture', title: 'System Plan' },
-    ee_audit_panel: { component: 'eeAudit', title: 'Design Audit' },
-    sim_lab_panel: { component: 'simLab', title: 'SPICE Lab' },
-    cosim_panel: { component: 'cosimLab', title: 'Firmware Co-Sim' },
-    gerber_panel: { component: 'gerberInspector', title: 'Gerber Inspector' },
-    fab_release_panel: { component: 'fabRelease', title: 'Fab Release' },
-    report_preview_panel: { component: 'reportPreview', title: 'Dossier' },
   };
 
   const openOrFocusPanel = (panelId: string): boolean => {
@@ -1029,6 +1032,9 @@ export const WorkstationShell: React.FC = () => {
         setShowActivityLog(false);
         setShowAbout(false);
         setShowStackupFloat(false);
+        setShowHelpCenter(false);
+        setShowToolManagerModal(false);
+        setActiveWindow(null);
         setEnterpriseDrawer('none');
         setToolbarPopover({ id: 'none', rect: null });
         setContextMenu((c) => ({ ...c, open: false }));

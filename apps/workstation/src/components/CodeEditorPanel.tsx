@@ -98,7 +98,7 @@ function bootstrapMonacoOffline() {
         }
         if (table.netNames.includes(token)) {
           return {
-            contents: [{ value: `**Net \`${token}\`**\n\nIndexed in HW-IR & CrossProbeBus` }],
+            contents: [{ value: `**Net \`${token}\`**\n\nIndexed in Design Graph & CrossProbeBus` }],
           };
         }
         return null;
@@ -128,7 +128,7 @@ function bootstrapMonacoOffline() {
           suggestions.push({
             label: comp.refdes,
             kind: monaco.languages.CompletionItemKind.Struct,
-            detail: comp.mpn || comp.value || comp.footprint || 'HW-IR component',
+            detail: comp.mpn || comp.value || comp.footprint || 'Design component',
             insertText: comp.refdes,
             range,
           });
@@ -137,7 +137,7 @@ function bootstrapMonacoOffline() {
           suggestions.push({
             label: net,
             kind: monaco.languages.CompletionItemKind.Constant,
-            detail: 'HW-IR net',
+            detail: 'Design net',
             insertText: net,
             range,
           });

@@ -202,7 +202,7 @@ export const SimStudioWindow: React.FC<{ open: boolean; onClose: () => void }> =
   const runSweep = async () => {
     try {
       const [simRes, pdnRes] = await Promise.all([
-        fetch('/api/v1/spice/simulate', {
+        fetch('/api/v1/sim/run', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mode }),

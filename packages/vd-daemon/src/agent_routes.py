@@ -406,6 +406,7 @@ def handle_agent_post(
         handler.send_response(200)
         handler.send_header("Content-Type", "text/event-stream; charset=utf-8")
         handler.send_header("Cache-Control", "no-cache")
+        handler.send_header("Connection", "close")
         handler._send_cors()
         handler.end_headers()
 

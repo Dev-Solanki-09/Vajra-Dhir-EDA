@@ -785,7 +785,7 @@ export const SettingsModal: React.FC<{
                 </SettingRow>
                 <SettingRow label="Default Privacy / Network Policy">
                   <select className="vd-select vd-metric" value={settings.agent.dlpMode} onChange={(e) => void updateSettings({ agent: { dlpMode: e.target.value } })}>
-                    <option value="NDA_AIRGAPPED">NDA_AIRGAPPED (Loopback Only)</option>
+                    <option value="NDA_AIRGAPPED">Airgapped (Loopback Only)</option>
                     <option value="PRIVATE_CLOUD_OK">PRIVATE_CLOUD_OK</option>
                     <option value="PUBLIC_OPEN">PUBLIC_OPEN</option>
                   </select>

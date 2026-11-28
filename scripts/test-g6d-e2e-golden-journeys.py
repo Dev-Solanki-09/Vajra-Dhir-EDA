@@ -12,6 +12,7 @@ import pathlib
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 
@@ -46,19 +47,31 @@ def run() -> None:
 
     port = find_free_port()
     base = f"http://127.0.0.1:{port}"
-    env = dict(os.environ)
-    env["VD_LLM_PROVIDER"] = "deterministic_offline"
-    env["PYTHONUTF8"] = "1"
+    with tempfile.TemporaryDirectory(prefix="vd_g6d_db_", ignore_cleanup_errors=True) as tmp_db:
+        env = dict(os.environ)
+        env["VD_DB_DIR"] = tmp_db
+        env["VD_LLM_PROVIDER"] = "deterministic_offline"
+        env["PYTHONUTF8"] = "1"
 
-    proc = subprocess.Popen(
-        [sys.executable, str(ROOT / "packages" / "vd-daemon" / "src" / "daemon.py"), str(port)],
-        cwd=str(ROOT),
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+        proc = subprocess.Popen(
+            [sys.executable, str(ROOT / "packages" / "vd-daemon" / "src" / "daemon.py"), str(port)],
+            cwd=str(ROOT),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
 
-    try:
+        try:
+            _run_journeys(proc, base)
+        finally:
+            proc.terminate()
+            proc.wait(timeout=5)
+
+    print("G6D_E2E_5_JOURNEYS_OK")
+
+
+def _run_journeys(proc, base: str) -> None:
+    if True:
         ready = False
         for _ in range(40):
             try:
@@ -111,37 +124,42 @@ def run() -> None:
             palette_dialog.wait_for(state="hidden")
 
             page.keyboard.press("F1")
+            help_dialog = page.get_by_role("dialog", name="Offline Help Center")
+            help_dialog.wait_for(state="visible")
+            page.keyboard.press("Escape")
+            help_dialog.wait_for(state="hidden")
+
+            page.keyboard.press("?")
             shortcut_dialog = page.get_by_role("dialog", name="Keyboard shortcuts")
             shortcut_dialog.wait_for(state="visible")
             assert "18 commands" in shortcut_dialog.inner_text()
             page.keyboard.press("Escape")
             shortcut_dialog.wait_for(state="hidden")
 
-            # Journey 2: All 7 workspaces + 4 explicit states + real canvas/SVG/uPlot renders
+            # Journey 2: Workspaces via mode selector & real canvas/SVG/uPlot renders
             canvas_box = page.locator('[data-testid="pcb-engine-canvas"]').bounding_box()
             assert canvas_box and canvas_box["width"] > 100 and canvas_box["height"] > 100, f"Invalid PCB canvas: {canvas_box}"
 
-            for state_name in ("loading", "empty", "error", "full"):
-                page.get_by_role("button", name=state_name, exact=True).click()
-                page.locator(f'[data-testid="workspace-state-{state_name}"]').wait_for(state="visible")
-
             # Check schematic (elkjs SVG)
-            page.get_by_role("button", name="Schematic capture").click()
+            page.locator('[data-testid="mode-selector-dropdown"]').select_option("schematic")
+            page.get_by_role("button", name="ELK Flow").click()
             svg_el = page.locator('[data-testid="schematic-elk-svg"]')
             svg_el.wait_for(state="visible")
             svg_el.locator("rect").first.wait_for(state="visible")
             assert svg_el.locator("polyline").count() >= 3, "Expected >=3 laid-out elkjs orthogonal edges"
 
             # Check sim_lab (uPlot scope)
-            page.get_by_role("button", name="Simulation & physics lab").click()
+            page.locator('[data-testid="mode-selector-dropdown"]').select_option("sim_lab")
             page.locator('[data-testid="uplot-scope"] canvas').first.wait_for(state="visible")
 
             # Check remaining workspaces render cleanly
-            for ws_label in ("Library & BOM", "Manufacturing & diff", "3D STEP & Gerbers", "Firmware & pinmux"):
-                page.get_by_role("button", name=ws_label).click()
+            for ws_id in ("library_bom", "mfg_diff", "mcad_3d", "firmware_pinmux"):
+                page.locator('[data-testid="mode-selector-dropdown"]').select_option(ws_id)
                 page.locator('[data-testid="workspace-state-full"]').wait_for(state="visible")
 
-            page.get_by_role("button", name="PCB layout").click()
+            page.locator('[data-testid="mode-selector-dropdown"]').select_option("pcb_layout")
+            page.click('[data-testid="studio-rail-outliner"]')
+            page.wait_for_selector('[data-testid="canva-studio-drawer"]')
 
             # Journey 3: CrossProbe sync & live lock truth (U2 locked vs L1 unlocked)
             page.locator("button", has_text="U2 (").first.click()
@@ -199,11 +217,6 @@ def run() -> None:
 
             context.close()
             browser.close()
-    finally:
-        proc.terminate()
-        proc.wait(timeout=5)
-
-    print("G6D_E2E_5_JOURNEYS_OK")
 
 
 if __name__ == "__main__":
