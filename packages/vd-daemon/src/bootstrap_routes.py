@@ -153,6 +153,12 @@ def load_5repo_registry(allow_network: bool = False) -> Dict[str, Any]:
                 return parsed
             except Exception:
                 continue
+    bundled_reg = _REPO_ROOT / "registry" / "companion-registry.v1.json"
+    if bundled_reg.is_file():
+        try:
+            return json.loads(bundled_reg.read_text(encoding="utf-8"))
+        except Exception:
+            pass
     return {"schema_version": "1.0.0", "release_tag": "v1.0.0", "packages": []}
 
 
@@ -289,7 +295,7 @@ def build_doctor_report() -> Dict[str, Any]:
     entries = manifest.get("entries", [])
     packs = [_check_pack_status(e, packs_root) for e in entries if isinstance(e, dict)]
 
-    runtime_tier1 = [p for p in packs if p["audience"] == "runtime" and p["tier"] == 1]
+    runtime_tier1 = [p for p in packs if p["audience"] == "runtime" and p["tier"] == 1 and p.get("archive_sha256")]
     tier1_ready = all(p["verified"] for p in runtime_tier1) if runtime_tier1 else True
     runtime_tier2 = [p for p in packs if p["audience"] == "runtime" and p["tier"] == 2]
 
@@ -325,7 +331,7 @@ def get_bootstrap_status() -> Dict[str, Any]:
     packs_root = data_dir / "packs"
     manifest = load_manifest()
     packs = [_check_pack_status(e, packs_root) for e in manifest.get("entries", []) if isinstance(e, dict)]
-    runtime_t1 = [p for p in packs if p["audience"] == "runtime" and p["tier"] == 1]
+    runtime_t1 = [p for p in packs if p["audience"] == "runtime" and p["tier"] == 1 and p.get("archive_sha256")]
     tier1_verified = all(p["verified"] for p in runtime_t1) if runtime_t1 else True
 
     registry = load_5repo_registry(allow_network=False)
@@ -333,7 +339,7 @@ def get_bootstrap_status() -> Dict[str, Any]:
     offline = is_offline_mode()
     repos_5 = _summarize_5repos(reg_pkgs, offline=offline)
     five_repo_t1 = [p for p in reg_pkgs if p.get("tier") == "tier1_essential"]
-    five_repo_ready = all(p.get("verified") for p in five_repo_t1) if five_repo_t1 else tier1_verified
+    five_repo_ready = all(p.get("verified") for p in five_repo_t1) if five_repo_t1 else False
 
     disk_free_bytes = 0
     try:
@@ -357,6 +363,18 @@ def get_bootstrap_status() -> Dict[str, Any]:
         "packs": packs,
         "sync_state": sync_copy,
     }
+
+
+def _unwrap_redundant_subdir(extract_dir: pathlib.Path, leaf_name: str) -> None:
+    """Flatten extract_dir/<leaf_name>/* into extract_dir/* when archives embed their target folder name."""
+    if not leaf_name or not extract_dir.is_dir():
+        return
+    entries = list(extract_dir.iterdir())
+    if len(entries) == 1 and entries[0].is_dir() and entries[0].name == leaf_name:
+        nested = entries[0]
+        for child in list(nested.iterdir()):
+            shutil.move(str(child), str(extract_dir / child.name))
+        nested.rmdir()
 
 
 def _safe_extract_archive(archive_path: pathlib.Path, dest_dir: pathlib.Path) -> None:
@@ -576,6 +594,7 @@ def _sync_5repo_packages(target_tiers: List[int], pack_ids: Optional[List[str]])
             if tmp_extract.exists():
                 shutil.rmtree(tmp_extract, ignore_errors=True)
             _safe_extract_archive(tmp_archive, tmp_extract)
+            _unwrap_redundant_subdir(tmp_extract, dest_dir.name)
             if dest_dir.exists():
                 shutil.rmtree(dest_dir, ignore_errors=True)
             dest_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -629,12 +648,13 @@ def _run_sync_worker(target_tiers: List[int], pack_ids: Optional[List[str]]) -> 
             continue
         if e.get("source_kind") != "pinned_archive":
             continue
+        artifacts = e.get("artifacts") if isinstance(e.get("artifacts"), dict) else {}
         pid = str(e.get("pack_id") or e.get("name") or "").lower()
         t = int(e.get("tier") if e.get("tier") is not None else 2)
         if wanted_ids is not None:
             if pid not in wanted_ids:
                 continue
-        elif t not in target_tiers:
+        elif t not in target_tiers or not str(artifacts.get("archive_sha256") or "").strip():
             continue
         candidates.append(e)
 
@@ -837,6 +857,7 @@ def handle_bootstrap_post(handler: Any, path: str, req: Dict[str, Any]) -> bool:
             tmp_extract = data_dir / "packs" / f".offline-extract-5r-{pack_id}-{int(time.time())}"
             try:
                 _safe_extract_archive(archive_path, tmp_extract)
+                _unwrap_redundant_subdir(tmp_extract, dest_dir.name)
                 if dest_dir.exists():
                     shutil.rmtree(dest_dir, ignore_errors=True)
                 dest_dir.parent.mkdir(parents=True, exist_ok=True)

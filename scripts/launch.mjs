@@ -219,7 +219,7 @@ function launchBrowser(appUrl) {
   if (bin) {
     const profileDir = path.join(dataDir, 'app-profile');
     fs.mkdirSync(profileDir, { recursive: true });
-    const child = spawn(bin, [`--app=${appUrl}`, `--user-data-dir=${profileDir}`, '--no-first-run'], {
+    const child = spawn(bin, [`--app=${appUrl}`, `--user-data-dir=${profileDir}`, '--no-first-run', '--no-default-browser-check', '--new-window'], {
       detached: true,
       stdio: 'ignore',
     });

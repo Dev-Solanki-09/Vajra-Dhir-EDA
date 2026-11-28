@@ -312,7 +312,7 @@ STUDIO_CSP = (
     "worker-src 'self' blob:; "
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: blob:; "
-    "connect-src 'self' http://127.0.0.1:41900 ws://127.0.0.1:41900 ws://127.0.0.1:5173; "
+    "connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*; "
     "frame-ancestors 'none'"
 )
 
@@ -899,14 +899,17 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
         expected = _get_session_token()
         if not expected:
             return True, ""
-        if allow_public_health and path in (
-            "/api/v1/health",
-            "/api/health",
-            "/manifest.webmanifest",
-            "/favicon.ico",
-            "/favicon.svg",
-            "/icon-192.png",
-            "/icon-512.png",
+        if allow_public_health and (
+            path in (
+                "/api/v1/health",
+                "/api/health",
+                "/manifest.webmanifest",
+                "/favicon.ico",
+                "/favicon.svg",
+                "/icon-192.png",
+                "/icon-512.png",
+            )
+            or path.startswith("/icons/")
         ):
             return True, ""
 
@@ -927,7 +930,8 @@ class DaemonHandler(http.server.BaseHTTPRequestHandler):
 
         for candidate in (bearer, q_tok, cookie_tok):
             if candidate and secrets.compare_digest(candidate, expected):
-                set_cookie = f"vd_session={expected}; HttpOnly; SameSite=Strict; Path=/" if (q_tok and not cookie_tok) else ""
+                cookie_valid = bool(cookie_tok and secrets.compare_digest(cookie_tok, expected))
+                set_cookie = f"vd_session={expected}; HttpOnly; SameSite=Strict; Path=/" if (q_tok and not cookie_valid) else ""
                 return True, set_cookie
 
         self.send_response(401)

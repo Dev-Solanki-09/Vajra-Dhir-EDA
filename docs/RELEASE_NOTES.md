@@ -37,4 +37,4 @@ node scripts/launch.mjs --headless-check
 - `pnpm-lock.yaml`: `d049f18b2719b896fffb5525f65481848bbe28971b210c0111adf0801542520c`
 - `uv.lock`: `6c288fc1dea554f2ff9b920b78d9e1d39d64f2b8cda17115e172ca7e6699105e`
 - `Cargo.lock`: `6b70f2bfc8eb028a8461e5cf80fa94abd653257e3420e26e6371674a4d4a058b`
-- `apps/workstation/dist/index.html`: `278ccfc9a7125c18e3694a6423dc5115a90235d33246de77146c644dcb95f54d`
+- `apps/workstation/dist/index.html`: `2c637b893934bb9be90552c594fbd5be40b5fb9b9faca51382b9260b779b9904`

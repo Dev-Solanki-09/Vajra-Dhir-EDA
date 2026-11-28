@@ -22,9 +22,17 @@ def _resolve_runtime_skills_dir() -> pathlib.Path:
     custom = os.environ.get("VD_RESOURCES_DIR")
     if custom:
         return pathlib.Path(custom) / "skills"
+    data_env = os.environ.get("VD_DATA_DIR", "").strip()
+    if data_env:
+        cand = pathlib.Path(data_env) / "resources" / "skills"
+        if cand.is_dir():
+            return cand
     portable = _REPO_ROOT / ".vd-portable" / "resources" / "skills"
     if portable.is_dir():
         return portable
+    runtime = _REPO_ROOT / ".vd-runtime" / "resources" / "skills"
+    if runtime.is_dir():
+        return runtime
     return pathlib.Path.home() / ".vd-runtime" / "resources" / "skills"
 
 
